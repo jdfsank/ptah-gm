@@ -41,7 +41,7 @@ export class StudioApp {
     this.assets = []; this.pollHandle = null; this.drafts = new DraftStore(); this.draftRevision = 0; this.draftKey = null; this.persistenceOK = false;
     this.draftTimer = null; this.destroyed = false; this.bound = false; this.selectionBusy = false; this.workbenchLoad = null; this.workbenchGeneration = 0;
     this.proposalPollHandle = null; this.proposalGeneration = 0; this.workflow = null; this.selectedObjectId = null; this.feedback = []; this.dirtyFields = new Set(); this.fieldDraftValues = {};
-    this.selectionGeneration = 0; this.conceptGeneration = 0; this.proposalMutationGeneration = 0; this.jobLoadGeneration = 0; this.jobMutationGeneration = 0;
+    this.selectionGeneration = 0; this.conceptGeneration = 0; this.proposalMutationGeneration = 0; this.jobLoadGeneration = 0; this.jobMutationGeneration = 0; this.retryOutcomeUnknown = null;
   }
   async request(path, { method = 'GET', body, token = false } = {}) {
     const headers = { Accept: 'application/json' };
@@ -65,18 +65,10 @@ export class StudioApp {
       this.applyReadinessGate();
       try { await this.drafts.open(); this.persistenceOK = true; $('#persistence-note').textContent = '此浏览器的草稿存储可用。'; }
       catch (error) { this.persistenceOK = false; $('#persistence-note').textContent = `草稿无法持久保存：${error.message}`; $('#persistence-note').className = 'muted danger-text'; }
-      const latestProposal = this.pendingProposal();
-      if (latestProposal) {
-        this.proposal = latestProposal;
-        if (latestProposal.status === 'FROZEN') {
-          this.packet = this.packetFor(latestProposal);
-          this.renderProposal(); this.renderFrozenPacket();
-          const associatedJob = this.jobFor(latestProposal, this.packet);
-          if (associatedJob) await this.loadJob(associatedJob.id);
-          else hide($('#resume-packet'), false);
-        } else this.renderProposal();
-      }
-      const jobs = this.workspace.jobs;
+      let selectedProject = $('#project')?.value || '';
+      if (!selectedProject) selectedProject = this.latestRecoverableProposal()?.projectId || '';
+      if (selectedProject) await this.openProject(selectedProject);
+      const jobs = this.workspace.jobs.filter(item => !selectedProject || item.projectId === selectedProject);
       const latest = jobs.find(item => ACTIVE.has(item.status)) || this.latestByDate(jobs);
       if (latest) await this.loadJob(latest.id);
     } catch (error) { this.showBlocked(error); }
@@ -132,8 +124,13 @@ export class StudioApp {
       if (context.generation !== this.selectionGeneration) return;
       this.workspace = workspace; this.renderWorkspace();
       context = this.captureSelectionContext();
-      const pending = this.pendingProposal();
       const selectedProject = $('#project')?.value || '';
+      if (this.retryOutcomeUnknown && selectedProject) {
+        const uncertain = (this.workspace.proposals || []).find(item => item.id === this.retryOutcomeUnknown);
+        const latestForProject = this.latestProposalForProject(selectedProject);
+        if (uncertain?.projectId === selectedProject && latestForProject) this.retryOutcomeUnknown = null;
+      }
+      const pending = this.pendingProposal(selectedProject || null);
       const belongsToSelection = !selectedProject || !pending?.projectId || pending.projectId === selectedProject;
       if (pending && belongsToSelection && (!this.proposal || this.proposal.status === 'FROZEN' || this.proposal.id === pending.id || pending.projectId === selectedProject)) {
         this.proposal = pending;
@@ -142,7 +139,7 @@ export class StudioApp {
           if (this.packet) {
             this.renderProposal(); this.renderFrozenPacket();
             const associated = this.jobFor(pending, this.packet);
-            if (associated) await this.loadJob(associated.id, false);
+            if (associated && (!selectedProject || associated.projectId === selectedProject)) await this.loadJob(associated.id, false);
             else hide($('#resume-packet'), false);
           }
         } else { this.packet = null; this.renderProposal(); }
@@ -150,16 +147,20 @@ export class StudioApp {
         this.proposal = null; this.packet = null; hide($('#proposal-panel'));
       }
       if (!this.selectionContextMatches(context)) return;
-      if (this.job && (this.workspace.jobs || []).some(item => item.id === this.job.id)) await this.loadJob(this.job.id, false);
+      const scopedJobs = selectedProject ? (this.workspace.jobs || []).filter(item => item.projectId === selectedProject) : (this.workspace.jobs || []);
+      if (this.job && scopedJobs.some(item => item.id === this.job.id)) await this.loadJob(this.job.id, false);
       else {
-        const latest = (this.workspace.jobs || []).find(item => ACTIVE.has(item.status)) || this.latestByDate(this.workspace.jobs || []);
+        const latest = scopedJobs.find(item => ACTIVE.has(item.status)) || this.latestByDate(scopedJobs);
         if (latest) await this.loadJob(latest.id, false);
+        else if (selectedProject && this.job && this.job.projectId !== selectedProject) {
+          this.jobLoadGeneration++; this.stopPolling(); this.job = null; hide($('#job-panel'));
+        }
       }
-      const projectId = this.job?.projectId || this.snapshot?.projectId || this.snapshot?.id;
+      const projectId = selectedProject || this.job?.projectId || this.snapshot?.projectId || this.snapshot?.id;
       if (projectId) await this.ensureWorkbench(projectId);
       if (!this.selectionContextMatches(context)) return;
-      $('#connection').textContent = '已连接本机服务'; $('#connection').className = 'connection connected';
-    } catch (error) { this.notify(`刷新失败：${error.message}`); }
+      $('#connection').textContent = '已连接本机服务'; $('#connection').className = 'connection connected'; return true;
+    } catch (error) { this.notify(`刷新失败：${error.message}`); return false; }
   }
   latestByDate(items) { return [...items].sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))[0] || null; }
   packetFor(proposal) { return (this.workspace?.packets || []).find(item => item.id === proposal.packetId || item.packetId === proposal.packetId || item.proposalId === proposal.id) || null; }
@@ -173,16 +174,31 @@ export class StudioApp {
     this.workbenchLoad = { projectId, promise };
     return promise;
   }
-  pendingProposal() {
+  pendingProposal(projectId = $('#project')?.value || null) {
+    if (!projectId) return null;
+    const latest = this.latestProposalForProject(projectId);
+    if (!latest) return null;
+    if (['FAILED', 'NEEDS_CLARIFICATION', 'READY'].includes(latest.status) || PLANNING.has(latest.status)) return latest;
+    if (latest.status === 'FROZEN') {
+      const packet = this.packetFor(latest);
+      if (!packet) return null;
+      const job = this.jobFor(latest, packet);
+      return !job || ACTIVE.has(job.status) ? latest : null;
+    }
+    return null;
+  }
+  latestProposalForProject(projectId) {
     const proposals = this.workspace?.proposals || [];
-    return [...proposals].filter(item => {
-      if (item.status === 'NEEDS_CLARIFICATION' || item.status === 'READY' || PLANNING.has(item.status)) return true;
-      if (item.status !== 'FROZEN') return false;
-      const packet = this.packetFor(item);
-      if (!packet) return false;
-      const job = this.jobFor(item, packet);
-      return !job || ACTIVE.has(job.status);
-    }).sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))[0] || null;
+    if (!projectId) return null;
+    return [...proposals].filter(item => item.projectId === projectId).sort((a, b) =>
+      String(b.createdAt || b.updatedAt || '').localeCompare(String(a.createdAt || a.updatedAt || '')) ||
+      String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0] || null;
+  }
+  latestRecoverableProposal() {
+    const projectIds = [...new Set((this.workspace?.proposals || []).map(item => item.projectId).filter(Boolean))];
+    return projectIds.map(projectId => this.pendingProposal(projectId)).filter(Boolean).sort((a, b) =>
+      String(b.createdAt || b.updatedAt || '').localeCompare(String(a.createdAt || a.updatedAt || '')) ||
+      String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0] || null;
   }
   renderWorkspace() {
     const projects = this.workspace?.projects || [], jobs = this.workspace?.jobs || [];
@@ -200,6 +216,7 @@ export class StudioApp {
   }
   async openProject(projectId) {
     this.advanceSelection();
+    const selectionGeneration = this.selectionGeneration;
     const previousSnapshot = this.snapshot;
     const previousCapabilities = this.capabilities;
     const previousCandidates = this.candidates;
@@ -208,7 +225,20 @@ export class StudioApp {
     this.selectionBusy = true; this.applyReadinessGate();
     const load = this.loadWorkbench(projectId);
     const generation = this.workbenchGeneration;
-    try { await load; }
+    try {
+      await load;
+      if (generation !== this.workbenchGeneration || selectionGeneration !== this.selectionGeneration || (this.snapshot?.projectId || this.snapshot?.id) !== projectId) return;
+      if (this.job && this.job.projectId !== projectId) { this.jobLoadGeneration++; this.stopPolling(); this.job = null; hide($('#job-panel')); }
+      const proposal = this.pendingProposal(projectId);
+      if (!proposal) { this.proposal = null; this.packet = null; hide($('#proposal-panel')); hide($('#freeze-area')); return; }
+      this.proposal = proposal;
+      if (proposal.status === 'FROZEN') {
+        this.packet = this.packetFor(proposal); this.renderProposal(); this.renderFrozenPacket();
+        const associatedJob = this.jobFor(proposal, this.packet);
+        if (associatedJob) await this.loadJob(associatedJob.id);
+        else hide($('#resume-packet'), false);
+      } else { this.packet = null; this.renderProposal(); }
+    }
     catch (error) {
       if (generation !== this.workbenchGeneration) return;
       if (previousSnapshot) {
@@ -342,12 +372,103 @@ export class StudioApp {
       }
     }
   }
+  renderPlanningFailure(proposal, root) {
+    const failure = proposal?.planningFailure;
+    if (!failure || typeof failure !== 'object') return;
+    const section = el('section', 'notice planning-failure'); section.setAttribute('aria-label', '策划执行诊断');
+    section.append(el('h3', '', '策划执行诊断'));
+    const labels = {
+      PLANNER_TIMEOUT: '策划 session 等待超时。', PLANNER_NETWORK: '与策划 session 的通信中断。',
+      PLANNER_FAILED: '策划 session 执行失败。', PLANNER_CANCELLED: '策划 session 已停止。',
+      PLANNER_AUTH: '策划 session 身份验证失败。', PLANNER_RESTRICTED: '策划请求超出当前角色范围。',
+      PLANNER_RESPONSE_INVALID: '策划 session 返回了无法识别的结果。', PLANNER_WRITE: '策划违反只读范围。',
+      PLANNER_SETUP: '策划 session 未能启动。', PLANNER_UNCERTAIN: '策划 session 停止状态尚未确认。',
+    };
+    section.append(el('p', '', labels[failure.code] || '策划 session 未能完成。'));
+    const summary = typeof failure.message === 'string' ? failure.message.trim() : '';
+    if (summary && summary.length <= 160 && !/[\\/]|stderr|traceback|\.(?:png|jpe?g|webp)\b/i.test(summary)) section.append(el('p', '', summary));
+    const details = el('dl', 'planning-diagnostic');
+    const seconds = failure.elapsedSeconds;
+    if (seconds != null && seconds !== '' && Number.isFinite(Number(seconds)) && Number(seconds) >= 0) details.append(el('dt', '', '耗时'), el('dd', '', `${Math.round(Number(seconds))} 秒`));
+    const sessionId = typeof failure.sessionId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(failure.sessionId) ? failure.sessionId : null;
+    if (sessionId) details.append(el('dt', '', 'Session'), el('dd', '', sessionId));
+    const nativeLabels = { completed: '已结束', failed: '执行失败', stopped: '已停止', running: '仍在运行', timeout: '等待超时', unavailable: '状态不可用' };
+    const nativeStatus = typeof failure.nativeStatus === 'string' ? failure.nativeStatus.toLowerCase() : '';
+    if (nativeLabels[nativeStatus]) details.append(el('dt', '', '原生状态'), el('dd', '', nativeLabels[nativeStatus]));
+    if (typeof failure.terminationConfirmed === 'boolean') details.append(el('dt', '', '停止确认'), el('dd', '', failure.terminationConfirmed ? '已确认停止' : '未确认停止'));
+    if (details.childNodes.length) section.append(details);
+    root.append(section);
+    if (failure.clarificationAvailable === true && proposal.planningTerminationConfirmed === true) {
+      const button = el('button', 'button secondary', '恢复已返回的澄清问题'); button.type = 'button'; button.dataset.action = 'recover-clarification';
+      button.addEventListener('click', () => this.proposalAction('reconcile')); root.append(button);
+      return;
+    }
+    if (failure.retryable === true) {
+      const unknown = this.retryOutcomeUnknown === proposal.id;
+      const button = el('button', 'button secondary', unknown ? '重试结果待核账' : '使用原输入重试策划'); button.type = 'button'; button.dataset.action = 'retry-planning'; button.disabled = unknown;
+      button.addEventListener('click', () => this.retryPlanning(proposal, button)); root.append(button);
+      if (unknown) {
+        root.append(el('p', 'notice', '上次请求可能已创建新方案。请先刷新工作台核账；核账完成前不能再次提交。'));
+        const refreshButton = el('button', 'button secondary', '刷新工作台核账'); refreshButton.type = 'button'; refreshButton.dataset.action = 'reconcile-retry';
+        refreshButton.addEventListener('click', () => this.reconcileRetry(proposal, refreshButton)); root.append(refreshButton);
+      }
+    }
+  }
+  renderPlanningRecovery(proposal, root) {
+    if (proposal?.status !== 'NEEDS_CLARIFICATION' || proposal.planningRecovery?.kind !== 'CLARIFICATION_FROM_TIMEOUT') return;
+    root.append(el('div', 'notice', '原生策划在时限内未确认完成；这里只恢复已校验的澄清问题。回答后会继续策划，不代表方案已通过或可以制作。'));
+  }
+  async reconcileRetry(proposal, button) {
+    if (button.disabled || this.retryOutcomeUnknown !== proposal?.id || this.proposal?.id !== proposal.id) return;
+    const context = this.captureSelectionContext(); button.disabled = true;
+    const refreshed = await this.refresh();
+    if (!this.selectionContextMatches(context)) return;
+    if (!refreshed) { button.disabled = false; return; }
+    this.retryOutcomeUnknown = null;
+    if (this.proposal?.id === proposal.id) this.renderProposal();
+  }
+  async retryPlanning(proposal, button) {
+    if (button.disabled || this.retryOutcomeUnknown === proposal?.id || this.proposal?.id !== proposal?.id || proposal.status !== 'FAILED' || proposal.planningFailure?.retryable !== true) return;
+    const context = this.captureSelectionContext(), generation = ++this.conceptGeneration;
+    if (!this.proposalBelongsToSelection(proposal, context) || !proposal.projectId || !Number.isInteger(proposal.publicationRevision)) return this.notify('无法确认原项目版本；请刷新工作区后重试。');
+    if (this.snapshot?.projectId !== proposal.projectId && this.snapshot?.id !== proposal.projectId) return this.notify('原项目尚未选中；请先选择该项目再重试。');
+    button.disabled = true;
+    try {
+      const body = {
+        text: typeof proposal.text === 'string' ? proposal.text : '', projectId: proposal.projectId,
+        workflow: proposal.workflow || (this.objectsWorkflow() ? 'objects-v1' : undefined),
+        expectedPublicationRevision: proposal.publicationRevision,
+        assetIds: Array.isArray(proposal.assets) ? proposal.assets.map(asset => typeof asset === 'string' ? asset : asset?.id).filter(id => typeof id === 'string' && id) : Array.isArray(proposal.assetIds) ? [...proposal.assetIds] : [],
+        ...(proposal.changeRequest ? { changeRequest: structuredClone(proposal.changeRequest) } : {}),
+      };
+      const response = await this.request('/concepts', { method: 'POST', token: true, body });
+      const latest = response.proposal || response;
+      if (!this.selectionContextMatches(context) || generation !== this.conceptGeneration || this.proposal?.id !== proposal.id) return;
+      if (!latest.id || !Number.isInteger(latest.revision) || latest.id === proposal.id) throw new Error('服务没有创建新的策划修订。');
+      this.proposal = latest; this.packet = null; this.renderProposal(); this.startProposalPolling();
+    } catch (error) {
+      if (this.selectionContextMatches(context) && generation === this.conceptGeneration && this.proposal?.id === proposal.id) {
+        const outcomeUnknown = !Number.isInteger(error.status) || error.status >= 500;
+        if (outcomeUnknown) { this.retryOutcomeUnknown = proposal.id; this.renderProposal(); this.notify('策划重试结果待确认；请先刷新工作台核账，避免重复创建。'); }
+        else this.notify(`策划重试没有提交：${error.message}`);
+      }
+    } finally {
+      if (this.selectionContextMatches(context) && generation === this.conceptGeneration && this.proposal?.id === proposal.id && this.retryOutcomeUnknown !== proposal.id) button.disabled = false;
+    }
+  }
   async proposalAction(action) {
-    const context = this.captureSelectionContext(), proposal = this.proposal && structuredClone(this.proposal), generation = ++this.proposalMutationGeneration; if (!proposal?.id || !PLANNING.has(proposal.status) || !this.proposalBelongsToSelection(proposal, context)) return;
+    const context = this.captureSelectionContext(), proposal = this.proposal && structuredClone(this.proposal), generation = ++this.proposalMutationGeneration;
+    const clarificationRecovery = action === 'reconcile' && proposal?.status === 'FAILED'
+      && proposal.planningFailure?.clarificationAvailable === true && proposal.planningTerminationConfirmed === true;
+    if (!proposal?.id || !(PLANNING.has(proposal.status) || clarificationRecovery) || !this.proposalBelongsToSelection(proposal, context)) return;
+    const existingAnswers = clarificationRecovery ? Object.fromEntries([...($('#questions')?.querySelectorAll('[name]') || [])].map(control => [control.name, control.value])) : null;
     try {
       const response = await this.request(`/proposals/${encodeURIComponent(proposal.id)}/${action}`, { method: 'POST', token: true, body: {} });
       const latest = response.proposal || response;
-      if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id && latest.id === proposal.id && Number(latest.revision) >= Number(proposal.revision)) { this.proposal = latest; this.renderProposal(); }
+      if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id && latest.id === proposal.id && Number(latest.revision) >= Number(proposal.revision)) {
+        this.proposal = latest; this.renderProposal();
+        if (existingAnswers && latest.status === 'NEEDS_CLARIFICATION') for (const control of $('#questions')?.querySelectorAll('[name]') || []) if (Object.hasOwn(existingAnswers, control.name)) control.value = existingAnswers[control.name];
+      }
     } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) this.notify(`策划${action === 'cancel' ? '取消' : '对账'}未确认：${error.message}`); }
   }
   objectDocument(proposal = this.proposal) { return proposal?.document || proposal?.designDocument || proposal?.objectDocument || null; }
@@ -379,7 +500,7 @@ export class StudioApp {
     hide($('#planning-status'));
     $('#review-label').textContent = this.workspace?.testData ? '我已阅读并确认本次测试方案和制作范围' : '我已阅读并确认上面的方案和制作范围';
     hide($('#proposal-panel'), false); $('#proposal-title').textContent = proposal.title || '初步方案';
-    const proposalStatusLabel = proposal.status === 'READY' ? '方案待确认' : proposal.status === 'NEEDS_CLARIFICATION' ? '需要补充信息' : proposal.status === 'FROZEN' ? '已冻结，沿用原制作表单' : JOB_LABELS[proposal.status] || `服务状态：${proposal.status || '未知'}`;
+    const proposalStatusLabel = proposal.status === 'FAILED' ? '策划失败' : proposal.status === 'READY' ? '方案待确认' : proposal.status === 'NEEDS_CLARIFICATION' ? '需要补充信息' : proposal.status === 'FROZEN' ? '已冻结，沿用原制作表单' : JOB_LABELS[proposal.status] || `服务状态：${proposal.status || '未知'}`;
     setStatus($('#proposal-status'), proposal.status, proposalStatusLabel);
     const area = $('#proposal-content'); area.replaceChildren();
     area.append(el('p', 'proposal-summary', proposal.text || '服务尚未提供方案摘要。'));
@@ -411,9 +532,9 @@ export class StudioApp {
     const ask = $('#answers-form'); const freeze = $('#freeze-area');
     if (PLANNING.has(proposal.status) || proposal.status === 'PLANNING_UNCERTAIN') { hide(ask); hide(freeze); this.renderPlanningStatus(proposal); this.startProposalPolling(); }
     else if (proposal.status === 'FROZEN') { this.stopProposalPolling(); hide(ask); hide(freeze, false); $('#review-label').textContent = '此制作表单已冻结，恢复时沿用原表单'; $('#reviewed').checked = false; $('#reviewed').disabled = true; $('#freeze').disabled = true; hide($('#resume-packet'), true); }
-    else if (proposal.status === 'NEEDS_CLARIFICATION' || questions.length) { this.stopProposalPolling(); this.renderQuestions(questions); hide(ask, false); hide(freeze); $('#reviewed').disabled = false; }
+    else if (proposal.status === 'NEEDS_CLARIFICATION' || questions.length) { this.stopProposalPolling(); this.renderQuestions(questions); this.renderPlanningRecovery(proposal, area); hide(ask, false); hide(freeze); $('#reviewed').disabled = false; $('#freeze').disabled = true; }
     else if (proposal.status === 'READY') { this.stopProposalPolling(); hide(ask); this.renderPacketPreview(proposal); hide(freeze, false); $('#reviewed').checked = false; $('#reviewed').disabled = false; $('#freeze').disabled = true; }
-    else if (['FAILED', 'CANCELLED', 'BLOCKED'].includes(proposal.status)) { this.stopProposalPolling(); hide(ask); hide(freeze); area.append(el('div', 'notice', proposal.message || `策划状态：${proposal.status}`)); this.renderPlanningControls(proposal); }
+    else if (['FAILED', 'CANCELLED', 'BLOCKED'].includes(proposal.status)) { this.stopProposalPolling(); hide(ask); hide(freeze); area.append(el('div', 'notice', proposal.status === 'FAILED' && proposal.planningFailure ? '策划 session 未能完成。' : proposal.message || `策划状态：${proposal.status}`)); if (proposal.status === 'FAILED') this.renderPlanningFailure(proposal, area); this.renderPlanningControls(proposal); }
     else { this.stopProposalPolling(); hide(ask); hide(freeze); area.append(el('p', 'muted', `当前方案状态为 ${proposal.status || '未知'}，服务未声明可以确认。`)); }
   }
   parameterInput(key) { return $(`#edit-form [name="${key}"]`); }
@@ -688,7 +809,9 @@ export class StudioApp {
     $('#workbench-title').textContent = snap.title || snap.projectTitle || '当前工作台'; setStatus($('#snapshot-version'), 'PUBLISHED', `版本 ${snap.publicationRevision ?? '未知'}`);
     const summary = $('#snapshot-summary'); summary.replaceChildren();
     summary.append(el('p', 'proposal-summary', snap.summary || snap.description || '这是项目当前已发布的工作台快照。'));
-    if (snap.kind === 'INITIALIZATION' || snap.playable === false) summary.append(el('div', 'notice', '当前版本是已验证的工程准备基线，尚不包含可玩的 MVP。玩法实现需要独立规划和确认。'));
+    if (snap.kind === 'CONCEPT') summary.append(el('div', 'notice', '当前处于概念阶段，尚未制作或验证工程；完成策划并确认范围后进入制作。'));
+    else if (snap.kind === 'INITIALIZATION') summary.append(el('div', 'notice', '当前版本是已验证的工程准备基线，尚不包含可玩的 MVP。玩法实现需要独立规划和确认。'));
+    else if (snap.playable === false) summary.append(el('div', 'notice', '当前版本尚无可玩的 MVP。玩法实现需要独立策划和确认。'));
     else if (snap.kind === 'MVP' && snap.playable === true) summary.append(el('div', 'success-notice', this.objectsWorkflow()
       ? '已通过 Godot 技术检查；玩法与视觉体验仍需你实际确认。'
       : '可运行的 MVP 已通过服务声明的验证。'));

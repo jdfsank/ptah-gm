@@ -53,11 +53,25 @@ for line in sys.stdin:
     if mode == "hang_child":
      subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1.5); open(" + repr(survived) + ", 'w').write('survived')"])
     while True: time.sleep(.1)
+   if mode in ("recoverable_network", "hang_network", "native_failed"):
+    error = {"message":"Connection reset while contacting provider","code":"network_error","codexErrorInfo":{"kind":"transport","message":"socket closed","privatePayload":"must not escape"},"willRetry":mode != "native_failed","input":"must not escape"}
+    send({"jsonrpc":"2.0","method":"error","params":{"error":error,"request":{"image":"must not escape"}}})
+   if mode == "hang_network":
+    while True: time.sleep(.1)
    send({"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"delta":"probe response"}})
+   if mode == "lifecycle_sensitive":
+    send({"jsonrpc":"2.0","method":"item/started","params":{"item":{"id":"private-id","type":"agentMessage","phase":"commentary","text":"PRIVATE_MESSAGE_BODY","path":"/private/workspace"}}})
+    send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"id":"private-id","type":"agentMessage","phase":"commentary","text":"PRIVATE_MESSAGE_BODY","path":"/private/workspace"}}})
+    send({"jsonrpc":"2.0","method":"item/started","params":{"item":{"id":"private-tool-id","type":"mcpToolCall","server":"private-server","tool":"private-tool","arguments":{"secret":"PRIVATE_TOOL_INPUT"}}}})
+    send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"id":"private-tool-id","type":"mcpToolCall","server":"private-server","tool":"private-tool","output":"PRIVATE_TOOL_OUTPUT"}}})
+   if mode == "lifecycle_many":
+    for _ in range(45):
+     send({"jsonrpc":"2.0","method":"item/started","params":{"item":{"type":"plan","phase":"planning","text":"PRIVATE_PLAN_BODY"}}})
    if mode == "final_json":
     send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"commentary","text":"Working on a plan"}}})
     send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":json.dumps({"status":"READY"})}}})
-   send({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-test","turn":{"id":"turn-test","status":"completed"}}})
+   terminal = {"id":"turn-test","status":"failed","error":{"message":"provider rejected request","code":"request_rejected","detail":"preserve this native turn error"}} if mode == "native_failed" else {"id":"turn-test","status":"completed"}
+   send({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-test","turn":terminal}})
   elif method == "turn/interrupt": send({"jsonrpc":"2.0","id":m["id"],"result":{}})
 """.replace("__MODE__", repr(mode))
             .replace("__LOG__", repr(str(self.log)))
@@ -69,12 +83,14 @@ for line in sys.stdin:
     def _run(self, packet=None, **kwargs):
         disabled = kwargs.pop("disabled_mcp_servers", None)
         profile = kwargs.pop("execution_profile", None)
+        reasoning_effort = kwargs.pop("reasoning_effort", None)
         with patch("backend.codex_driver.shutil.which", return_value=str(self.server)):
             return CodexDriver(
                 self.cwd,
                 timeout=kwargs.pop("timeout", 2),
                 disabled_mcp_servers=disabled,
                 execution_profile=profile,
+                reasoning_effort=reasoning_effort,
             ).run(packet or {"test_data": True}, **kwargs)
 
     def test_frozen_packet_is_sent_and_turn_completion_is_not_verification(self):
@@ -99,6 +115,66 @@ for line in sys.stdin:
         self.assertEqual(start["params"]["sandbox"], "read-only")
         self.assertEqual(start["params"]["approvalPolicy"], "on-request")
         self.assertFalse(start["params"]["config"]["features"]["multi_agent"])
+
+    def test_recoverable_native_network_error_is_preserved_without_stopping_turn(self):
+        self._write_server("recoverable_network")
+        result = self._run()
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["response"], "probe response")
+        errors = result["diagnostics"]["nativeErrors"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["code"], "network_error")
+        self.assertTrue(errors[0]["willRetry"])
+        self.assertEqual(errors[0]["codexErrorInfo"]["kind"], "transport")
+        self.assertNotIn("privatePayload", str(errors))
+        self.assertNotIn("must not escape", str(errors))
+
+    def test_item_lifecycle_keeps_only_safe_type_phase_and_timing(self):
+        self._write_server("lifecycle_sensitive")
+        result = self._run()
+        events = result["diagnostics"]["itemLifecycle"]
+        self.assertEqual(
+            [(event["event"], event["type"]) for event in events],
+            [("started", "agentMessage"), ("completed", "agentMessage"),
+             ("started", "mcpToolCall"), ("completed", "mcpToolCall")],
+        )
+        self.assertEqual(events[0]["phase"], "commentary")
+        self.assertTrue(all(isinstance(event["elapsedSeconds"], (int, float)) for event in events))
+        # The ordinary response may contain agent text by design; this checks
+        # that the newly added lifecycle evidence itself stays metadata-only.
+        serialized = json.dumps(result["diagnostics"]["itemLifecycle"])
+        for private_value in (
+            "PRIVATE_MESSAGE_BODY", "PRIVATE_TOOL_INPUT", "PRIVATE_TOOL_OUTPUT",
+            "/private/workspace", "private-server", "private-tool",
+        ):
+            self.assertNotIn(private_value, serialized)
+
+    def test_item_lifecycle_evidence_is_bounded(self):
+        self._write_server("lifecycle_many")
+        result = self._run()
+        self.assertEqual(len(result["diagnostics"]["itemLifecycle"]), 40)
+
+    def test_nonretryable_native_error_and_failed_turn_are_retained(self):
+        self._write_server("native_failed")
+        result = self._run()
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["diagnostics"]["nativeErrors"][0]["willRetry"], False)
+        self.assertEqual(
+            result["diagnostics"]["nativeTurnError"],
+            {"message": "provider rejected request", "code": "request_rejected",
+             "detail": "preserve this native turn error"},
+        )
+
+    def test_timeout_retains_native_network_error_evidence(self):
+        self._write_server("hang_network")
+        # Leave enough time for process startup and the initialize/thread/turn
+        # handshake under suite load; only the post-error fake stream should
+        # consume the timeout being tested here.
+        result = self._run(timeout=2.0)
+        self.assertEqual(result["status"], "timeout")
+        self.assertIsNone(result["diagnostics"]["error"])
+        self.assertEqual(result["diagnostics"]["nativeErrors"][0]["code"], "network_error")
+        self.assertTrue(result["diagnostics"]["nativeErrors"][0]["willRetry"])
 
     def test_independent_session_does_not_inherit_parent_context(self):
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "parent-thread",
@@ -212,6 +288,35 @@ for line in sys.stdin:
         self.assertEqual(start["params"]["sandbox"], "workspace-write")
         self.assertEqual(start["params"]["approvalPolicy"], "on-request")
         self.assertNotIn("danger-full-access", str(start["params"]))
+
+    def test_trusted_reasoning_effort_is_sent_only_on_turn_start(self):
+        result = self._run(
+            {"test_data": True, "effort": "max", "reasoningEffort": "ultra"},
+            reasoning_effort="medium",
+        )
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        thread = next(call for call in calls if call.get("method") == "thread/start")
+        turn = next(call for call in calls if call.get("method") == "turn/start")
+        self.assertNotIn("effort", thread["params"])
+        self.assertEqual(turn["params"]["effort"], "medium")
+        self.assertEqual(result["commandEvidence"]["reasoningEffort"], "medium")
+
+    def test_reasoning_effort_defaults_to_omitted_despite_packet_fields(self):
+        result = self._run({"test_data": True, "effort": "max"})
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        turn = next(call for call in calls if call.get("method") == "turn/start")
+        self.assertNotIn("effort", turn["params"])
+        self.assertIsNone(result["commandEvidence"]["reasoningEffort"])
+
+    def test_unsupported_reasoning_effort_is_rejected_before_process_launch(self):
+        with (
+            patch(
+                "backend.codex_driver.shutil.which",
+                side_effect=AssertionError("must not launch"),
+            ),
+            self.assertRaises(ValueError),
+        ):
+            CodexDriver(self.cwd, reasoning_effort="turbo")
 
     def test_unknown_execution_profile_is_rejected_before_process_launch(self):
         with self.assertRaises(ValueError):

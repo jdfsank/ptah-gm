@@ -13,6 +13,7 @@
 | 对对象和属性继续精细调整 | [工作台用户说明书](USER-MANUAL.zh-CN.md) | 字段修改、自然语言要求、对象反馈、草稿和版本恢复 |
 | 查看协议、实施范围与待验项目 | [通用对象工作流实施契约](GENERAL-GAME-TOOL-PLAN.zh-CN.md) | 文档结构、通讯流程、验收目标和文件责任 |
 | 查看实际完成情况与验证证据 | [实现与验证报告](GENERAL-GAME-TOOL-VERIFICATION.zh-CN.md) | 与原计划的变化、真实 session、玩法观察与限制 |
+| 排查策划失败与工作台恢复 | [策划诊断与恢复修复](PLANNING-FAILURE-FIX.zh-CN.md) | 原生错误、超时问题恢复、重试核账与项目隔离 |
 | 查看后端当前范围 | [后端说明](../backend/README.zh-CN.md) | 工作流组成、写入边界与验证限制 |
 
 ## 快速启动

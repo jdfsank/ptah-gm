@@ -11,8 +11,10 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from backend.coordinator import Coordinator, WorkflowError
+from backend.generic_workflow import timeout_clarification
 from backend.object_protocol import ObjectProtocolError, parse_planner_response, validate_change_request, validate_document
 from backend.tests.test_object_protocol import sample_document
 
@@ -57,9 +59,10 @@ class Planner:
             raise AssertionError("test planner has no scripted response")
         result = self.owner.plans.pop(0)
         return {
-            "status": "completed",
+            "status": self.owner.planner_status,
             "response": json.dumps(result),
-            "diagnostics": {"childTerminationConfirmed": self.owner.planner_stopped},
+            "diagnostics": {**self.owner.planner_diagnostics,
+                "childTerminationConfirmed": self.owner.planner_stopped},
         }
 
 
@@ -97,6 +100,8 @@ class GenericWorkflowTests(unittest.TestCase):
         self.planner_started = None
         self.planner_release = None
         self.planner_stopped = True
+        self.planner_status = "completed"
+        self.planner_diagnostics = {}
         self.producer_mode = "normal"
         self.coordinator = self._new_coordinator()
         self.operator = self.coordinator.operator_id
@@ -144,6 +149,153 @@ class GenericWorkflowTests(unittest.TestCase):
         job = self.coordinator.create_job(operator_id=self.operator, packet_id=packet["id"],
                                           idempotency_key="test:" + packet["id"])
         return self.coordinator.wait(job["id"], 12)
+
+    def test_native_network_timeout_preserves_evidence_and_safe_retry_diagnosis(self):
+        self.planner_status = "timeout"
+        self.planner_diagnostics = {"elapsedSeconds": 420.0, "error": None,
+            "stderr": ["stream disconnected before completion; target=codex_core::responses_retry"]}
+        proposal = self._create()
+        self.assertEqual(proposal["status"], "FAILED")
+        self.assertEqual(proposal["planningEvidence"]["status"], "timeout")
+        self.assertTrue(proposal["planningTerminationConfirmed"])
+        diagnosis = proposal["planningFailure"]
+        self.assertEqual(diagnosis["code"], "PLANNER_NETWORK")
+        self.assertTrue(diagnosis["retryable"])
+        self.assertEqual(diagnosis["elapsedSeconds"], 420)
+        self.assertIsNone(proposal["document"])
+        self.assertNotIn("packetId", proposal)
+
+        # Existing stored failures from the prior release are enriched only on
+        # reads; their original revision, input, status and record stay intact.
+        with self.coordinator.transaction():
+            original = self.coordinator._get("proposal", proposal["id"])
+            for key in ("planningFailure", "planningEvidence", "planningTerminationConfirmed"):
+                original.pop(key)
+            self.coordinator._put("proposal", original)
+        restored = self.coordinator.get_proposal(proposal["id"])
+        self.assertEqual(restored["planningFailure"]["code"], "PLANNER_NETWORK")
+        self.assertEqual(restored["revision"], original["revision"])
+        self.assertEqual(restored["text"], original["text"])
+        visible = next(p for p in self.coordinator.workspace()["proposals"] if p["id"] == proposal["id"])
+        self.assertEqual(visible["planningEvidence"]["status"], "timeout")
+        self.assertNotIn("planningFailure", self.coordinator._get("proposal", proposal["id"]))
+
+    def test_unconfirmed_native_stop_is_not_offered_for_retry(self):
+        self.planner_status = "timeout"
+        self.planner_stopped = False
+        proposal = self._create()
+        self.assertEqual(proposal["status"], "PLANNING_UNCERTAIN")
+        self.assertFalse(proposal["planningFailure"]["retryable"])
+        with self.assertRaises(WorkflowError) as busy:
+            self.coordinator.create_concept(operator_id=self.operator, workflow="objects-v1",
+                project_id=proposal["projectId"], expected_publication_revision=0, text="Try again.")
+        self.assertEqual(busy.exception.code, "PROJECT_BUSY")
+
+    def test_invalid_planner_response_keeps_native_evidence(self):
+        result = plan_result()
+        result["document"]["dimension"] = "3d"
+        proposal = self._create(result=result)
+        self.assertEqual(proposal["status"], "FAILED")
+        self.assertEqual(proposal["planningFailure"]["code"], "PLANNER_RESPONSE_INVALID")
+        self.assertEqual(proposal["planningEvidence"]["status"], "completed")
+        self.assertIsNone(proposal["document"])
+
+    def test_stopped_timeout_recovers_only_questions_and_next_round_clears_diagnosis(self):
+        self.planner_status = "timeout"
+        tentative = plan_result(status="NEEDS_CLARIFICATION")
+        tentative.update(document=sample_document(), tasks=plan_result()["tasks"])
+        proposal = self._create(result=tentative)
+        self.assertEqual(proposal["status"], "NEEDS_CLARIFICATION")
+        self.assertEqual(proposal["planningEvidence"]["status"], "timeout")
+        self.assertEqual(proposal["planningRecovery"]["kind"], "CLARIFICATION_FROM_TIMEOUT")
+        self.assertIsNone(proposal["document"])
+        self.assertEqual(proposal["tasks"], [])
+        self.assertEqual(proposal["questions"], tentative["questions"])
+        self.assertNotIn("gmSpecRef", proposal)
+        self.assertNotIn("packetId", proposal)
+        with self.assertRaises(WorkflowError):
+            self._freeze(proposal)
+        self.planner_status = "completed"
+        self.plans.append(plan_result())
+        next_round = self.coordinator.answer_proposal(operator_id=self.operator, proposal_id=proposal["id"],
+            expected_revision=proposal["revision"], answers={"control": "keyboard"})
+        for key in ("planningFailure", "planningRecovery", "planningEvidence", "planningTerminationConfirmed", "planningLease"):
+            self.assertNotIn(key, next_round)
+        ready = self._wait_proposal(proposal["id"], {"READY", "FAILED"})
+        self.assertEqual(ready["status"], "READY")
+        self.assertNotIn("planningRecovery", ready)
+
+    def test_timeout_recovery_rejects_non_clarification_invalid_and_restricted_results(self):
+        base = {"status": "timeout", "response": json.dumps(plan_result(status="NEEDS_CLARIFICATION")),
+            "diagnostics": {"childTerminationConfirmed": True}}
+        cases = [
+            {**base, "status": "cancelled"},
+            {**base, "response": json.dumps(plan_result())},
+            {**base, "response": base["response"][:-1]},
+            {**base, "diagnostics": {"childTerminationConfirmed": False}},
+            {**base, "diagnostics": {"childTerminationConfirmed": True, "approvalRequests": [{"method": "approval"}]}},
+            {**base, "diagnostics": {"childTerminationConfirmed": True, "protocolErrors": [{"method": "unsupported"}]}},
+            {**base, "commandEvidence": {"executionEvidence": [{"type": "commandExecution"}]}},
+        ]
+        for result in cases:
+            with self.subTest(status=result["status"], diagnostics=result["diagnostics"]):
+                self.assertIsNone(timeout_clarification(result))
+
+    def test_timeout_clarification_still_enforces_readonly_workspace(self):
+        self.planner_status = "timeout"
+        original_run = Planner.run
+        def writes_unexpected_file(driver, *args, **kwargs):
+            result = original_run(driver, *args, **kwargs)
+            (driver.path / "unexpected.txt").write_text("not allowed")
+            return result
+        with patch.object(Planner, "run", writes_unexpected_file):
+            proposal = self._create(result=plan_result(status="NEEDS_CLARIFICATION"))
+        self.assertEqual(proposal["status"], "FAILED")
+        self.assertEqual(proposal["planningFailure"]["code"], "PLANNER_WRITE")
+        self.assertFalse(proposal["planningFailure"]["clarificationAvailable"])
+        self.assertIsNone(proposal["document"])
+
+    def test_reconcile_restores_latest_historical_timeout_questions_once(self):
+        self.planner_status = "timeout"
+        proposal = self._create(result=plan_result(status="NEEDS_CLARIFICATION"))
+        folder = self.state_root / "planning" / proposal["id"] / "round-1"
+        original = json.loads((folder / "request.json").read_text())
+        original.update(status="FAILED", planningEvidence=proposal["planningEvidence"], planningLease={"processGroupId": 999999})
+        with self.coordinator.transaction():
+            self.coordinator._put("proposal", original)
+        visible = self.coordinator.get_proposal(proposal["id"])
+        self.assertTrue(visible["planningFailure"]["clarificationAvailable"])
+        original_input = (folder / "request.json").read_text()
+        for key, value in (("workflow", "collect-loop-v1"), ("testData", False),
+                ("productionAuthorized", True), ("templateId", "other-template"), ("unexpected", "extra")):
+            changed = json.loads(original_input)
+            changed[key] = value
+            from backend.coordinator import canonical
+            (folder / "request.json").write_text(canonical(changed) + "\n")
+            with patch("backend.generic_workflow._require_stopped"), self.assertRaises(WorkflowError) as drift:
+                self.coordinator.reconcile_proposal(operator_id=self.operator, proposal_id=proposal["id"])
+            self.assertEqual(drift.exception.code, "STALE_PROPOSAL", key)
+        (folder / "request.json").write_text(original_input)
+        with patch("backend.generic_workflow._require_stopped") as stopped:
+            recovered = self.coordinator.reconcile_proposal(operator_id=self.operator, proposal_id=proposal["id"])
+        stopped.assert_called_once_with({"processGroupId": 999999})
+        self.assertEqual(recovered["status"], "NEEDS_CLARIFICATION")
+        self.assertIsNone(recovered["document"])
+        self.assertEqual(recovered["tasks"], [])
+        self.assertEqual(len(recovered["discussion"]), len(original["discussion"]) + 1)
+        self.assertEqual(self.coordinator.reconcile_proposal(operator_id=self.operator, proposal_id=proposal["id"]), recovered)
+        self.assertEqual(self.coordinator._all("packet"), [])
+        self.assertEqual(self.coordinator._all("job"), [])
+
+        with self.coordinator.transaction():
+            self.coordinator._put("proposal", original)
+        self.plans.append(plan_result(status="NEEDS_CLARIFICATION"))
+        newer = self.coordinator.create_concept(operator_id=self.operator, workflow="objects-v1",
+            project_id=proposal["projectId"], expected_publication_revision=0, text="A newer concept.")
+        self._wait_proposal(newer["id"], {"NEEDS_CLARIFICATION", "FAILED"})
+        with self.assertRaises(WorkflowError) as stale:
+            self.coordinator.reconcile_proposal(operator_id=self.operator, proposal_id=proposal["id"])
+        self.assertEqual(stale.exception.code, "STALE_PROPOSAL")
 
     def test_planner_clarification_answers_are_revision_bound_and_resolve_to_ready(self):
         self.plans.extend([plan_result(status="NEEDS_CLARIFICATION"), plan_result()])

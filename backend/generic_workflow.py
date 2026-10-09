@@ -56,6 +56,72 @@ def _require_stopped(lease):
     _failure("LEASE_ACTIVE", "原策划进程组仍存在；不会自动重新派发。")
 
 
+def timeout_clarification(result):
+    """Recover questions only, never a production plan, from a stopped timeout."""
+    diagnostics = (result or {}).get("diagnostics") or {}
+    if (not result or result.get("status") != "timeout"
+            or diagnostics.get("childTerminationConfirmed") is not True
+            or diagnostics.get("approvalRequests") or diagnostics.get("protocolErrors")
+            or (result.get("commandEvidence") or {}).get("executionEvidence")):
+        return None
+    try:
+        response = parse_planner_response(result.get("response", ""))
+    except (ObjectProtocolError, TypeError, ValueError):
+        return None
+    if response["status"] != "NEEDS_CLARIFICATION":
+        return None
+    # Even a complete JSON value lacks the native final-answer boundary. Its
+    # tentative document and tasks cannot become an approved production plan.
+    return {**response, "document": None, "tasks": []}
+
+
+def clarification_recovery():
+    return {"kind": "CLARIFICATION_FROM_TIMEOUT", "nativeStatus": "timeout",
+        "message": "原生策划在时限内未确认完成；仅恢复已校验的澄清问题，请回答后继续策划。"}
+
+
+def planning_failure(result, error=None):
+    """Safe UI diagnosis; detailed native evidence remains separate and intact."""
+    result = result or {}
+    diagnostics = result.get("diagnostics") or {}
+    stopped = diagnostics.get("childTerminationConfirmed") is True
+    status = result.get("status")
+    elapsed = diagnostics.get("elapsedSeconds")
+    if type(elapsed) not in {int, float} or not math.isfinite(elapsed) or elapsed < 0:
+        elapsed = None
+    failure = {"code": "PLANNER_FAILED", "message": "原生策划未完成；可用原输入重新策划。",
+        "nativeStatus": status, "elapsedSeconds": elapsed, "sessionId": result.get("sessionId"),
+        "terminationConfirmed": stopped, "retryable": stopped,
+        "clarificationAvailable": timeout_clarification(result) is not None}
+    if not result:
+        failure.update(code="PLANNER_SETUP", message="策划启动或输入准备失败；请检查本机服务诊断。", retryable=False)
+    elif not stopped:
+        failure.update(code="PLANNER_UNCERTAIN", message="策划停止状态未确认；请先对账，不会重新派发。", retryable=False)
+    elif diagnostics.get("approvalRequests") or diagnostics.get("protocolErrors"):
+        failure.update(code="PLANNER_RESTRICTED", message="原生策划请求了当前角色范围外的操作；请检查执行诊断。", retryable=False)
+    elif getattr(error, "code", None) == "PLANNER_WRITE":
+        failure.update(code="PLANNER_WRITE", message="策划违反只读范围；请检查执行诊断。",
+            retryable=False, clarificationAvailable=False)
+    elif status != "completed":
+        # Plugin-cache warnings are unrelated to the model's response stream.
+        messages = [str(diagnostics.get("error") or ""), json.dumps(diagnostics.get("nativeErrors") or []),
+                    json.dumps(diagnostics.get("nativeTurnError") or {})]
+        messages.extend(str(line) for line in diagnostics.get("stderr", [])
+                        if "responses_retry" in str(line) or "stream disconnected" in str(line)
+                        or "stream connection failed" in str(line))
+        native_text = "\n".join(messages).lower()
+        if any(marker in native_text for marker in ("unauthorized", "authentication", "invalid api key")):
+            failure.update(code="PLANNER_AUTH", message="原生策划的登录或服务凭据不可用；恢复连接配置后再试。", retryable=False)
+        elif any(marker in native_text for marker in ("stream disconnected", "stream connection failed", "transport error",
+                "network error", "error sending request", "connection failed", "connection reset")):
+            failure.update(code="PLANNER_NETWORK", message="原生策划连接中断，未返回完整计划；进程已停止，可用原输入重试。")
+        elif status == "timeout":
+            failure.update(code="PLANNER_TIMEOUT", message="原生策划超过运行时限，未返回完整计划；进程已停止，可用原输入重试。")
+    else:
+        failure.update(code="PLANNER_RESPONSE_INVALID", message="策划返回的结果未通过对象计划校验；保留原输入，可重新策划。")
+    return failure
+
+
 class GenericWorkflow:
     """Mix-in: persistence and concurrency primitives are owned by Coordinator."""
 
@@ -73,7 +139,36 @@ class GenericWorkflow:
 
     def get_proposal(self, proposal_id):
         with self.lock:
-            return self._get("proposal", proposal_id)
+            return self._diagnosed_proposal(self._get("proposal", proposal_id))
+
+    def _diagnosed_proposal(self, proposal):
+        """Expose older failure evidence on reads without rewriting old records."""
+        if (proposal.get("workflow") != WORKFLOW or proposal.get("status") not in {"FAILED", "PLANNING_UNCERTAIN"}
+                or "clarificationAvailable" in (proposal.get("planningFailure") or {})):
+            return proposal
+        proposal = copy.deepcopy(proposal)
+        result = proposal.get("planningEvidence")
+        folder = self.state_root / "planning" / proposal["id"] / f"round-{proposal['revision']}"
+        path = folder / "session.json"
+        if not result:
+            try:
+                if (path.is_file() and path.stat().st_size <= 10 * 1024 * 1024
+                        and not any(parent.is_symlink() for parent in (path, *folder.parents, folder))):
+                    result = json.loads(path.read_text())
+                    if not isinstance(result, dict):
+                        result = None
+            except (OSError, ValueError):
+                result = None
+        if result:
+            proposal["planningEvidence"] = result
+            proposal["planningTerminationConfirmed"] = (result.get("diagnostics") or {}).get("childTerminationConfirmed") is True
+        if proposal.get("planningFailure"):
+            proposal["planningFailure"] = {**proposal["planningFailure"],
+                "clarificationAvailable": timeout_clarification(result) is not None
+                    and proposal["planningFailure"].get("code") != "PLANNER_WRITE"}
+        else:
+            proposal["planningFailure"] = planning_failure(result)
+        return proposal
 
     def _planning_update(self, proposal_id, revision, **fields):
         with self.transaction():
@@ -84,6 +179,15 @@ class GenericWorkflow:
             current["updatedAt"] = _core()[4]()
             self._put("proposal", current)
             return True
+
+    @staticmethod
+    def _check_planning_readonly(folder, request):
+        unexpected = [p for p in folder.rglob("*") if p.is_symlink() or
+                      p.relative_to(folder).as_posix() not in {"request.json", "session.json"}]
+        if folder.is_symlink() or any(parent.is_symlink() for parent in folder.parents) or unexpected:
+            _failure("PLANNER_WRITE", "策划产生了未授权文件或链接。")
+        if (folder / "request.json").read_text() != _core()[1](request) + "\n":
+            _failure("PLANNER_WRITE", "策划改动了只读输入。")
 
     def create_generic_concept(self, *, operator_id, text, project_id=None,
                                asset_ids=None, expected_publication_revision=None,
@@ -158,16 +262,19 @@ class GenericWorkflow:
     def _plan_generic(self, proposal, cancel):
         _, canonical, _, _, _ = _core()
         pid, revision = proposal["id"], proposal["revision"]
-        started, stopped = False, False
+        started, stopped, result = False, False, None
         folder = self.state_root / "planning" / pid / f"round-{revision}"
         try:
             folder.mkdir(parents=True, exist_ok=False)
             folder.chmod(0o700)
             (folder / "request.json").write_text(canonical(proposal) + "\n")
             driver = (self.planner_driver_factory(folder) if self.planner_driver_factory else
-                      CodexDriver(folder, timeout=420, execution_profile="managed_read_only", disabled_mcp_servers=["godot-mcp"]))
+                      CodexDriver(folder, timeout=420, execution_profile="managed_read_only",
+                          reasoning_effort="medium", disabled_mcp_servers=["godot-mcp"]))
             packet = {"operationKind": "PLANNING", "allowedFiles": [],
                 "instruction": planner_instructions() + "\nReturn the JSON object as the final response. Do not write files. "
+                    "When clarification is needed, return only the unresolved questions and a concise concept summary, "
+                    "with document=null and tasks=[]; defer the full object plan until those answers are received. "
                     "Preserve existing object/field IDs. Every explicit field change must appear exactly in the resulting document. "
                     "Ask only questions that the user has not already answered. Retain targeted feedback, risks and omitted scope. "
                     "Only Godot 4 GDScript 2D projects with procedural visuals or supplied references are supported. "
@@ -189,24 +296,24 @@ class GenericWorkflow:
                 on_process_started=lambda lease: self._planning_update(pid, revision, planningLease=lease))
             stopped = result.get("diagnostics", {}).get("childTerminationConfirmed") is True
             (folder / "session.json").write_text(canonical(result) + "\n")
+            self._planning_update(pid, revision, planningEvidence=result, planningTerminationConfirmed=stopped)
             if not stopped:
                 self._planning_update(pid, revision, status="PLANNING_UNCERTAIN", planningEvidence=result,
+                    planningFailure=planning_failure(result),
                     summary="策划停止状态未确认；保留项目占用，不会自动重投。")
                 return
             if cancel.is_set():
                 self._planning_update(pid, revision, status="CANCELLED", planningEvidence=result,
                     summary="策划已停止；没有批准或制作游戏。")
                 return
-            if result.get("status") != "completed":
-                _failure("PLANNER_FAILED", "策划 session 没有完成；请查看原生执行诊断。")
+            recovered = result.get("status") != "completed"
+            response = timeout_clarification(result) if recovered else None
+            if recovered and response is None:
+                _failure("PLANNER_FAILED", planning_failure(result)["message"])
             # A read-only planner is not permitted to mutate its input workspace.
-            if (folder / "request.json").read_text() != canonical(proposal) + "\n":
-                _failure("PLANNER_WRITE", "策划改动了只读输入。")
-            unexpected = [p for p in folder.rglob("*") if p.is_symlink() or
-                          p.relative_to(folder).as_posix() not in {"request.json", "session.json"}]
-            if unexpected:
-                _failure("PLANNER_WRITE", "策划产生了未授权文件。")
-            response = parse_planner_response(result.get("response", ""))
+            self._check_planning_readonly(folder, proposal)
+            if response is None:
+                response = parse_planner_response(result.get("response", ""))
             document = response.get("document")
             if response["status"] == "READY":
                 self._check_requested_fields(document, proposal.get("changeRequest"))
@@ -229,14 +336,22 @@ class GenericWorkflow:
                     roles=["read-only planner", "game producer", "independent technical verifier", "user reviewer"],
                     acceptance=["独立导入和运行冒烟通过", "对象、源绑定及冻结属性一致", "人工体验计划中的玩法与视觉要求"],
                     objectChanges=self._object_changes(proposal.get("currentDocument"), document), **references)
+                current.pop("planningFailure", None)
+                if recovered:
+                    current["planningRecovery"] = clarification_recovery()
+                else:
+                    current.pop("planningRecovery", None)
                 current["discussion"].append({"role": "planner", "summary": response["summary"],
                     "questions": response["questions"], "at": _core()[4]()})
                 current["updatedAt"] = _core()[4]()
                 self._put("proposal", current)
         except Exception as exc:
+            diagnostic = planning_failure(result, exc)
             self._planning_update(pid, revision,
                 status="PLANNING_UNCERTAIN" if started and not stopped else ("CANCELLED" if cancel.is_set() else "FAILED"),
-                summary=str(exc)[:2000], message=str(exc)[:2000])
+                summary=str(exc)[:2000], message=str(exc)[:2000],
+                planningFailure=diagnostic, **({"planningEvidence": result,
+                    "planningTerminationConfirmed": stopped} if result is not None else {}))
 
     @staticmethod
     def _field_only_intent(proposal):
@@ -323,6 +438,8 @@ class GenericWorkflow:
                     _failure("ANSWER_TYPE", "请使用本题提供的选项。", 400)
             self._available(p["projectId"])
             p["discussion"].append({"role": "user", "answers": copy.deepcopy(answers), "at": now()})
+            for key in ("planningFailure", "planningRecovery", "planningEvidence", "planningTerminationConfirmed", "planningLease", "message"):
+                p.pop(key, None)
             p.update(revision=expected_revision + 1, status="PLANNING", questions=[], updatedAt=now())
             self._put("proposal", p)
         self._launch_planning(p)
@@ -351,6 +468,47 @@ class GenericWorkflow:
         self._operator(operator_id)
         with self.transaction():
             p = self._get("proposal", proposal_id)
+            if p.get("workflow") != WORKFLOW:
+                _failure("WORKFLOW_MISMATCH", "此操作只适用于通用策划。")
+            if p["status"] == "NEEDS_CLARIFICATION" and (p.get("planningRecovery") or {}).get("kind") == "CLARIFICATION_FROM_TIMEOUT":
+                return p
+            if p["status"] == "FAILED":
+                self._available(p["projectId"])
+                latest = next(item for item in self._all("proposal") if item["projectId"] == p["projectId"])
+                project = self._get("project", p["projectId"])
+                if latest["id"] != p["id"] or project["publicationRevision"] != p["publicationRevision"]:
+                    _failure("STALE_PROPOSAL", "已有新的策划或发布版本，不能恢复旧问题。")
+                diagnosed = self._diagnosed_proposal(p)
+                result = diagnosed.get("planningEvidence")
+                response = timeout_clarification(result)
+                if response is None or (diagnosed.get("planningFailure") or {}).get("code") == "PLANNER_WRITE":
+                    _failure("NO_CLARIFICATION", "没有可恢复的完整澄清问题；不会确认计划或重新派发。")
+                thread = self._threads.get("planning:" + proposal_id)
+                if thread and thread.is_alive():
+                    _failure("EXECUTION_ACTIVE", "本次策划线程仍运行。")
+                _require_stopped(p.get("planningLease") or (result.get("commandEvidence") or {}).get("executionLease"))
+                folder = self.state_root / "planning" / p["id"] / f"round-{p['revision']}"
+                if any(path.is_symlink() for path in (folder / "request.json", folder / "session.json", folder, *folder.parents)):
+                    _failure("PLANNER_WRITE", "策划记录包含链接。")
+                request = json.loads((folder / "request.json").read_text())
+                # Failures change only these service fields. Compare every
+                # remaining key, including workflow, scope and test authority,
+                # rather than treating the file as its own trusted baseline.
+                service_fields = {"status", "summary", "updatedAt", "message", "planningLease", "planningEvidence",
+                    "planningTerminationConfirmed", "planningFailure"}
+                immutable = lambda item: {key: value for key, value in item.items() if key not in service_fields}
+                if not isinstance(request, dict) or request.get("status") != "PLANNING" or immutable(request) != immutable(p):
+                    _failure("STALE_PROPOSAL", "原输入与当前提案不匹配，不能恢复问题。")
+                self._check_planning_readonly(folder, request)
+                if json.loads((folder / "session.json").read_text()) != result:
+                    _failure("PLANNER_WRITE", "原生结果记录已变化。")
+                p.update(response, planningEvidence=result, planningTerminationConfirmed=True,
+                    planningRecovery=clarification_recovery(), updatedAt=_core()[4]())
+                p.pop("planningFailure", None)
+                p["discussion"].append({"role": "planner", "summary": response["summary"],
+                    "questions": response["questions"], "recovery": "CLARIFICATION_FROM_TIMEOUT", "at": _core()[4]()})
+                self._put("proposal", p)
+                return p
             if p["status"] != "PLANNING_UNCERTAIN":
                 _failure("NOT_UNCERTAIN", "只有未知策划执行需要对账。")
             thread = self._threads.get("planning:" + proposal_id)

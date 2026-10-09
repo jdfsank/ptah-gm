@@ -305,7 +305,7 @@ class Coordinator(GenericWorkflow):
         with self.lock:
             packets = self._all("packet")
             packet_lookup = {packet["proposalId"]: packet["id"] for packet in packets}
-            proposals = self._all("proposal")
+            proposals = [self._diagnosed_proposal(proposal) for proposal in self._all("proposal")]
             for proposal in proposals:
                 if proposal["status"] == "FROZEN" and not proposal.get("packetId"):
                     proposal["packetId"] = packet_lookup.get(proposal["id"])

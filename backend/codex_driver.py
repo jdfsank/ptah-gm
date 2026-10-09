@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import queue
+import re
 import shutil
 import signal
 import stat
@@ -38,6 +39,11 @@ class _DriverUncertain(CodexDriverError):
     pass
 
 
+_MISSING = object()
+_MAX_ITEM_LIFECYCLE_EVENTS = 40
+_SAFE_LIFECYCLE_LABEL = re.compile(r"^[A-Za-z0-9_.:-]{1,80}$")
+
+
 class CodexDriver:
     def __init__(
         self,
@@ -46,6 +52,7 @@ class CodexDriver:
         model: str | None = None,
         disabled_mcp_servers: list[str] | None = None,
         execution_profile: str | None = None,
+        reasoning_effort: str | None = None,
     ):
         self.cwd = str(Path(cwd).expanduser().resolve())
         self.timeout = float(timeout)
@@ -65,6 +72,12 @@ class CodexDriver:
             raise ValueError("unsupported server execution profile")
         self.execution_profile = execution_profile
         self._profile_params = profiles.get(execution_profile, {})
+        supported_efforts = {
+            "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
+        }
+        if reasoning_effort is not None and reasoning_effort not in supported_efforts:
+            raise ValueError("unsupported reasoning effort")
+        self.reasoning_effort = reasoning_effort
         if any(
             not isinstance(name, str) or not name.strip()
             for name in self.disabled_mcp_servers
@@ -169,6 +182,9 @@ class CodexDriver:
         thread_id = turn_id = None
         approval_requests: list[dict] = []
         protocol_errors: list[dict] = []
+        native_errors: list[dict] = []
+        item_lifecycle: list[dict] = []
+        native_turn_error: Any = _MISSING
         child_terminated = False
         termination_confirmed: bool | None = None
 
@@ -222,10 +238,37 @@ class CodexDriver:
                 return "tick", None
 
         def handle_message(msg: dict) -> None:
+            nonlocal native_turn_error
             method = msg.get("method")
             params = msg.get("params") or {}
             if method:
                 transcript.append({"method": method, "params": params})
+            if method in ("item/started", "item/completed", "item/complete"):
+                item = params.get("item") if isinstance(params, dict) else None
+                safe_type = _safe_lifecycle_label(
+                    item.get("type") if isinstance(item, dict) else None
+                )
+                if safe_type and len(item_lifecycle) < _MAX_ITEM_LIFECYCLE_EVENTS:
+                    event = "started" if method == "item/started" else "completed"
+                    record = {
+                        "event": event,
+                        "type": safe_type,
+                        "elapsedSeconds": round(time.monotonic() - started, 3),
+                    }
+                    safe_phase = _safe_lifecycle_label(item.get("phase"))
+                    if safe_phase:
+                        record["phase"] = safe_phase
+                    item_lifecycle.append(record)
+            if method == "error" and isinstance(params, dict):
+                diagnostic = _safe_native_error(params)
+                if diagnostic is not None and len(native_errors) < 20:
+                    native_errors.append(diagnostic)
+            if method == "turn/completed" and isinstance(params, dict):
+                turn = params.get("turn")
+                if isinstance(turn, dict) and "error" in turn:
+                    # Preserve the app-server's terminal error verbatim. This is
+                    # a single native error field, never the full notification.
+                    native_turn_error = turn["error"]
             if method in ("item/agentMessage/delta", "agentMessage/delta"):
                 delta = params.get("delta")
                 if isinstance(delta, str):
@@ -352,6 +395,8 @@ class CodexDriver:
             turn_params: dict[str, Any] = {"threadId": thread_id, "input": inputs}
             if self.model:
                 turn_params["model"] = self.model
+            if self.reasoning_effort is not None:
+                turn_params["effort"] = self.reasoning_effort
             turn_result = request("turn/start", turn_params)
             turn = (
                 turn_result.get("turn", turn_result)
@@ -381,6 +426,9 @@ class CodexDriver:
                 child_terminated,
                 termination_confirmed,
                 protocol_errors=protocol_errors,
+                native_errors=native_errors,
+                item_lifecycle=item_lifecycle,
+                native_turn_error=native_turn_error,
             )
         except _DriverTimeout as exc:
             self._interrupt(proc, thread_id, turn_id, request_id, send)
@@ -399,6 +447,9 @@ class CodexDriver:
                 termination_confirmed,
                 str(exc),
                 protocol_errors,
+                native_errors=native_errors,
+                item_lifecycle=item_lifecycle,
+                native_turn_error=native_turn_error,
             )
         except _DriverCancelled as exc:
             self._interrupt(proc, thread_id, turn_id, request_id, send)
@@ -417,6 +468,9 @@ class CodexDriver:
                 termination_confirmed,
                 str(exc),
                 protocol_errors,
+                native_errors=native_errors,
+                item_lifecycle=item_lifecycle,
+                native_turn_error=native_turn_error,
             )
         except _DriverUncertain as exc:
             result = self._result(
@@ -434,6 +488,9 @@ class CodexDriver:
                 termination_confirmed,
                 str(exc),
                 protocol_errors,
+                native_errors=native_errors,
+                item_lifecycle=item_lifecycle,
+                native_turn_error=native_turn_error,
             )
         except Exception as exc:  # noqa: BLE001 - Preserve diagnostics and clean the owned process group.
             result = self._result(
@@ -451,6 +508,9 @@ class CodexDriver:
                 termination_confirmed,
                 str(exc),
                 protocol_errors,
+                native_errors=native_errors,
+                item_lifecycle=item_lifecycle,
+                native_turn_error=native_turn_error,
             )
         finally:
             child_terminated, termination_confirmed = _terminate_process_group(proc)
@@ -504,7 +564,28 @@ class CodexDriver:
         termination_confirmed,
         error=None,
         protocol_errors=None,
+        *,
+        native_errors=None,
+        item_lifecycle=None,
+        native_turn_error=_MISSING,
     ):
+        diagnostics = {
+            "error": error,
+            "approvalRequests": approvals,
+            "protocolErrors": protocol_errors or [],
+            "nativeErrors": list(native_errors or [])[-20:],
+            "itemLifecycle": list(item_lifecycle or [])[:_MAX_ITEM_LIFECYCLE_EVENTS],
+            "effectsMayHaveOccurred": status
+            in {"timeout", "cancelled", "uncertain", "server_exited", "failed"},
+            "stderr": stderr_lines[-30:],
+            "elapsedSeconds": round(time.monotonic() - started, 3),
+            "serverExitCode": proc.poll(),
+            "childTerminationConfirmed": termination_confirmed,
+            "terminationScope": "process_group",
+            "verificationCertified": False,
+        }
+        if native_turn_error is not _MISSING:
+            diagnostics["nativeTurnError"] = native_turn_error
         return {
             "sessionId": thread_id,
             "turnId": turn_id,
@@ -514,6 +595,7 @@ class CodexDriver:
                 "argv": [executable, "app-server", "--stdio"],
                 "cwd": self.cwd,
                 "executionProfile": self.execution_profile,
+                "reasoningEffort": self.reasoning_effort,
                 "rpcMethods": [m.get("method") for m in transcript],
                 "executionEvidence": [
                     m
@@ -525,19 +607,7 @@ class CodexDriver:
                     )
                 ],
             },
-            "diagnostics": {
-                "error": error,
-                "approvalRequests": approvals,
-                "protocolErrors": protocol_errors or [],
-                "effectsMayHaveOccurred": status
-                in {"timeout", "cancelled", "uncertain", "server_exited", "failed"},
-                "stderr": stderr_lines[-30:],
-                "elapsedSeconds": round(time.monotonic() - started, 3),
-                "serverExitCode": proc.poll(),
-                "childTerminationConfirmed": termination_confirmed,
-                "terminationScope": "process_group",
-                "verificationCertified": False,
-            },
+            "diagnostics": diagnostics,
         }
 
 
@@ -550,6 +620,48 @@ def _extract_text(item: dict) -> str:
             part.get("text", "") for part in content if isinstance(part, dict)
         )
     return ""
+
+
+def _safe_native_error(params: dict) -> dict | None:
+    """Keep a bounded summary of native error notifications, never raw params."""
+    raw = params.get("error") if isinstance(params.get("error"), dict) else params
+    if not isinstance(raw, dict):
+        return None
+
+    result: dict[str, Any] = {}
+    for key in ("message", "code", "willRetry", "retryAfterMs", "type", "status"):
+        value = raw.get(key)
+        if isinstance(value, str):
+            result[key] = value[:1000]
+        elif isinstance(value, (int, float, bool)) or value is None:
+            if key in raw:
+                result[key] = value
+
+    info = raw.get("codexErrorInfo")
+    if isinstance(info, str):
+        result["codexErrorInfo"] = info[:500]
+    elif isinstance(info, dict):
+        # codexErrorInfo can evolve; retain only short diagnostic identifiers
+        # and messages, never nested request/input/payload content.
+        safe_info = {}
+        for key in ("kind", "code", "message", "type", "status", "willRetry"):
+            value = info.get(key)
+            if isinstance(value, str):
+                safe_info[key] = value[:500]
+            elif isinstance(value, (int, float, bool)) or value is None:
+                if key in info:
+                    safe_info[key] = value
+        if safe_info:
+            result["codexErrorInfo"] = safe_info
+
+    return result or None
+
+
+def _safe_lifecycle_label(value: Any) -> str | None:
+    """Keep only short enum-like item labels; never retain arbitrary item data."""
+    if isinstance(value, str) and _SAFE_LIFECYCLE_LABEL.fullmatch(value):
+        return value
+    return None
 
 
 def _validate_reference_images(paths: list[str | os.PathLike[str]]) -> list[str]:

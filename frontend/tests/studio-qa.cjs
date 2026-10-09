@@ -191,7 +191,8 @@ const tick = async () => { await new Promise(resolve => setTimeout(resolve, 0));
   await app.refresh(); await tick(); await tick();
   assert(document.querySelector('#proposal-panel').classList.contains('hidden'), 'completed frozen proposal must not return as a pending confirmation after refresh');
   assert(!document.querySelector('#job-panel').classList.contains('hidden') && document.querySelector('#job-status').textContent === '已发布', 'refresh should restore the completed job instead of an obsolete freeze panel');
-  routes['GET /api/workspace'] = { workspaceId: 'ws-1', projects: [], jobs: [], testData: true, capabilities: { interactiveFrontendConfirmation: true, sessionDispatch: true, godotVerification: true, semanticProjection: true }, proposals: [{ id: 'proposal-frozen', projectId: 'project-1', revision: 3, status: 'FROZEN', createdAt: '2026-10-10T00:00:00Z', packetId: 'packet-frozen' }], packets: [{ id: 'packet-frozen', proposalId: 'proposal-frozen', projectId: 'project-1', operationKind: 'IMPLEMENTATION' }] };
+  document.querySelector('#project').value = 'project-1';
+  routes['GET /api/workspace'] = { workspaceId: 'ws-1', projects: [{ id: 'project-1', title: '已发布项目' }], jobs: [], testData: true, capabilities: { interactiveFrontendConfirmation: true, sessionDispatch: true, godotVerification: true, semanticProjection: true }, proposals: [{ id: 'proposal-frozen', projectId: 'project-1', revision: 3, status: 'FROZEN', createdAt: '2026-10-10T00:00:00Z', packetId: 'packet-frozen' }], packets: [{ id: 'packet-frozen', proposalId: 'proposal-frozen', projectId: 'project-1', operationKind: 'IMPLEMENTATION' }] };
   await app.refresh(); await tick();
   assert(document.querySelector('#proposal-status').textContent === '已冻结，沿用原制作表单', 'frozen proposal badge should describe reuse of the frozen packet without implying job status');
 
