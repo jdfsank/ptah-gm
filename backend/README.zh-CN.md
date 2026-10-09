@@ -1,5 +1,7 @@
 # 本机前后分离工作台
 
+详细说明：[说明书入口](../docs/README.zh-CN.md) · [部署与维护](../docs/DEPLOYMENT-MANUAL.zh-CN.md) · [工作台用户操作](../docs/USER-MANUAL.zh-CN.md)。
+
 前端是 `frontend/studio/` 的独立静态包；后端是本目录的 Python 服务。二者通过同源 `/api` 通信。项目、Git 仓库、session 权限和验证命令由后端持有，浏览器只提交概念、答案、表单编号和结果决定。
 
 ## 启动
@@ -10,12 +12,12 @@
 .venv/bin/python -m backend.server --port 8765
 ```
 
-打开 `http://127.0.0.1:8765/studio/`。关闭终端服务会取消当前制作、确认进程退出并关闭本机预览。服务仅监听 127.0.0.1；保留终端能查看启动状态。浏览器刷新后可恢复作业和已经确认的表单，重试沿用原表单编号。
+打开 `http://127.0.0.1:8765/studio/`。正常停止时，在服务终端按 Ctrl+C；服务会请求取消当前制作、等待受管执行退出并关闭本机预览。异常退出或未确认停止的作业仍会受阻，需恢复后对账。服务仅监听 127.0.0.1；保留终端能查看启动状态。浏览器刷新后可恢复作业和已经确认的表单，重试沿用原表单编号。
 
 Python 3.11 及以上。本机依赖已装入 `.venv/`，Godot 使用 `/Applications/Godot.app/Contents/MacOS/Godot`，Codex 使用已安装的 app-server。迁移到新机器时：
 
 ```bash
-uv venv .venv
+uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python -r backend/requirements.txt
 ```
 
@@ -23,7 +25,7 @@ uv pip install --python .venv/bin/python -r backend/requirements.txt
 
 仅支持一个受控 2D 收集挑战模板：WASD/方向键移动、收集获胜、倒计时失败、R 重试。三个可编辑参数是目标 1–8 个、时限 10–300 秒、速度 60–400 像素/秒。初步澄清是围绕此模板的结构化访谈，任意题材、关卡、额外机制与通用多模态策划仍需新适配器。超出范围会保留原意并阻塞，不会自动改写成受支持玩法。
 
-PNG/JPEG/WebP 图片不超过 5 MB，最多六张。用途可以是概念、风格、布局或素材输入。图片按服务分配的 ID 保存，并作为本机图片输入传给制作 session；当前模板仍使用程序图形，图片不会自动变成已制作美术资产。
+PNG/JPEG/WebP 图片不超过 5 MiB，最多六张。用途可以是概念、风格、布局或素材输入。图片按服务分配的 ID 保存，并作为本机图片输入传给制作 session；当前模板仍使用程序图形，图片不会自动变成已制作美术资产。
 
 新工程先确认初始化范围、单独执行并验证初始化，返回不可玩的准备基线；随后再确认绑定 GM 规格、PLAN、测试和 Git 基线的玩法表单。制作 session 只能修改规则 JSON。后端独立检查写入范围并运行 Godot。通过后返回候选；用户审阅并接受后，源版本、语义清单和运行报告作为完整快照一次切换。
 
