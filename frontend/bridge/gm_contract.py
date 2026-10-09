@@ -4,13 +4,16 @@ All readiness probes are read-only. Browser context never grants scope. The
 pinned local helper validates exact specification identity using GM's own parser.
 No command in this module records human decisions or starts a game/test/run.
 """
-import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / 'tools'))
+import git_baseline
 
 V2_FIELDS = {'resolvedTargets', 'diff', 'allowedChangeScope', 'executionIntent',
              'planTags', 'mechanismRefs', 'feedback', 'reviewedSpecDigest', 'reviewedAuthorityDigest'}
@@ -44,11 +47,8 @@ def controlled_inventory(root):
             if relative in CONTROL_EXCLUDED_FILES: continue
             file=Path(current)/name
             if file.is_symlink() or not file.is_file(): raise ValueError('Unsupported controlled project file: '+relative)
-            digest=hashlib.sha256()
-            with file.open('rb') as stream:
-                for chunk in iter(lambda:stream.read(1024*1024),b''): digest.update(chunk)
-            result[relative]=digest.hexdigest()
-    return result
+            result[relative]=relative
+    return git_baseline.capture_inventory(root, result)
 
 def adapter_baseline():
     base=Path(__file__).resolve().parent.parent
@@ -58,7 +58,7 @@ def adapter_baseline():
     return snapshot
 
 def authority_digest(controlled, baseline):
-    return hashlib.sha256(_canonical({'controlledFiles':controlled,'adapterBaseline':baseline}).encode()).hexdigest()
+    return git_baseline.identity_bytes(_canonical({'controlledFiles':controlled,'adapterBaseline':baseline}).encode())
 
 def _canonical(value):
     return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
@@ -160,9 +160,9 @@ def transition_source_binding(baseline, route_id):
     entrances=[x for room in baseline.get('rooms',[]) if room.get('id')==entry['roomId'] for x in room.get('objects',[]) if x.get('kind')=='spawn' and x.get('id')=='spawn:'+str(entry['spawnId'])]
     if len(entrances)!=1: raise ValueError('Transition destination entry absent from server baseline')
     refs=instance.get('sourceRefs',[]);sources={x['id']:x for x in catalog.get('sources',[])}
-    manifest={x['path']:x['sha256'] for x in baseline.get('sourceManifest',[])}
-    if not refs or any(ref not in sources or manifest.get(sources[ref].get('path'))!=sources[ref].get('sha256') for ref in refs):
-        raise ValueError('Transition source references do not match reviewed source hashes')
+    manifest={x['path']:x.get('gitBlob') for x in baseline.get('sourceManifest',[])}
+    if not refs or any(ref not in sources or manifest.get(sources[ref].get('path'))!=sources[ref].get('gitBlob') for ref in refs):
+        raise ValueError('Transition source references do not match reviewed Git source identities')
     return {'rangeIntent':'single-transition','sourceExitRef':source,'targetEntryRef':entry,'sourceRefs':refs}
 
 
@@ -226,12 +226,13 @@ def validate_v2(p):
             raise ValueError('Missing feedback provenance/text/platform')
 
 
-# Runs only the already fingerprinted GM read helpers, with bytecode writes off.
+# Runs only the reviewed GM read helpers, with bytecode writes off.
 READ_SCRIPT = r'''
 import json, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(sys.argv[1]) / 'tools'))
 import review_support as gm
+import git_baseline
 root = Path(sys.argv[1])
 spec = gm.extract_spec(root)
 events = gm.read_events(root)
@@ -246,22 +247,32 @@ if run:
     source,tests=gm.inventory(root)
     run_path=gm._run_path(root,run['run_id'])
     current={'spec_digest':spec['spec_digest'],'source_digest':gm.manifest_digest(source),'test_digest':gm.runner_digest(root,tests)}
-    checksum=gm.safe_child(run_path,'manifest.sha256')
-    integrity=checksum.is_file() and checksum.read_text().strip()==gm.digest_file(run_path/'manifest.json')
+    identity=gm.safe_child(run_path,'manifest.git')
+    integrity=identity.is_file() and identity.read_text().strip()==git_baseline.identity_file(run_path/'manifest.json')
     refs=[]
     for relative,digest in run.get('report_digests',{}).items():
-        if not relative.startswith('reports/') or gm.digest_file(gm.safe_child(run_path,relative))!=digest: integrity=False
+        if not relative.startswith('reports/') or git_baseline.identity_file(gm.safe_child(run_path,relative))!=digest: integrity=False
         refs.append('.godotmaker/runs/'+run['run_id']+'/'+relative)
-    context={'valid':run.get('command')=='check' and integrity and all(run.get(k)==v for k,v in current.items()),'reportRefs':refs,'manifestRef':'.godotmaker/runs/'+run['run_id']+'/manifest.json','current':current,'reason':'Formal check, checksum/report integrity and exact current identities required'}
+    context={'valid':run.get('command')=='check' and integrity and all(run.get(k)==v for k,v in current.items()),'reportRefs':refs,'manifestRef':'.godotmaker/runs/'+run['run_id']+'/manifest.json','current':current,'reason':'Formal check, Git metadata/report integrity and exact current identities required'}
 print(json.dumps({'tag':spec['tag'],'specDigest':spec['spec_digest'],'specConfirmed':confirmed,'profiles':spec['profiles'],'status':status,'run':run,'runContext':context,'sourceFiles':source,'testFiles':tests,'environment':gm.doctor(root)}))
 '''
 
 
 def verify_tool_versions(root):
     lock = json.loads(Path(__file__).with_name('gm-capability-lock.json').read_text())
-    for name, digest in lock['files'].items():
-        path = safe_file(root, name)
-        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+    if lock.get('version_scheme') != 'git':
+        raise ValueError('Legacy SHA capability lock is BLOCKED; review and migrate it to the Git identity scheme before use')
+    files = lock.get('files')
+    if not isinstance(files, dict) or not files:
+        raise ValueError('Git capability lock has no reviewed files')
+    for name in files:
+        safe_file(root, name)
+    try:
+        identities = git_baseline.capture_inventory(root, files)
+    except git_baseline.GitBaselineError as exc:
+        raise ValueError(f'Missing or unsupported GM skill/tool version: {exc}') from exc
+    for name, expected in files.items():
+        if identities.get(name) != expected:
             raise ValueError('Missing or unsupported GM skill/tool version: '+name)
     return lock
 
@@ -291,6 +302,9 @@ def readiness(project_root, codex, thread_id, source_baseline=None):
         check('binding', False, 'Demo/offline mode has no real bound GM project and thread')
         return result
     try:
+        state = git_baseline.require_repository(project_root)
+        result['repository'] = state
+        check('gitRepository', True, 'Bound GM project is inside a Git repository')
         thread = codex.rpc('thread/read', {'threadId':thread_id,'includeTurns':False})['thread']
         state = thread.get('status', {})
         state = state.get('type') if isinstance(state,dict) else state
@@ -305,13 +319,13 @@ def readiness(project_root, codex, thread_id, source_baseline=None):
         result['gm'] = local
         result['adapterBaseline']=adapter_baseline()
         result['authorityDigest']=authority_digest(local['controlledFiles'],result['adapterBaseline'])
-        result['scopeAudit']={'coverage':'all project regular files except explicit generated-runtime exclusions','excludedDirectories':sorted(CONTROL_EXCLUDED_DIRS),'excludedFiles':sorted(CONTROL_EXCLUDED_FILES),'semantics':'final-state hash audit; not an operating-system write sandbox'}
+        result['scopeAudit']={'coverage':'all project regular files except explicit generated-runtime exclusions','excludedDirectories':sorted(CONTROL_EXCLUDED_DIRS),'excludedFiles':sorted(CONTROL_EXCLUDED_FILES),'semantics':'final-state Git baseline audit; not an operating-system write sandbox'}
         mapping_path = safe_file(project_root, '.godotmaker/workbench-targets.json')
         mappings = json.loads(mapping_path.read_text()) if mapping_path.is_file() else {}
         mapping_valid = mappings.get('version') == 1 and mappings.get('sourceBaseline') == source_baseline and isinstance(mappings.get('targets'), dict) and bool(mappings['targets'])
         check('targetMappings', mapping_valid, 'Server-owned explicit reviewed target map must match the current source baseline')
         result['targetMappings'] = mappings.get('targets', {}) if mapping_valid else {}
-        check('toolVersions', True, 'All required deployed GM skills/tools match the reviewed source fingerprints')
+        check('toolVersions', lock.get('version_scheme') == 'git', 'All required deployed GM skills/tools match the reviewed Git identities')
         check('plan', bool(local['tag'] and local['specDigest']), 'GM parser validated authoritative PLAN and specification')
         check('writer', not local['status'].get('lock_present') and not local['status'].get('issues'), 'No unresolved GM lock or status inconsistency')
         environment = local.get('environment', {})
@@ -445,14 +459,15 @@ import json, sys, re
 from pathlib import Path
 sys.path.insert(0, str(Path(sys.argv[1]) / 'tools'))
 import review_support as gm
+import git_baseline
 root, run_id = Path(sys.argv[1]), sys.argv[2]
 if gm.safe_child(root,'.godotmaker/run.lock').exists(): raise ValueError('An active or unresolved GM writer/run lock blocks evidence import')
 run = gm._run_path(root,run_id)
 manifest_file = gm.safe_child(run,'manifest.json')
-manifest_hash = gm.digest_file(manifest_file)
+manifest_identity = git_baseline.identity_file(manifest_file)
 m = gm.load_json(manifest_file)
 if m.get('schema_version')!=1 or m.get('command')!='check' or m.get('run_id')!=run_id: raise ValueError('Only formal schema-v1 check runs are supported')
-if gm.safe_child(run,'manifest.sha256').read_text().strip()!=manifest_hash: raise ValueError('Run manifest checksum differs')
+if gm.safe_child(run,'manifest.git').read_text().strip()!=manifest_identity: raise ValueError('Run manifest Git identity differs')
 spec = gm.extract_spec(root)
 source, tests = gm.inventory(root)
 current = {'spec_digest':spec['spec_digest'],'source_digest':gm.manifest_digest(source),'test_digest':gm.runner_digest(root,tests)}
@@ -461,7 +476,7 @@ if gm.inventory(run/'project')!=(m.get('source_files'),m.get('test_files')): rai
 reports = m.get('report_digests',{})
 if not reports: raise ValueError('Run has no report digest evidence')
 for relative,digest in reports.items():
-    if not relative.startswith('reports/') or gm.digest_file(gm.safe_child(run,relative))!=digest: raise ValueError('Report missing or changed: '+relative)
+    if not relative.startswith('reports/') or git_baseline.identity_file(gm.safe_child(run,relative))!=digest: raise ValueError('Report missing or changed: '+relative)
 verification = gm.gate(root,run_id,require_accept=False,locked=True)
 acceptance = gm.gate(root,run_id,require_accept=True,locked=True)
 task_states = {}
@@ -473,9 +488,9 @@ for name in ['PLAN.md','GAP.md']:
             if len(cells)>=3 and cells[2] in {'pending','in_progress','completed','verified','failed'}:
                 if cells[0] in task_states and task_states[cells[0]]!=cells[2]: raise ValueError('Conflicting task state')
                 task_states[cells[0]]=cells[2]
-if gm.inventory(root)!=(source,tests) or gm.extract_spec(root)['spec_digest']!=current['spec_digest'] or gm.digest_file(manifest_file)!=manifest_hash: raise ValueError('Source or specification changed during evidence inspection')
+if gm.inventory(root)!=(source,tests) or gm.extract_spec(root)['spec_digest']!=current['spec_digest'] or git_baseline.identity_file(manifest_file)!=manifest_identity: raise ValueError('Source or specification changed during evidence inspection')
 if gm.safe_child(root,'.godotmaker/run.lock').exists(): raise ValueError('Writer appeared during evidence inspection')
-print(json.dumps({'manifest':m,'manifestHash':manifest_hash,'verificationGate':verification,'acceptanceGate':acceptance,'taskStates':task_states,'current':current,'reportRefs':list(reports),'pendingFeedback':gm.pending_feedback(root,run_id)}))
+print(json.dumps({'manifest':m,'manifestIdentity':manifest_identity,'verificationGate':verification,'acceptanceGate':acceptance,'taskStates':task_states,'current':current,'reportRefs':list(reports),'pendingFeedback':gm.pending_feedback(root,run_id)}))
 '''
 
 
@@ -577,7 +592,7 @@ def ingest_evidence(record, supplied, observed):
             raise ValueError('Evidence task/tag mapping differs from reviewed scope')
         refs=item['reportRefs']
         if not isinstance(refs,list) or not refs or len(refs)!=len(set(refs)) or not set(refs)<=set(observed.get('reportRefs',[])):
-            raise ValueError('Report refs must be real checksum-validated reports in the selected run')
+            raise ValueError('Report refs must be real Git-metadata-validated reports in the selected run')
         states=[observed.get('taskStates',{}).get(t) for t in item['taskIds']]
         implementation='FAIL' if 'failed' in states else 'BLOCKED'
         rows.append({'id':item['id'],'implementation':implementation,'verification':'BLOCKED',
@@ -599,5 +614,5 @@ def ingest_evidence(record, supplied, observed):
                   humanRequired=human,certified=False,
                   message='Imported independently checked GM task/run/report evidence. Delivery, verification and human acceptance are separate.',
                   refs={'submissionId':p['submissionId'],'turnId':turn_id,'taskId':p['taskId'],'runId':supplied['runId'],'reportRefs':sorted({ref for row in rows for ref in row['refs']['reportRefs']})},
-                  evidence={'manifestHash':observed.get('manifestHash'),'verificationGate':gate,'acceptanceGate':observed.get('acceptanceGate'),'current':observed.get('current'),'controlledFileChanges':sorted(controlled_changes),'scopeAudit':prior['executionPlan'].get('scopeAudit')})
+                  evidence={'manifestIdentity':observed.get('manifestIdentity'),'verificationGate':gate,'acceptanceGate':observed.get('acceptanceGate'),'current':observed.get('current'),'controlledFileChanges':sorted(controlled_changes),'scopeAudit':prior['executionPlan'].get('scopeAudit')})
     return result

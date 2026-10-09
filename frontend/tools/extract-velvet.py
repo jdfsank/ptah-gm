@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """Explicit Velvet Eclipse snapshot adapter; not a universal GDScript parser.
 Reads the specified source tree, emits evidence-backed semantic data to this Site.
-Reviewed numeric anchors require a complete numeric token. A saved source hash lock
+Reviewed numeric anchors require a complete numeric token. A saved Git source lock
 requires a fresh review if any inventoried source changes. Game is read-only.
 """
-import argparse, hashlib, html, json, re, shutil
+import argparse, html, json, re, shutil, sys
 from pathlib import Path
-P=argparse.ArgumentParser();P.add_argument('source');P.add_argument('--out',default='dist');P.add_argument('--accept-reviewed-source',action='store_true',help='Explicitly refresh the reviewed hash lock after manual source review');a=P.parse_args()
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools'))
+import git_baseline
+P=argparse.ArgumentParser();P.add_argument('source');P.add_argument('--out',default='dist');P.add_argument('--accept-reviewed-source',action='store_true',help='Explicitly refresh the reviewed Git lock after manual source review');a=P.parse_args()
 root=Path(a.source).resolve();lock=Path(__file__).with_name('velvet-source-lock.json')
 if lock.exists() and not a.accept_reviewed_source:
- for item in json.loads(lock.read_text()):
+ entries=json.loads(lock.read_text())
+ if not isinstance(entries,list) or any(not isinstance(item,dict) or set(item)!={'path','gitBlob'} for item in entries):
+  raise ValueError('Legacy SHA source lock is BLOCKED; review and migrate it to Git identities before extraction')
+ captured=git_baseline.capture_inventory(root,[item['path'] for item in entries])
+ current={path:'git:blob:'+identity.split(':blob:',1)[1] for path,identity in captured.items()}
+ for item in entries:
   path=root/item['path']
-  if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=item['sha256']:raise ValueError('Source changed; re-review before --accept-reviewed-source: '+item['path'])
+  if not path.is_file() or current.get(item['path'])!=item['gitBlob']:raise ValueError('Source changed; re-review before --accept-reviewed-source: '+item['path'])
 out=Path(a.out).resolve();out.mkdir(exist_ok=True)
 files={};sources=[];refs={};ledger=[];objects=[];instances=[];spawn_rules=[]
 def read(path):
@@ -27,7 +34,7 @@ def ref(path,needle=None):
  key=f'{path}:{line}'
  if key not in refs:
   sid='source:'+str(len(sources)+1);refs[key]=sid
-  sources.append(dict(id=sid,path=path,line=line,sha256=hashlib.sha256((root/path).read_bytes()).hexdigest(),url='evidence/'+path+'.html#L'+str(line)))
+  sources.append(dict(id=sid,path=path,line=line,gitBlob=git_baseline.identity_file(root/path),url='evidence/'+path+'.html#L'+str(line)))
  return refs[key]
 def status(edit='read-only',impl='implemented',mapping='reviewed-source',verification='static-source'):
  return dict(implementation=impl,mapping=mapping,editability=edit,verification=verification)
@@ -184,8 +191,8 @@ for category,reason in [('addons/','第三方 ECS/测试插件实现不拆成游
 for path,text in files.items():
  dest=out/'evidence'/(path+'.html');dest.parent.mkdir(parents=True,exist_ok=True)
  rendered=''.join(f'<span class="line" id="L{i}"><a href="#L{i}">{i:4}</a> {html.escape(line)}</span>\n' for i,line in enumerate(text.splitlines(),1))
- dest.write_text('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+html.escape(path)+'</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>'+html.escape(path)+'</h1><p>只读源快照 · SHA-256 '+hashlib.sha256((root/path).read_bytes()).hexdigest()+'</p></header><pre>'+rendered+'</pre>')
-manifest=[dict(path=path,sha256=hashlib.sha256((root/path).read_bytes()).hexdigest()) for path in sorted(files)]
+ dest.write_text('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+html.escape(path)+'</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>'+html.escape(path)+'</h1><p>只读源快照 · Git blob '+git_baseline.identity_file(root/path)+'</p></header><pre>'+rendered+'</pre>')
+manifest=[dict(path=path,gitBlob=git_baseline.identity_file(root/path)) for path in sorted(files)]
 model=dict(schemaVersion=2,catalogVersion='velvet-semantic-2026-10-07-v2',scope=dict(claim='人工审阅的当前源语义快照；文件/声明状态/输入/资源绑定/房间记录覆盖，不是通用自动解析或完整运行证明。',source='Velvet Eclipse current workspace snapshot',sourceDate='2026-10-07',adapterVersion=1,include=['scripts/**/*.gd','data/rooms/*.json','project.godot input section','ResourceCatalog bindings + SpriteFrames','selected design documents','scenes/**/*.tscn + resources/ui/*.tres'],exclusions=[e['reason'] for e in ledger if e['category']=='scope-exclusion'],verification='static-source + model + DOM; no Godot run in this task'),objects=objects,instances=instances,spawnRules=spawn_rules,clips=clips,sources=sources,ledger=ledger,sourceRooms=rooms,sourceManifest=manifest,migrations=dict(legacyAttackBehavior='player.sword'))
 if not lock.exists() or a.accept_reviewed_source:lock.write_text(json.dumps(manifest,indent=2)+'\n')
 (out/'semantic-data.json').write_text(json.dumps(model,ensure_ascii=False,indent=2)+'\n');(out/'semantic-data.js').write_text('window.SEMANTIC = '+json.dumps(model,ensure_ascii=False,separators=(',',':'))+';\n')

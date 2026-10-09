@@ -1,0 +1,12 @@
+{
+  "version_scheme": "git",
+  "origin": "Existing reviewed frontend HTML source snapshots, not current source refresh",
+  "source_files": 69,
+  "matching_current_files": 67,
+  "preserved_mismatches": [
+    "scripts/ui/hud.gd",
+    "scripts/ui/title_screen.gd"
+  ],
+  "baseline_tag": "handoff-v6-original",
+  "schema_fix": "Original semantic-model schema lacked its final root closing brace; fixed in both copies while renaming SHA field to gitBlob."
+}

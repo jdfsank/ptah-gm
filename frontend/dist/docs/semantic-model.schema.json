@@ -11,7 +11,7 @@
     "objects": {"type": "array", "items": {"$ref": "#/$defs/object"}},
     "instances": {"type": "array", "items": {"allOf": [{"$ref": "#/$defs/evidence"}], "required": ["definitionId", "layer"], "properties": {"definitionId": {"type": "string"}, "layer": {"enum": ["placed", "spawn-marker"]}}}},
     "spawnRules": {"type": "array", "items": {"allOf": [{"$ref": "#/$defs/evidence"}], "required": ["definitionId", "condition"], "properties": {"definitionId": {"type": "string"}, "condition": {"type": "string"}}}},
-    "sources": {"type": "array", "items": {"type": "object", "required": ["id", "path"], "properties": {"id": {"type": "string"}, "path": {"type": "string"}, "line": {"type": "integer", "minimum": 1}, "sha256": {"type": "string"}}}},
+    "sources": {"type": "array", "items": {"type": "object", "required": ["id", "path"], "properties": {"id": {"type": "string"}, "path": {"type": "string"}, "line": {"type": "integer", "minimum": 1}, "gitBlob": {"type": "string", "pattern": "^git:blob:[0-9a-f]+$"}}}},
     "ledger": {"type": "array", "items": {"type": "object", "required": ["id", "disposition", "targets"], "properties": {"id": {"type": "string"}, "disposition": {"enum": ["mapped", "excluded", "unmapped"]}, "targets": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}, "granularity": {"type": "string"}}}}
   },
   "$defs": {
@@ -19,4 +19,5 @@
     "evidence": {"type": "object", "required": ["id", "evidence", "sourceRefs", "status"], "properties": {"id": {"type": "string", "minLength": 1}, "evidence": {"enum": ["fact", "intent", "inference", "proposal"]}, "sourceRefs": {"type": "array", "items": {"type": "string"}}, "status": {"$ref": "#/$defs/status"}}},
     "behavior": {"allOf": [{"$ref": "#/$defs/evidence"}], "required": ["type", "label"], "properties": {"type": {"enum": ["continuous", "action", "response", "interaction", "rule"]}, "label": {"type": "string"}, "parameters": {"type": "object"}, "states": {"type": "array", "items": {"type": "string"}}, "motion": {"type": ["object", "null"]}, "presentation": {"type": "object"}}},
     "object": {"allOf": [{"$ref": "#/$defs/evidence"}], "required": ["kind", "body", "drivers", "behaviors"], "properties": {"kind": {"enum": ["actor", "environment", "rule", "session", "progression", "interface", "resource"]}, "body": {"type": "string"}, "drivers": {"type": "array", "items": {"type": "string"}}, "behaviors": {"type": "array", "items": {"$ref": "#/$defs/behavior"}}, "facets": {"type": "object", "properties": {"design": {"type": ["object", "null"]}, "narrative": {"type": ["object", "null"]}, "art": {"type": ["object", "null"]}}}}}
+}
 }

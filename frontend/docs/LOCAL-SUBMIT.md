@@ -30,9 +30,12 @@ the bridge. Complete work requiring approvals in native Codex.
 - IDs are immutable and duplicate IDs return the existing receipt. A mismatched
   payload with the same ID is rejected. One active/uncertain delivery blocks new
   submissions. Server revision protects competing tabs.
-- Draft revision, bridge acceptance revision, and source fingerprint are separate.
-  The mapped source files must match `tools/velvet-source-lock.json`; both source
-  fingerprint and reviewed adapter freshness are checked again before delivery.
+- Draft revision, bridge acceptance revision, and source identity are separate.
+  The mapped source files must match Git blob identities in
+  `tools/velvet-source-lock.json`; both source identity and reviewed adapter
+  freshness are checked again before delivery. Formal GM readiness requires the
+  bound project to be inside a Git repository. Capability locks using the legacy
+  SHA scheme remain BLOCKED until their contents receive an explicit Git review.
   Each frozen draft also carries its source manifest; an older open tab or legacy draft cannot silently adopt a new adapter on refresh. Reload and reapply/review edits when that manifest is missing or stale.
   This is the reviewed Velvet adapter, not a generic source tree validator.
   After source changes, re-extract and review mappings before further submissions.

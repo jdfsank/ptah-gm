@@ -196,8 +196,8 @@ def validate_fields(role: str, fields: dict[str, object]) -> None:
                 raise ValueError("provenance must come from the local interactive decision entry")
         elif not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key} must be a nonempty string")
-        if key.endswith("_digest") and not re.fullmatch(r"(?:sha256:)?[0-9a-f]{64}", str(value)):
-            raise ValueError(f"{key} must be a SHA-256 hex digest")
+        if key.endswith("_digest") and not re.fullmatch(r"git:blob:(?:[0-9a-f]{40}|[0-9a-f]{64})", str(value)):
+            raise ValueError(f"{key} must be a Git blob identity (40- or 64-hex object ID)")
     if "tag" in fields and not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", str(fields["tag"])):
         raise ValueError("tag must be a SemVer tag such as v0.1.0")
     if "run_id" in fields and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", str(fields["run_id"])):

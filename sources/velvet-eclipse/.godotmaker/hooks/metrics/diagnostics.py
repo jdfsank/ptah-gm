@@ -5,14 +5,21 @@ text, feed diagnostics into later prompts, or interpret reports from other
 roles. Missing optional evidence remains missing instead of being inferred
 from unrelated prose or pasted command output.
 """
-import hashlib
 import json
 import os
 import posixpath
 import re
+import sys
+from pathlib import Path
 
 from .collector import read_current_events, record_event
 from .schema import EventType, ROLE_WORKER
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+from tools.git_baseline import identity_bytes
 
 
 ERROR_EVENT_VERSION = 1
@@ -178,7 +185,7 @@ def extract_large_output_reference(message: str) -> dict:
     if len(tail) < len(output):
         tail = "…" + tail[1:]
     return {
-        "output_digest": "sha256:" + hashlib.sha256(encoded).hexdigest(),
+        "output_digest": identity_bytes(encoded),
         "output_bytes": len(encoded),
         "output_tail": tail,
     }
@@ -259,7 +266,7 @@ def _fingerprint(task_id: str, stage: str, error_type: str,
         ensure_ascii=True,
         separators=(",", ":"),
     )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+    return identity_bytes(payload.encode("utf-8"))
 
 
 def build_worker_error_event(*, message: str, status: str,

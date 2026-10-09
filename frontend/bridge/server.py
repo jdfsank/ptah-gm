@@ -3,10 +3,13 @@ import sys
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 import gm_contract
 import datetime
-import argparse, hashlib, json, queue, secrets, sqlite3, subprocess, tempfile, threading, os, fcntl
+import argparse, json, queue, secrets, sqlite3, subprocess, tempfile, threading, os, fcntl
+from contextlib import contextmanager
 from pathlib import Path
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 ROOT=Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT.parent / 'tools'))
+import git_baseline
 class Conflict(Exception): pass
 class Store:
  def __init__(self,path,mode,thread):
@@ -17,7 +20,14 @@ class Store:
    if old and (old['mode']!=mode or old['thread']!=thread):raise ValueError('State belongs to a different adapter/thread; choose another --state file.')
    for k,v in {'mode':mode,'thread':thread,'revision':'0','storeId':secrets.token_hex(16)}.items():c.execute('INSERT OR IGNORE INTO meta VALUES (?,?)',(k,v))
    c.execute("UPDATE submissions SET state='uncertain' WHERE state IN ('accepted','processing')")
- def db(self):return sqlite3.connect(self.path)
+ @contextmanager
+ def db(self):
+  connection=sqlite3.connect(self.path)
+  try:
+   with connection:
+    yield connection
+  finally:
+   connection.close()
  def identity(self):
   with self.db() as c:return c.execute("SELECT v FROM meta WHERE k='storeId'").fetchone()[0]
  def revision(self):
@@ -29,16 +39,16 @@ class Store:
   with self.db() as c:r=c.execute('SELECT id FROM submissions ORDER BY rowid DESC LIMIT 1').fetchone()
   return self.get(r[0]) if r else None
  def accept(self,p):
-  raw=json.dumps(p,sort_keys=True,separators=(',',':'));digest=hashlib.sha256(raw.encode()).hexdigest()
+  raw=json.dumps(p,sort_keys=True,separators=(',',':'))
   with self.lock,self.db() as c:
-   old=c.execute('SELECT hash FROM submissions WHERE id=?',(p['submissionId'],)).fetchone()
+   old=c.execute('SELECT payload FROM submissions WHERE id=?',(p['submissionId'],)).fetchone()
    if old:
-    if old[0]!=digest:raise Conflict('This submission ID already belongs to a different immutable payload.')
+    if old[0]!=raw:raise Conflict('This submission ID already belongs to a different immutable payload.')
     return False
    if c.execute("SELECT 1 FROM submissions WHERE state IN ('accepted','processing','uncertain')").fetchone():raise Conflict('Prior delivery is active or uncertain. Reconcile before another submit.')
    rev=int(c.execute("SELECT v FROM meta WHERE k='revision'").fetchone()[0])
    if p['baseRevision']!=rev:raise Conflict('Another tab submitted first. Refresh status and review before submitting.')
-   c.execute('INSERT INTO submissions VALUES (?,?,?,?,?)',(p['submissionId'],digest,raw,'accepted','{}'));c.execute("UPDATE meta SET v=? WHERE k='revision'",(str(rev+1),))
+   c.execute('INSERT INTO submissions VALUES (?,?,?,?,?)',(p['submissionId'],'',raw,'accepted','{}'));c.execute("UPDATE meta SET v=? WHERE k='revision'",(str(rev+1),))
   return True
  def update(self,sid,state,result):
   with self.db() as c:c.execute('UPDATE submissions SET state=?,result=? WHERE id=?',(state,json.dumps(result),sid))
@@ -96,17 +106,21 @@ class Codex:
      return ('succeeded' if ok else 'failed'),result
     return ('succeeded' if ok else 'failed'),{'message':'Codex turn completed. Review its response; this UI does not certify source changes.' if ok else 'Codex turn failed or was interrupted.','response':'\n\n'.join(texts),'turnId':turn,'items':[{'id':i['id'],'status':'review_required' if ok else 'failed'} for i in p['items']]}
 def source_baseline(root):
- root=Path(root).resolve();h=hashlib.sha256();matches=True
- for entry in json.loads((ROOT/'tools/velvet-source-lock.json').read_text()):
+ root=Path(root).resolve();lock=json.loads((ROOT/'tools/velvet-source-lock.json').read_text())
+ if not isinstance(lock,list) or any(not isinstance(e,dict) or set(e)!={'path','gitBlob'} for e in lock):
+  raise Conflict('Source lock requires a reviewed Git identity migration before it can be used.')
+ identities={};matches=True
+ for entry in lock:
   f=root/entry['path']
-  if f.is_symlink() or not f.resolve().is_relative_to(root):raise Conflict('Mapped source must stay inside project root.')
-  digest=hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else 'missing'
-  h.update((entry['path']+'\0'+digest).encode());matches=matches and digest==entry['sha256']
- return h.hexdigest(),matches
+  if any(part.is_symlink() for part in [f,*f.parents] if part!=root.parent) or not f.resolve().is_relative_to(root):raise Conflict('Mapped source must stay inside project root.')
+  identities[entry['path']]=git_baseline.identity_file(f) if f.is_file() else 'missing'
+  matches=matches and identities[entry['path']]==entry['gitBlob']
+ current={entry['path']:identities[entry['path']] for entry in lock}
+ return git_baseline.identity_bytes(json.dumps(current,sort_keys=True,separators=(',',':')).encode()),matches
 class App:
  def __init__(self,a):
   self.project_root=Path(a.project_root).resolve() if a.project_root else None;self.mode=a.mode;self.thread=a.thread or 'demo-local';self.token=secrets.token_urlsafe(32);self.store=Store(a.state,self.mode,self.thread);self.codex=Codex(self.thread,self.project_root) if a.mode=='codex' else None
- def baseline(self):return source_baseline(self.project_root)[0] if self.project_root else hashlib.sha256((ROOT/'dist/semantic-data.json').read_bytes()).hexdigest()
+ def baseline(self):return source_baseline(self.project_root)[0] if self.project_root else git_baseline.identity_file(ROOT/'dist/semantic-data.json')
  def gm_readiness(self):return gm_contract.readiness(self.project_root,self.codex,self.thread,self.baseline())
  def status(self):return {'supportedSubmissionVersions':[1,2],'gmReadiness':self.gm_readiness(),'storeId':self.store.identity(),'sourceMatchesAdapter':source_baseline(self.project_root)[1] if self.project_root else True,'sourceBaseline':self.baseline(),'mode':self.mode,'threadId':self.thread,'revision':self.store.revision(),'last':self.store.last(),'codexVersion':self.codex.version if self.codex else None}
  def run(self,p):

@@ -9,6 +9,7 @@ import io
 import json
 from pathlib import Path
 import queue
+import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -55,6 +56,7 @@ class StoreTests(unittest.TestCase):
         self.assertFalse(self.store.accept(copy.deepcopy(payload)))
         self.assertEqual(self.store.revision(), 1)
         self.assertEqual(self.store.get(payload["submissionId"])["payload"], payload)
+
 
     def test_reusing_id_for_different_payload_is_rejected(self):
         payload = envelope(self.store)
@@ -111,6 +113,27 @@ class StoreTests(unittest.TestCase):
         for mode, thread in (("demo", "thread-test"), ("codex", "another-thread")):
             with self.subTest(mode=mode, thread=thread), self.assertRaises(ValueError):
                 bridge.Store(self.path, mode, thread)
+
+
+class SourceIdentityTests(unittest.TestCase):
+    def test_current_source_change_changes_baseline_without_touching_git_index(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base=Path(folder);project=base/'game';project.mkdir()
+            subprocess.run(['git','init','-q',str(project)],check=True)
+            source=project/'player.gd';source.write_text('speed = 100\n')
+            subprocess.run(['git','-C',str(project),'add','player.gd'],check=True)
+            index=project/'.git'/'index';index_before=index.read_bytes()
+            frontend=base/'frontend';tools=frontend/'tools';tools.mkdir(parents=True)
+            expected=bridge.git_baseline.identity_file(source)
+            (tools/'velvet-source-lock.json').write_text(json.dumps([{'path':'player.gd','gitBlob':expected}]))
+            with mock.patch.object(bridge,'ROOT',frontend):
+                baseline_before,matches_before=bridge.source_baseline(project)
+                source.write_text('speed = 150\n')
+                baseline_after,matches_after=bridge.source_baseline(project)
+            self.assertTrue(matches_before)
+            self.assertFalse(matches_after)
+            self.assertNotEqual(baseline_before,baseline_after)
+            self.assertEqual(index.read_bytes(),index_before)
 
 
 class ProtocolTests(unittest.TestCase):
@@ -269,7 +292,7 @@ class HttpValidationTests(unittest.TestCase):
         self.assertIsNone(self.store.last())
 
     def test_missing_or_stale_source_manifest_rejects_new_submission(self):
-        for stale in (None, [], [{"path": "old-source.gd", "sha256": "stale"}]):
+        for stale in (None, [], [{"path": "old-source.gd", "gitBlob": "git:blob:stale"}]):
             with self.subTest(manifest=stale):
                 payload = envelope(self.store)
                 if stale is None:
@@ -286,7 +309,7 @@ class HttpValidationTests(unittest.TestCase):
 
     def test_exact_replay_of_existing_old_manifest_returns_record_without_resending(self):
         payload = envelope(self.store, sourceBaseline="original-baseline")
-        payload["snapshot"]["sourceManifest"] = [{"path": "old-source.gd", "sha256": "old"}]
+        payload["snapshot"]["sourceManifest"] = [{"path": "old-source.gd", "gitBlob": "git:blob:old"}]
         self.store.accept(payload)
         self.store.update(payload["submissionId"], "succeeded", {"turnId": "original-turn"})
         handler = self.request(payload)

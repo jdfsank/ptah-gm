@@ -85,7 +85,6 @@ Exit codes:
 import argparse
 import functools
 import importlib
-import hashlib
 import json
 import os
 import re
@@ -249,7 +248,7 @@ def _archive_review(project_path: Path, dest_dir: Path, gate_result: dict) -> No
         shutil.copy2(source, target)
         entries.append({"source": relative,
                         "archive": target.relative_to(dest_dir).as_posix(),
-                        "sha256": _sha256(target)})
+                        "git_identity": _git_identity(target)})
     _atomic_write_text(root / "references.json", json.dumps(entries, indent=2) + "\n")
     _atomic_write_text(root / "binding.json", json.dumps({
         "kind": "bound_review", "run_id": gate_result.get("run_id"),
@@ -279,7 +278,11 @@ def _check_archived_review(project_path: Path, dest_dir: Path, gate_result: dict
         target = dest_dir / archived
         if target.is_symlink() or not target.is_file():
             raise ValueError(f"archived evidence missing or unsafe: {source}")
-        if _sha256(target) != entry["sha256"] or _sha256(current[source]) != entry["sha256"]:
+        identity = entry.get("git_identity") if isinstance(entry, dict) else None
+        if (not isinstance(identity, str)
+                or not re.fullmatch(r"git:blob:(?:[0-9a-f]{40}|[0-9a-f]{64})", identity)
+                or _git_identity(target) != identity
+                or _git_identity(current[source]) != identity):
             raise ValueError(f"review evidence changed since archive: {source}")
     if seen != current.keys():
         raise ValueError("review evidence was added or removed since archive; re-run archive")
@@ -382,12 +385,13 @@ def _archived_tag_revision(project_path: Path, tag: str) -> str | None:
     return _rev_parse(project_path, f"refs/tags/{tag}^{{commit}}")
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _git_identity(path: Path) -> str:
+    """Return the shared Git blob identity for one regular file."""
+    tools_dir = str(Path(__file__).resolve().parent)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    from git_baseline import identity_file
+    return identity_file(path)
 
 
 # ------------------------------------------------------------------ manifest
@@ -424,7 +428,7 @@ def _scan_archive_files(dest_dir: Path) -> list[dict]:
             "path": rel,
             "category": _categorize(rel),
             "bytes": path.stat().st_size,
-            "sha256": _sha256(path),
+            "git_identity": _git_identity(path),
         })
     entries.sort(key=lambda e: e["path"])
     return entries
@@ -961,7 +965,7 @@ def _render_tag_readme(tag: str, manifest: dict, link_warnings: list[str]) -> st
         f"- **Sealed by:** `{manifest.get('generator')}` v{manifest.get('generator_version')}",
         f"- **Completeness:** {'complete' if complete else 'partial — see notes below'}",
         "- **Inventory:** [evidence/manifest.json](evidence/manifest.json) — "
-        "every archived file with its size and sha256",
+        "every archived file with its size and Git blob identity",
         "",
         "## Files",
         "",
@@ -1324,7 +1328,7 @@ def cmd_backfill(
             _claim_archive(project_path, dest_dir, dest_dir.name,
                            stage=STAGE_BACKFILLING)
             before = {
-                name: _sha256(dest_dir / name)
+                name: _git_identity(dest_dir / name)
                 for name in canonical if (dest_dir / name).is_file()
             }
             link_errors, link_warnings = _check_memory_links(dest_dir)
@@ -1347,7 +1351,7 @@ def cmd_backfill(
                 source_revision=_archived_tag_revision(project_path, dest_dir.name),
             )
             after = {
-                name: _sha256(dest_dir / name)
+                name: _git_identity(dest_dir / name)
                 for name in canonical if (dest_dir / name).is_file()
             }
             if before != after:

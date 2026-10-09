@@ -23,7 +23,20 @@ def payload():
 
 def ready():
     return {'status':'READY','authorityDigest':'authority-fixture','adapterBaseline':{'revision':0,'rooms':[],'behaviorDrafts':{'player.move':{'speed':100}}},'checks':[{'status':'PASS','reason':'test fixture only'}],'targetMappings':{'behavior:player.move':{'kind':'behavior','routeKind':'runtime','gm':copy.deepcopy(MAPPING),'allowedDiffPaths':['/behaviorDrafts/player.move/speed'],'allowedSourcePaths':['data/player.json']}},
-            'gm':{'controlledFiles':{'data/player.json':'sha256:before'},'specDigest':'spec-fixture','sourceFiles':{'data/player.json':'sha256:before'},'testFiles':{},'profiles':[{'name':'native','platform':'native'}],'runContext':{'valid':True,'manifestRef':'.godotmaker/runs/check-1/manifest.json','reportRefs':[]},'specConfirmed':True,'tag':'v0.1.0','status':{'task_authorities':{'PLAN.md':'## Tag Mechanics\n- [v0.1.0-M1] Move\n## Task Status\n| R1 | movement | verified |'}},'run':{'command':'check','run_id':'check-1'}}}
+            'gm':{'controlledFiles':{'data/player.json':'git:100644:blob:before'},'specDigest':'spec-fixture','sourceFiles':{'data/player.json':'git:100644:blob:before'},'testFiles':{},'profiles':[{'name':'native','platform':'native'}],'runContext':{'valid':True,'manifestRef':'.godotmaker/runs/check-1/manifest.json','reportRefs':[]},'specConfirmed':True,'tag':'v0.1.0','status':{'task_authorities':{'PLAN.md':'## Tag Mechanics\n- [v0.1.0-M1] Move\n## Task Status\n| R1 | movement | verified |'}},'run':{'command':'check','run_id':'check-1'}}}
+
+class GitIdentityTests(unittest.TestCase):
+    def test_controlled_inventory_uses_git_blob_metadata_and_file_mode(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'PLAN.md').write_text('reviewed')
+            identity=gm.controlled_inventory(root)['PLAN.md']
+            self.assertRegex(identity,r'^git:100644:blob:[0-9a-f]+$')
+
+    def test_legacy_capability_lock_is_blocked_for_review(self):
+        with mock.patch.object(gm, 'json') as parser:
+            parser.loads.return_value={'files':{'tools/review_support.py':'legacy-value'}}
+            with self.assertRaisesRegex(ValueError,'Legacy SHA capability lock is BLOCKED'):
+                gm.verify_tool_versions('/not-read')
 
 class EnvelopeTests(unittest.TestCase):
     def test_explicit_bounded_v2(self):
@@ -88,12 +101,12 @@ class ReadinessTests(unittest.TestCase):
 
     def test_no_missing_tool_install_or_execution(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(gm.subprocess,'run') as run:
-            with self.assertRaisesRegex(ValueError,'Missing or unsupported'):gm.local_readiness(d)
+            with self.assertRaisesRegex(ValueError,'Missing or unsupported|Legacy SHA capability lock is BLOCKED'):gm.local_readiness(d)
             run.assert_not_called()
 
     def test_wrong_thread_cwd_and_absent_runtime_skills_block(self):
         codex=SimpleNamespace(rpc=mock.Mock(side_effect=[{'thread':{'id':'t','cwd':'/wrong','status':{'type':'idle'}}},{'data':[]}]))
-        with mock.patch.object(gm,'local_readiness',side_effect=ValueError('missing tools')):
+        with mock.patch.object(gm.git_baseline,'require_repository',return_value={'head':'fixture','gitRoot':'/bound','prefix':'','dirty':False}), mock.patch.object(gm,'local_readiness',side_effect=ValueError('missing tools')):
             r=gm.readiness('/bound',codex,'t')
         self.assertEqual(r['status'],'BLOCKED')
         self.assertEqual([c.args[0] for c in codex.rpc.call_args_list],['thread/read','skills/list'])
@@ -133,7 +146,7 @@ class EvidenceImportTests(unittest.TestCase):
         prior['turnStartedAt']='2026-10-08T01:00:00+00:00'
         record={'payload':p,'result':prior,'state':'succeeded'}
         supplied={'schemaVersion':1,'submissionId':p['submissionId'],'turnId':'turn-1','taskId':p['taskId'],'sourceBaseline':p['sourceBaseline'],'runId':'check-2','items':[{'id':'behavior:player.move','taskIds':['R1'],'reportRefs':['reports/verify.json']}]}
-        observed={'controlledFiles':{'data/player.json':'sha256:after'},'manifest':{'schema_version':1,'command':'check','run_id':'check-2','tag':'v0.1.0','spec_digest':'spec-fixture','source_files':{'data/player.json':'sha256:after'},'started_at':'2026-10-08T01:01:00+00:00','finished_at':'2026-10-08T01:02:00+00:00','result':'PASS'},'verificationGate':{'result':'PASS','reasons':[]},'acceptanceGate':{'result':'BLOCKED','reasons':['needs_human: current run has no applicable user acceptance']},'reportRefs':['reports/verify.json'],'taskStates':{'R1':'verified'},'pendingFeedback':[],'manifestHash':'sha256:fixture'}
+        observed={'controlledFiles':{'data/player.json':'git:100644:blob:after'},'manifest':{'schema_version':1,'command':'check','run_id':'check-2','tag':'v0.1.0','spec_digest':'spec-fixture','source_files':{'data/player.json':'git:100644:blob:after'},'started_at':'2026-10-08T01:01:00+00:00','finished_at':'2026-10-08T01:02:00+00:00','result':'PASS'},'verificationGate':{'result':'PASS','reasons':[]},'acceptanceGate':{'result':'BLOCKED','reasons':['needs_human: current run has no applicable user acceptance']},'reportRefs':['reports/verify.json'],'taskStates':{'R1':'verified'},'pendingFeedback':[],'manifestIdentity':'git:blob:fixture'}
         return record,supplied,observed
 
     def test_pass_evidence_keeps_human_acceptance_separate(self):
@@ -207,7 +220,7 @@ class PhaseAndScopeTests(unittest.TestCase):
 class AdversarialResultTests(unittest.TestCase):
     def test_stale_verified_task_fresh_global_check_not_item_completion(self):
         r,s,o=EvidenceImportTests().fixture()
-        o['manifest']['source_files']={'data/player.json':'sha256:before'}
+        o['manifest']['source_files']={'data/player.json':'git:100644:blob:before'}
         result=gm.ingest_evidence(r,s,o)
         self.assertEqual(result['verification'],'PASS')
         self.assertEqual(result['implementation'],'BLOCKED')
@@ -220,7 +233,7 @@ class AdversarialResultTests(unittest.TestCase):
         self.assertEqual(result['implementation'],'BLOCKED')
 
     def test_unrelated_source_change_rejected(self):
-        r,s,o=EvidenceImportTests().fixture();o['manifest']['source_files']['scripts/unrelated.gd']='sha256:new'
+        r,s,o=EvidenceImportTests().fixture();o['manifest']['source_files']['scripts/unrelated.gd']='git:100644:blob:new'
         with self.assertRaisesRegex(ValueError,'exceed'):gm.ingest_evidence(r,s,o)
 
     def test_external_or_stale_feedback_citation_blocks(self):
@@ -232,7 +245,7 @@ class TestOwnershipTests(unittest.TestCase):
     def test_worker_cannot_modify_evaluator_owned_e2e(self):
         r,s,o=EvidenceImportTests().fixture()
         r['result']['executionPlan']['targets'][0]['allowedSourcePaths'].append('e2e/test_play.py')
-        o['manifest']['test_files']={'e2e/test_play.py':'sha256:weakened'}
+        o['manifest']['test_files']={'e2e/test_play.py':'git:100644:blob:weakened'}
         with self.assertRaisesRegex(ValueError,'Evaluator'):gm.ingest_evidence(r,s,o)
 
 class IndependentReviewRegressionTests(unittest.TestCase):
