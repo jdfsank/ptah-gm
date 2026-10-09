@@ -1,0 +1,17 @@
+{
+  "testData": true,
+  "humanAcceptance": "NOT PERFORMED",
+  "returnCode": 2,
+  "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\n",
+  "stderr": "ERROR: BACKEND_GAMEPLAY_PROBE_FAIL: R restarts after winning; observed state=1 x=100.0 exitOverlap=false\n   at: push_error (core/variant/variant_utility.cpp:1024)\n   GDScript backtrace (most recent call first):\n       [0] _check (res://backend_gameplay.gd:14)\n       [1] _run (res://backend_gameplay.gd:87)\n       [2] _frames (res://backend_gameplay.gd:22)\n",
+  "argv": [
+    "/Applications/Godot.app/Contents/MacOS/Godot",
+    "--headless",
+    "--path",
+    "/tmp/gm-gameplay-bridge-original-20261009",
+    "--fixed-fps",
+    "60",
+    "--script",
+    "res://backend_gameplay.gd"
+  ]
+}

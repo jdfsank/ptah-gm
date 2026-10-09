@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-09",
+  "status": "PASS",
+  "scope": "tool implementation regression and isolated fixture observations",
+  "backendRegression": {
+    "tests": 105,
+    "status": "PASS",
+    "log": "backend-regression.txt"
+  },
+  "frontendRegression": {
+    "fullPackageScript": "PASS",
+    "pythonTests": 81,
+    "finalStudioQaAndSyntax": "PASS"
+  },
+  "bundledGmRegression": {
+    "reviewSupport": 43,
+    "boundWorkflow": 80,
+    "appendStageEvent": 21,
+    "status": "PASS"
+  },
+  "nativeWorkflow": {
+    "evidence": "real-object-probe-r3.json",
+    "rounds": 3,
+    "status": "PASS"
+  },
+  "nativeFeedbackRepair": {
+    "evidence": "reset-feedback-probe.json",
+    "status": "PASS"
+  },
+  "independentGameplay": {
+    "bridge": {
+      "evidence": "bridge-gameplay-repaired-r2.json",
+      "assertions": 12,
+      "status": "PASS"
+    },
+    "puzzle": {
+      "evidence": "puzzle-gameplay.json",
+      "assertions": 12,
+      "status": "PASS"
+    }
+  },
+  "humanAcceptance": "NOT PERFORMED",
+  "productionApprovalsCreated": 0,
+  "productionReadOnlyHealth": {
+    "url": "http://127.0.0.1:8765/studio/",
+    "apiVersion": "objects-v1",
+    "testData": false,
+    "counts": {
+      "projects": 0,
+      "jobs": 0,
+      "proposals": 0,
+      "packets": 0
+    }
+  },
+  "browserChecks": [
+    "object inspector",
+    "separate field and feedback draft",
+    "exact Git candidate preview action",
+    "clean production workbench"
+  ],
+  "nativeWindowVisualAcceptance": "NOT PERFORMED: native screenshot service unavailable",
+  "executionBoundary": "cooperative_local_same_user; no verified OS sandbox",
+  "gitPolicy": "native Git identities and diffs; no standalone hash build check",
+  "finalTemplateCompile": {
+    "status": "PASS",
+    "evidence": "final-template-import.json"
+  }
+}

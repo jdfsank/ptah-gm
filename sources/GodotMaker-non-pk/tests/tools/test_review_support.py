@@ -186,7 +186,7 @@ def test_timeout_and_normal_exit_children_cleaned(tmp_path):
 
 def test_doctor_readonly_and_no_game_launch(project):
     before = {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
-    with patch.object(review, "resolve_godot", return_value=(sys.executable, "4.6.3")):
+    with patch.object(review, "resolve_godot", return_value=(str(Path(sys.executable).resolve()), "4.6.3")):
         result = review.doctor(project)
     after = {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
     assert result["result"] == "PASS"
@@ -201,10 +201,19 @@ def fake_run(project):
     run = project / ".godotmaker/runs" / run_id
     run.mkdir(parents=True)
     review._copy_snapshot(project, run / "project", source, tests)
-    manifest = {"schema_version": 1, "command": "check", "run_id": run_id, "tag": spec["tag"], "spec_digest": spec["spec_digest"], "source_digest": review.manifest_digest(source), "test_digest": review.runner_digest(project, tests), "source_files": source, "test_files": tests, "profiles": spec["profiles"], "result": "BLOCKED", "report_digests": {}, "suites": {}, "environment": {"godot_path": sys.executable, "godot_sha256": review.digest_file(Path(sys.executable))}}
-    review.write_json(run / "manifest.json", manifest)
-    review.write_json(project / ".godotmaker/latest-review.json", {"run_id": run_id})
+    python_binary = str(Path(sys.executable).resolve())
+    manifest = {"schema_version": 1, "command": "check", "run_id": run_id, "tag": spec["tag"], "spec_digest": spec["spec_digest"], "source_digest": review.manifest_digest(source), "test_digest": review.runner_digest(project, tests), "source_files": source, "test_files": tests, "profiles": spec["profiles"], "result": "BLOCKED", "report_digests": {}, "suites": {}, "environment": {"godot_path": python_binary, "godot_git_identity": review.digest_file(Path(python_binary))}}
+    write_manifest_identity(project, run, manifest)
     return run_id, run, manifest
+
+
+def write_manifest_identity(project, run, manifest):
+    """Write the synthetic run's Git-object identity sidecar and latest binding."""
+    review.write_json(run / "manifest.json", manifest)
+    identity = review.digest_file(run / "manifest.json")
+    (run / "manifest.git").write_text(identity + "\n", encoding="ascii")
+    review.write_json(project / ".godotmaker/latest-review.json",
+                      {"run_id": manifest["run_id"], "manifest_digest": identity})
 
 
 def test_status_readonly_returns_zero_for_pending(project):
@@ -215,6 +224,18 @@ def test_status_readonly_returns_zero_for_pending(project):
     assert result["run"]["result"] == "BLOCKED"
     assert before == sorted(str(p) for p in project.rglob("*"))
     assert not (project / ".godotmaker/run.lock").exists()
+
+
+def test_run_manifest_uses_git_identity_record_not_checksum_filename(project):
+    run_id, run, manifest = fake_run(project)
+    record = run / "manifest.git"
+    assert record.is_file()
+    assert record.read_text(encoding="ascii").startswith("git:blob:")
+    assert not (run / "manifest.sha256").exists()
+    assert manifest["environment"]["godot_git_identity"].startswith("git:blob:")
+    (run / "manifest.json").write_text((run / "manifest.json").read_text() + " ", encoding="utf-8")
+    result = review.gate(project, run_id)
+    assert "Run manifest changed or Git identity record missing" in result["reasons"]
 
 
 def test_feedback_idempotent_and_new_run_does_not_lose_denial(project):
@@ -335,9 +356,7 @@ def synthetic_pass_run(project):
     manifest["suites"] = {name: {"result": "PASS", "report": relative, "test_digest": manifest["test_digest"], "cases": 1} for name, relative in (("verify", "reports/verify.json"), ("e2e", "reports/e2e.xml"))}
     manifest["commands"] = [{"suite": name, "exit_code": 0, "timed_out": False, "orphaned_children": False} for name in ("verify", "e2e")]
     manifest["report_digests"] = {str(p.relative_to(run)): review.digest_file(p) for p in reports.iterdir()}
-    review.write_json(run / "manifest.json", manifest)
-    (run / "manifest.sha256").write_text(review.digest_file(run / "manifest.json"))
-    review.write_json(project / ".godotmaker/latest-review.json", {"run_id": run_id, "manifest_digest": review.digest_file(run / "manifest.json")})
+    write_manifest_identity(project, run, manifest)
     evaluation = {**{k: manifest[k] for k in ("tag", "run_id", "spec_digest", "source_digest", "test_digest")}, "review_kind": "self_review", "result": "approve", "playable_closed_loop": {key: True for key in ("builds_clean", "boots_main_scene", "playable_unit_coverage", "completion_fail_or_exit_reached")}, "playable_unit": {"result": "pass", "rows": {"v0.1.0-M1": {"result": "pass", "test": "e2e/test_game.py", "evidence": ["synthetic protocol fixture"]}}}, "tag_mechanics": {"v0.1.0-M1": "pass"}, "inherited_mechanics": {}, "visual_checks": {"room": {"result": "pass", "screenshot": "e2e/screenshots/scene.png", "captures": ["e2e/screenshots/scene.png"], "vqa_log": "e2e/screenshots/vqa.log", "vqa_calls": [{"ts": "2026-10-06T00:00:00Z", "mode": "question", "backend": "native", "model": "synthetic-protocol-fixture", "files": ["e2e/screenshots/scene.png"], "log": "e2e/screenshots/vqa.log", "context": "Synthetic schema fixture, not real visual evidence", "verdict": "pass", "output_summary": "Synthetic protocol fixture only"}]}}, "e2e_tests": {"total": 1, "passed": 1, "failed": 0}, "critical_issues": [], "orphan_tests": [], "phase4_review": [{"category": "synthetic protocol", "verdict": "Not an actual experience review"}]}
     review.write_json(project / ".godotmaker/evaluation.json", evaluation)
     return run_id, run, manifest, evaluation
@@ -346,6 +365,10 @@ def synthetic_pass_run(project):
 def test_synthetic_bound_flow_can_pass_and_denial_invalidates(project):
     run_id, run, manifest, _ = synthetic_pass_run(project)
     assert review.bind_evaluation(project, run_id)["result"] == "PASS"
+    evaluation_identity = run / "evaluation-binding.git"
+    assert evaluation_identity.is_file()
+    assert evaluation_identity.read_text(encoding="ascii").startswith("git:blob:")
+    assert not (run / "evaluation-binding.sha256").exists()
     assert review.bind_evaluation(project, run_id)["idempotent"]
     with patch.object(review, "interactive_confirmation", return_value=None):
         review.confirm_spec(project)
@@ -388,7 +411,7 @@ def test_no_evaluator_binding_and_missing_suite_path_block_gate(project):
         review.confirm_spec(project)
     assert any("gm-evaluate" in r for r in review.gate(project, run_id, require_accept=False)["reasons"])
     manifest["suites"]["verify"].pop("report")
-    review.write_json(run / "manifest.json", manifest)
+    write_manifest_identity(project, run, manifest)
     assert any("raw report" in r for r in review.gate(project, run_id, require_accept=False)["reasons"])
 
 

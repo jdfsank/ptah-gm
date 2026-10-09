@@ -1,0 +1,36 @@
+{
+  "sourceCommit": "3abd7d9af0802b002ea475b8ebddc7d23e248448",
+  "testData": true,
+  "humanAcceptance": "NOT PERFORMED",
+  "commands": [
+    {
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/tmp/gm-gameplay-bridge-original-20261009",
+        "--editor",
+        "--import",
+        "--quit"
+      ],
+      "returnCode": 0,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | Started \u9879\u76ee\u521d\u59cb\u5316 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u626b\u63cf\u6587\u4ef6\u7ed3\u6784\u2026\u2026\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u52a0\u8f7d\u5168\u5c40\u7c7b\u540d\u2026\u2026\u001b[39m\u001b[0m\n[  33% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u6821\u9a8c GDExtension\u2026\u2026\u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u521b\u5efa\u81ea\u52a8\u52a0\u8f7d\u811a\u672c\u2026\u2026\u001b[39m\u001b[0m\n[  66% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u521d\u59cb\u5316\u63d2\u4ef6\u2026\u2026\u001b[39m\u001b[0m\n[  83% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | \u6b63\u5728\u542f\u52a8\u6587\u4ef6\u626b\u63cf\u2026\u2026\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mfirst_scan_filesystem\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | Started \u6b63\u5728\u6ce8\u518c\u5168\u5c40\u7c7b\u2026\u2026 (9 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  10% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  20% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  30% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  40% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  60% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  70% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | StudioRuntime\u001b[39m\u001b[0m\n[  80% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mupdate_scripts_classes\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | Started \u6b63\u5728\u52a0\u8f7d\u7f16\u8f91\u5668 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | \u6b63\u5728\u52a0\u8f7d\u7f16\u8f91\u5668\u5e03\u5c40\u2026\u2026\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | \u6b63\u5728\u52a0\u8f7d\u505c\u9760\u9762\u677f\u2026\u2026\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mloading_editor_layout\u001b[22m\n\u001b[0m\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/tmp/gm-gameplay-bridge-original-20261009",
+        "--fixed-fps",
+        "60",
+        "--script",
+        "res://backend_gameplay.gd"
+      ],
+      "returnCode": 2,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\n",
+      "stderr": "ERROR: BACKEND_GAMEPLAY_PROBE_FAIL: R restarts after winning\n   at: push_error (core/variant/variant_utility.cpp:1024)\n   GDScript backtrace (most recent call first):\n       [0] _check (res://backend_gameplay.gd:14)\n       [1] _run (res://backend_gameplay.gd:87)\n       [2] _frames (res://backend_gameplay.gd:22)\n"
+    }
+  ]
+}

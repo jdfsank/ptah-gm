@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
-import hashlib
 import importlib.util
 import importlib.metadata
 import json
@@ -25,6 +24,7 @@ import sys
 import uuid
 
 from agent_runtime import detect_agent, godotmaker_yaml, read_godot_path
+from git_baseline import identity_bytes, identity_file
 from frontend_approval import (
     ApprovalContext, ApprovalError, consume_frontend_approval,
     validate_durable_approval_record,
@@ -34,7 +34,7 @@ BASELINE = "1d4702caa2ac5fdbe1b0139e1787691cb52ae290"
 RESULT_CODES = {"PASS": 0, "FAIL": 1, "BLOCKED": 2, "ERROR": 3}
 VARIANTS = ("baseline", "always_open_door", "stale_hud", "pause_input_leak", "dirty_restart")
 NOT_PROVEN = ["generated_game_quality", "visual_layout", "audio_output", "physical_devices", "human_experience_acceptance"]
-DOCS = {"GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md", "ASSETS.md", "GAP.md", "MEMORY.md", "ROADMAP.md", "TOC.md"}
+DOCS = {"SPEC.md", "GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md", "ASSETS.md", "GAP.md", "MEMORY.md", "ROADMAP.md", "TOC.md"}
 SPEC_DOCS = ("GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "SCENES.md", "ASSETS.md")
 IGNORED_DIRS = {".git", ".godot", ".godotmaker", ".claude", ".agents", ".opencode", ".pi", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "venv", "node_modules", "docs", "memory"}
 TEST_DIRS = {"test", "tests", "e2e"}
@@ -53,11 +53,13 @@ def now() -> str:
 
 
 def digest_bytes(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
+    """Legacy field adapter; values are Git blob identities, never SHA checks."""
+    return identity_bytes(data)
 
 
 def digest_file(path: Path) -> str:
-    return digest_bytes(path.read_bytes())
+    """Legacy field adapter; values are Git blob identities, never SHA checks."""
+    return identity_file(path)
 
 
 def canonical(data) -> bytes:
@@ -262,7 +264,7 @@ def doctor(project: Path, explicit: str | None = None) -> dict:
     try:
         project = project_path(project)
         binary, version = resolve_godot(project, explicit)
-        result["environment"] = {"godot_path": binary, "godot_version": version, "godot_sha256": digest_file(Path(binary)), "python": platform.python_version(), "host": platform.system(), "agent": detect_agent(project)}
+        result["environment"] = {"godot_path": binary, "godot_version": version, "godot_git_identity": digest_file(Path(binary)), "python": platform.python_version(), "host": platform.system(), "agent": detect_agent(project)}
         for capability, module in (("python_tests", "pytest"), ("godot_e2e", "godot_e2e")):
             available = importlib.util.find_spec(module) is not None
             result["capabilities"][capability] = {"available": available, "reason": None if available else f"{module} is not installed; no installation attempted"}
@@ -383,6 +385,13 @@ def extract_spec(project: Path) -> dict:
         docs[name] = path.read_text(encoding="utf-8").strip()
         if not docs[name]:
             raise ReviewError(f"Empty specification: {name}", "BLOCKED")
+    # SPEC.md is an additional normative binding for generated generic plans;
+    # legacy non-pk projects remain compatible when they do not have the file.
+    optional_spec = safe_child(project, "SPEC.md")
+    if optional_spec.is_file():
+        docs["SPEC.md"] = optional_spec.read_text(encoding="utf-8").strip()
+        if not docs["SPEC.md"]:
+            raise ReviewError("Empty specification: SPEC.md", "BLOCKED")
     profiles = []
     for line in sections["Platform Commitments"]:
         if line.strip().startswith("|"):
@@ -405,17 +414,9 @@ def extract_spec(project: Path) -> dict:
 def spec_git_ref(spec: dict, project: Path) -> str:
     """Git blob identity for canonical normative spec text, independent of legacy digest fields."""
     try:
-        result = subprocess.run(
-            ["git", "-C", str(project), "hash-object", "--stdin"],
-            input=canonical(spec["text"]), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, check=False, timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+        return identity_bytes(canonical(spec["text"]))
+    except Exception as exc:
         raise ReviewError("Cannot derive Git identity for current specification", "BLOCKED") from exc
-    object_id = result.stdout.decode("ascii", "replace").strip()
-    if result.returncode or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", object_id):
-        raise ReviewError("Cannot derive Git identity for current specification", "BLOCKED")
-    return "git:blob:" + object_id
 
 
 def frontend_approval_binding(project: Path) -> dict:
@@ -578,7 +579,7 @@ def smoke(fixture: Path, output: Path, variant: str, godot: str | None = None, t
     variant_path.write_text(content.replace('const NAME: String = "baseline"', f'const NAME: String = "{variant}"'), encoding="utf-8")
     before = inventory(project)
     spec_path = fixture / "SPEC.md"
-    result = {"schema_version": 1, "variant": "gm-non-pk", "fixture_variant": variant, "command": "smoke", "run_id": output.name, "result": "ERROR", "fixture_spec_digest": digest_file(spec_path), "source_digest": manifest_digest(before[0]), "test_digest": digest_bytes(canonical({"tests": before[1], "runner": {name: digest_file(Path(__file__).parent / name) for name in ("gm_review.py", "review_support.py")}, "godot_version": version})), "source_files": before[0], "test_files": before[1], "environment": {"host": platform.platform(), "godot_version": version, "godot_path": binary, "godot_sha256": digest_file(Path(binary)), "input_source": "semantic_action"}, "claims": [], "not_proven": NOT_PROVEN, "raw_report": "reports/assertions.json", "started_at": now(), "commands": []}
+    result = {"schema_version": 1, "variant": "gm-non-pk", "fixture_variant": variant, "command": "smoke", "run_id": output.name, "result": "ERROR", "fixture_spec_digest": digest_file(spec_path), "source_digest": manifest_digest(before[0]), "test_digest": digest_bytes(canonical({"tests": before[1], "runner": {name: digest_file(Path(__file__).parent / name) for name in ("gm_review.py", "review_support.py")}, "godot_version": version})), "source_files": before[0], "test_files": before[1], "environment": {"host": platform.platform(), "godot_version": version, "godot_path": binary, "godot_git_identity": digest_file(Path(binary)), "input_source": "semantic_action"}, "claims": [], "not_proven": NOT_PROVEN, "raw_report": "reports/assertions.json", "started_at": now(), "commands": []}
     try:
         env = isolated_env(output)
         reports = output / "reports"
@@ -731,7 +732,7 @@ def check(project: Path, *, suite: str = "all", timeout: float = 600, godot: str
             text = ""
         config.write_text(text + "\ngodot_path: " + json.dumps(binary) + "\n", encoding="utf-8")
         config.chmod(0o400)
-        manifest = {"schema_version": 1, "command": "check", "variant": "gm-non-pk", "run_id": run_id, "tag": spec["tag"], "spec_digest": spec["spec_digest"], "source_digest": manifest_digest(source), "test_digest": test_digest, "source_files": source, "test_files": tests, "specification": spec["text"], "profiles": spec["profiles"], "environment": {"godot_version": version, "godot_sha256": digest_file(Path(binary)), "godot_path": binary, "python": platform.python_version(), "host": platform.platform(), "input_source": "semantic_action"}, "suite": suite, "suites": {}, "started_at": now(), "result": "ERROR", "not_proven": ["visual_layout", "audio_output", "physical_devices", "human_experience_acceptance"], "commands": []}
+        manifest = {"schema_version": 1, "command": "check", "variant": "gm-non-pk", "run_id": run_id, "tag": spec["tag"], "spec_digest": spec["spec_digest"], "source_digest": manifest_digest(source), "test_digest": test_digest, "source_files": source, "test_files": tests, "specification": spec["text"], "profiles": spec["profiles"], "environment": {"godot_version": version, "godot_git_identity": digest_file(Path(binary)), "godot_path": binary, "python": platform.python_version(), "host": platform.platform(), "input_source": "semantic_action"}, "suite": suite, "suites": {}, "started_at": now(), "result": "ERROR", "not_proven": ["visual_layout", "audio_output", "physical_devices", "human_experience_acceptance"], "commands": []}
         manifest["snapshot_auxiliary"] = snapshot_auxiliary(snapshot)
         reports = run / "reports"
         env = isolated_env(run)
@@ -798,7 +799,7 @@ def check(project: Path, *, suite: str = "all", timeout: float = 600, godot: str
         manifest["finished_at"] = now()
         manifest["report_digests"] = {str(p.relative_to(run)): digest_file(p) for p in reports.glob("*") if p.is_file()}
         write_json(run / "manifest.json", manifest, exclusive=True)
-        (run / "manifest.sha256").write_text(digest_file(run / "manifest.json") + "\n", encoding="ascii")
+        (run / "manifest.git").write_text(digest_file(run / "manifest.json") + "\n", encoding="ascii")
         write_json(project / ".godotmaker/latest-review.json", {"run_id": run_id, "manifest_digest": digest_file(run / "manifest.json")})
         return manifest
 
@@ -891,9 +892,9 @@ def _gate_unlocked(project: Path, run_id: str | None, require_accept: bool) -> d
     manifest = load_json(safe_child(run, "manifest.json"))
     if manifest.get("command") != "check" or manifest.get("schema_version") != 1:
         raise ReviewError("A fixture or legacy report is not project acceptance evidence", "BLOCKED")
-    checksum = safe_child(run, "manifest.sha256")
-    if not checksum.is_file() or checksum.read_text(encoding="ascii").strip() != digest_file(run / "manifest.json"):
-        reasons.append("Run manifest changed or checksum missing")
+    identity_record = safe_child(run, "manifest.git")
+    if not identity_record.is_file() or identity_record.read_text(encoding="ascii").strip() != digest_file(run / "manifest.json"):
+        reasons.append("Run manifest changed or Git identity record missing")
     latest_path = safe_child(project, ".godotmaker/latest-review.json")
     if latest_path.is_file():
         latest = load_json(latest_path)
@@ -912,7 +913,7 @@ def _gate_unlocked(project: Path, run_id: str | None, require_accept: bool) -> d
         reasons.append("Current PLAN Task Status is incomplete/unsupported")
     engine = manifest.get("environment", {})
     engine_path = Path(engine.get("godot_path", ""))
-    if not engine_path.is_file() or digest_file(engine_path) != engine.get("godot_sha256"):
+    if not engine_path.is_file() or digest_file(engine_path) != engine.get("godot_git_identity"):
         reasons.append("Checked Godot binary is unavailable or changed")
     if manifest.get("tag") != spec["tag"]:
         reasons.append("Run tag differs from current PLAN")
@@ -1148,7 +1149,7 @@ def play(project: Path, run_id: str, *, timeout: float = 3600) -> dict:
         preview.mkdir()
         # Do not block later editing after the snapshot has been validated.
         binary = manifest["environment"]["godot_path"]
-        if digest_file(Path(binary)) != manifest["environment"]["godot_sha256"]:
+        if digest_file(Path(binary)) != manifest["environment"]["godot_git_identity"]:
             raise ReviewError("Godot binary differs from checked environment", "BLOCKED")
     command = execute([binary, "--path", str(snapshot)], snapshot, preview, "native-play", timeout, env=isolated_env(preview))
     drifted = inventory(snapshot) != (manifest["source_files"], manifest["test_files"]) or snapshot_auxiliary(snapshot) != manifest.get("snapshot_auxiliary")
@@ -1337,16 +1338,16 @@ def bind_evaluation(project: Path, run_id: str) -> dict:
                 evidence[relative] = digest_file(safe_child(project, relative))
         binding = {"schema_version": 1, **fields, "report_ref": report_ref, "evidence": evidence, "evaluate_event": event, "bound_at": now()}
         write_json(binding_path, binding, exclusive=True)
-        (run / "evaluation-binding.sha256").write_text(digest_file(binding_path) + "\n", encoding="ascii")
+        (run / "evaluation-binding.git").write_text(digest_file(binding_path) + "\n", encoding="ascii")
         return {"result": "PASS", "command": "bind-evaluation", "run_id": run_id, "evaluation_digest": report_digest, "evaluation_result": report["result"], "idempotent": False}
 
 
 def evaluation_gate_issues(project: Path, run: Path, manifest: dict) -> tuple[list[str], str | None]:
     binding_path = safe_child(run, "evaluation-binding.json")
-    checksum = safe_child(run, "evaluation-binding.sha256")
-    if not binding_path.is_file() or not checksum.is_file():
+    identity_record = safe_child(run, "evaluation-binding.git")
+    if not binding_path.is_file() or not identity_record.is_file():
         return ["Original gm-evaluate report has not been bound to this run"], None
-    if checksum.read_text(encoding="ascii").strip() != digest_file(binding_path):
+    if identity_record.read_text(encoding="ascii").strip() != digest_file(binding_path):
         return ["Evaluation binding drift"], None
     binding = load_json(binding_path)
     issues = []

@@ -1,0 +1,2 @@
+# Preserve the exact Git-archived fixture text, including original EOF spacing.
+** whitespace=-blank-at-eof

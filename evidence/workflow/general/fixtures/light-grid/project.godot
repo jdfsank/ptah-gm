@@ -1,0 +1,26 @@
+; Light Grid. Editable object values live in design/game.json.
+config_version=5
+
+[application]
+config/name="Light Grid"
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/size/window_width_override=960
+window/size/window_height_override=540
+window/size/resizable=false
+window/stretch/mode="canvas_items"
+
+[input]
+
+reset_puzzle={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":82)]
+}
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.0431373, 0.0705882, 0.12549, 1)

@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "status": "FAIL",
+  "testData": true,
+  "productionAuthorized": false,
+  "humanAcceptance": "NOT PERFORMED",
+  "startedAt": "2026-10-09T08:59:26.371458+00:00",
+  "stateRoot": "/private/tmp/gm-general-probe-20261009-e1",
+  "events": [
+    {
+      "at": "2026-10-09T08:59:26.375015+00:00",
+      "path": "/session",
+      "method": "GET",
+      "id": null,
+      "status": null
+    },
+    {
+      "at": "2026-10-09T08:59:26.375959+00:00",
+      "path": "/concepts",
+      "method": "POST",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:26.377012+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:27.383367+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:28.390733+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:29.400521+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:30.411639+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:31.420108+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:32.434361+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:33.440782+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:34.450784+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:35.459292+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:36.466168+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:37.470058+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:38.479611+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:39.486729+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:40.491797+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:41.494341+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:42.502250+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:43.504431+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:44.511278+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:45.517055+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:46.523569+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:47.529316+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:48.537516+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:49.539423+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:50.545385+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:51.551511+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:52.559551+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:53.564065+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:54.571494+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:55.578162+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "PLANNING"
+    },
+    {
+      "at": "2026-10-09T08:59:56.583652+00:00",
+      "path": "/proposals/proposal-631b758f449040f59283ad59224815f7",
+      "method": "GET",
+      "id": "proposal-631b758f449040f59283ad59224815f7",
+      "status": "FAILED"
+    }
+  ],
+  "rounds": [
+    {
+      "label": "jump MVP",
+      "proposalId": "proposal-631b758f449040f59283ad59224815f7",
+      "projectId": "project-fb483e9423d440738669c9e27e5d076a",
+      "proposal": {
+        "assets": [],
+        "baseCommit": null,
+        "changeRequest": null,
+        "createdAt": "2026-10-09T08:59:26.375439+00:00",
+        "currentDocument": null,
+        "decisions": {},
+        "discussion": [
+          {
+            "at": "2026-10-09T08:59:26.375437+00:00",
+            "role": "user",
+            "text": "Make a small 2D side-view jump game called Bridge Runner. Keyboard left/right and space jump; cross three visible platforms to a green exit, falling restarts, R resets, HUD explains controls and win. Use simple procedural shapes, no external assets/plugins/network. Fixed 960x540 camera, single level, no sound. Represent the player as object id player with editable numeric speed (220, min 50, max 500) and jump-speed (420, min 200, max 700). Represent the main scene as main-scene bound to scenes/main.tscn. Make each mechanism/object explicit with stable IDs and source bindings. This fully specified isolated test authorizes the MVP plan; do not ask optional questions, use READY unless a real blocker exists."
+          }
+        ],
+        "document": null,
+        "id": "proposal-631b758f449040f59283ad59224815f7",
+        "initializationRequired": false,
+        "message": "planner response is not valid strict JSON",
+        "planningLease": {
+          "cwd": "/private/tmp/gm-general-probe-20261009-e1/planning/proposal-631b758f449040f59283ad59224815f7/round-1",
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
+          "pid": 43853,
+          "processGroupId": 43853,
+          "startedAt": "2026-10-09T08:59:26Z"
+        },
+        "productionAuthorized": false,
+        "projectId": "project-fb483e9423d440738669c9e27e5d076a",
+        "publicationRevision": 0,
+        "questions": [],
+        "revision": 1,
+        "status": "FAILED",
+        "summary": "planner response is not valid strict JSON",
+        "tasks": [],
+        "templateId": "general-2d-v1",
+        "testData": true,
+        "text": "Make a small 2D side-view jump game called Bridge Runner. Keyboard left/right and space jump; cross three visible platforms to a green exit, falling restarts, R resets, HUD explains controls and win. Use simple procedural shapes, no external assets/plugins/network. Fixed 960x540 camera, single level, no sound. Represent the player as object id player with editable numeric speed (220, min 50, max 500) and jump-speed (420, min 200, max 700). Represent the main scene as main-scene bound to scenes/main.tscn. Make each mechanism/object explicit with stable IDs and source bindings. This fully specified isolated test authorizes the MVP plan; do not ask optional questions, use READY unless a real blocker exists.",
+        "updatedAt": "2026-10-09T08:59:56.243614+00:00",
+        "workflow": "objects-v1"
+      }
+    }
+  ],
+  "error": "native planner did not yield READY: planner response is not valid strict JSON",
+  "finishedAt": "2026-10-09T08:59:56.584086+00:00"
+}

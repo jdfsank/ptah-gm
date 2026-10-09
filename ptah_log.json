@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "module": "ptah",
-  "updated_at": "2026-10-09T07:35:48.370765+00:00",
+  "updated_at": "2026-10-09T08:33:36.528541+00:00",
   "summary": {
-    "attempted": 1,
+    "attempted": 2,
     "active": 0,
     "completed": 1,
     "failed": 0,
     "blocked": 0,
     "cancelled": 0,
-    "superseded": 0
+    "superseded": 1
   },
   "tasks": [
     {
@@ -66,6 +66,22 @@
       ],
       "acceptance_ref": "docs/WORKFLOW-IMPLEMENTATION.zh-CN.md",
       "next_action": "User may start a real project in production Studio; each game specification and candidate acceptance remains a separate explicit user decision."
+    },
+    {
+      "task_id": "GENERAL-OBJECTS-WORKFLOW",
+      "task_revision": "objects-v1",
+      "attempt": 1,
+      "status": "superseded",
+      "started_at": "2026-10-09T08:30:56.307839+00:00",
+      "finished_at": "2026-10-09T08:33:36.528541+00:00",
+      "objective": "Rewrite Studio as a general 2D game production tool using standardized objects, communication, precise changes and feedback",
+      "result": "User instructed that this work must reference GM non-pk and GameStudio instead of the existing Ptah skill; continuing in the independent Studio implementation plan.",
+      "changed_files": [
+        "docs/GENERAL-GAME-TOOL-PLAN.zh-CN.md"
+      ],
+      "verification": [],
+      "acceptance_ref": "docs/GENERAL-GAME-TOOL-PLAN.zh-CN.md",
+      "next_action": "Continue authorized tool implementation from GM non-pk and GameStudio under the Studio plan, without further Ptah skill use."
     }
   ]
 }

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
+import subprocess
 import tempfile
 import threading
 import time
@@ -52,6 +54,9 @@ for line in sys.stdin:
      subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1.5); open(" + repr(survived) + ", 'w').write('survived')"])
     while True: time.sleep(.1)
    send({"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"delta":"probe response"}})
+   if mode == "final_json":
+    send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"commentary","text":"Working on a plan"}}})
+    send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":json.dumps({"status":"READY"})}}})
    send({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-test","turn":{"id":"turn-test","status":"completed"}}})
   elif method == "turn/interrupt": send({"jsonrpc":"2.0","id":m["id"],"result":{}})
 """.replace("__MODE__", repr(mode))
@@ -84,6 +89,31 @@ for line in sys.stdin:
         self.assertIn("probe response", result["response"])
         self.assertFalse(result["diagnostics"]["verificationCertified"])
         self.assertTrue(result["diagnostics"]["childTerminationConfirmed"])
+
+    def test_final_message_boundary_excludes_commentary_for_planner_json(self):
+        self._write_server("final_json")
+        result = self._run(execution_profile="managed_read_only")
+        self.assertEqual(json.loads(result["response"]), {"status": "READY"})
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        start = next(call for call in calls if call.get("method") == "thread/start")
+        self.assertEqual(start["params"]["sandbox"], "read-only")
+        self.assertEqual(start["params"]["approvalPolicy"], "on-request")
+        self.assertFalse(start["params"]["config"]["features"]["multi_agent"])
+
+    def test_independent_session_does_not_inherit_parent_context(self):
+        with patch.dict(os.environ, {"CODEX_THREAD_ID": "parent-thread",
+            "CODEX_SESSION_ID": "parent-session", "CODEX_APP_TOOLS_PIPE_PATH": "/parent/pipe",
+            "GM_TEST_PROVIDER_MARKER": "retained-provider-setting"}), patch(
+                "backend.codex_driver.subprocess.Popen", wraps=subprocess.Popen
+            ) as launch:
+            self._run()
+        child_env = launch.call_args.kwargs["env"]
+        for key in ("CODEX_THREAD_ID", "CODEX_SESSION_ID", "CODEX_APP_TOOLS_PIPE_PATH"):
+            self.assertNotIn(key, child_env)
+        self.assertEqual(child_env["GM_TEST_PROVIDER_MARKER"], "retained-provider-setting")
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        turn = next(call for call in calls if call.get("method") == "turn/start")
+        self.assertIn("Do not spawn subagents", turn["params"]["input"][0]["text"])
 
     def test_approval_request_is_declined_and_reported(self):
         self._write_server("approval")

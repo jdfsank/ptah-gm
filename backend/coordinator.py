@@ -110,13 +110,19 @@ class _ApprovalStore:
         )
 
 
-class Coordinator:
+from .generic_workflow import GenericWorkflow
+
+
+class Coordinator(GenericWorkflow):
     def __init__(
-        self, root, state_root=None, test_data=False, driver_factory=None, verifier=None
+        self, root, state_root=None, test_data=False, driver_factory=None, verifier=None,
+        planner_driver_factory=None, generic_driver_factory=None, generic_verifier=None,
     ):
         if type(test_data) is not bool:
             raise ValueError("test_data must be a boolean")
-        if not test_data and (driver_factory is not None or verifier is not None):
+        if not test_data and any(value is not None for value in (
+            driver_factory, verifier, planner_driver_factory, generic_driver_factory, generic_verifier
+        )):
             raise ValueError("Injected execution and verification are test-only")
         self.root = Path(root).resolve()
         self.state_root = Path(state_root or self.root / ".workbench").resolve()
@@ -124,6 +130,10 @@ class Coordinator:
         self.state_root.chmod(0o700)
         self.test_data = test_data
         self.production_authorized = not self.test_data
+        self._custom_driver = driver_factory is not None
+        self.planner_driver_factory = planner_driver_factory
+        self.generic_driver_factory = generic_driver_factory
+        self.generic_verifier = generic_verifier
         self.driver_factory = driver_factory or (
             lambda path: CodexDriver(
                 path,
@@ -186,6 +196,12 @@ class Coordinator:
                         message="服务重启：此前执行的停止状态尚未确认；保留项目独占，禁止重投。",
                     )
                     self._put("job", job)
+            for proposal in self._all("proposal"):
+                if proposal.get("workflow") == "objects-v1" and proposal["status"] in {
+                    "PLANNING", "PLANNING_CANCELLING"
+                }:
+                    proposal.update(status="PLANNING_UNCERTAIN", summary="服务重启：策划停止状态尚未确认，不自动重新派发。")
+                    self._put("proposal", proposal)
         self._threads = {}
         self._cancels = {}
         self._previews = []
@@ -234,6 +250,11 @@ class Coordinator:
             raise WorkflowError(400, "REVISION", "版本号必须是非负整数。")
 
     def _available(self, project_id):
+        for proposal in self._all("proposal"):
+            if proposal["projectId"] == project_id and proposal["status"] in {
+                "PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"
+            }:
+                raise WorkflowError(409, "PROJECT_BUSY", "项目的策划仍在执行或状态待核实。")
         for job in self._all("job"):
             if job["projectId"] == project_id and job["status"] in ACTIVE:
                 raise WorkflowError(
@@ -274,8 +295,9 @@ class Coordinator:
                 "每个候选独立运行固定引擎测试。",
             ),
             "semanticProjection": ready(
-                (self.root / "backend/templates/collect_loop/project.godot").is_file(),
-                "仅支持 collect-loop 受控模板和三个参数。",
+                (self.root / "backend/templates/general_2d/project.godot").is_file()
+                or (self.root / "backend/templates/collect_loop/project.godot").is_file(),
+                "稳定对象、属性、关系和源绑定；通用 2D 与旧工程分别保持版本契约。",
             ),
         }
 
@@ -288,9 +310,9 @@ class Coordinator:
                 if proposal["status"] == "FROZEN" and not proposal.get("packetId"):
                     proposal["packetId"] = packet_lookup.get(proposal["id"])
             return {
-                "apiVersion": "r4-local-1",
+                "apiVersion": "objects-v1",
                 "workspaceId": "test" if self.test_data else "local",
-                "name": "Ptah 本机工作区",
+                "name": "GM 游戏制作工作区",
                 "operatorId": self.operator_id,
                 "testData": self.test_data,
                 "productionAuthorized": self.production_authorized,
@@ -379,7 +401,22 @@ class Coordinator:
         project_id=None,
         asset_ids=None,
         expected_publication_revision=None,
+        workflow=None,
+        change_request=None,
     ):
+        self._operator(operator_id)
+        with self.lock:
+            project_workflow = self._get("project", project_id).get("workflow") if project_id else None
+        if workflow not in {None, "objects-v1", "collect-loop-v1"} or (
+            project_workflow == "objects-v1" and workflow == "collect-loop-v1"
+        ):
+            raise WorkflowError(400, "WORKFLOW", "工作流与工程不匹配。")
+        if workflow == "objects-v1" or project_workflow == "objects-v1":
+            return self.create_generic_concept(operator_id=operator_id, text=text, project_id=project_id,
+                asset_ids=asset_ids, expected_publication_revision=expected_publication_revision,
+                change_request=change_request)
+        if workflow not in {None, "collect-loop-v1"} or change_request is not None:
+            raise WorkflowError(400, "WORKFLOW", "不支持的工作流或旧工程的对象修改协议。")
         self._operator(operator_id)
         if expected_publication_revision is not None:
             self._revision(expected_publication_revision)
@@ -581,6 +618,10 @@ class Coordinator:
 
     def answer_proposal(self, *, operator_id, proposal_id, expected_revision, answers):
         self._operator(operator_id)
+        if self.get_proposal(proposal_id).get("workflow") == "objects-v1":
+            return self.answer_generic_proposal(operator_id=operator_id, proposal_id=proposal_id,
+                expected_revision=expected_revision, answers=answers)
+        self._operator(operator_id)
         self._revision(expected_revision)
         if not isinstance(answers, dict) or any(
             type(v) not in (str, int, float) or len(str(v)) > 1000
@@ -706,6 +747,11 @@ class Coordinator:
         expected_publication_revision,
         reviewed_proposal,
     ):
+        self._operator(operator_id)
+        if self.get_proposal(proposal_id).get("workflow") == "objects-v1":
+            return self.freeze_generic_proposal(operator_id=operator_id, proposal_id=proposal_id,
+                expected_revision=expected_revision, expected_publication_revision=expected_publication_revision,
+                reviewed_proposal=reviewed_proposal)
         self._operator(operator_id)
         self._revision(expected_revision)
         self._revision(expected_publication_revision)
@@ -840,6 +886,7 @@ class Coordinator:
                 "packetId": packet_id,
                 "projectId": packet["projectId"],
                 "operationKind": packet["operationKind"],
+                "workflow": packet.get("workflow", "collect-loop-v1"),
                 "status": "QUEUED",
                 "idempotencyKey": idempotency_key,
                 "createdAt": now(),
@@ -850,7 +897,8 @@ class Coordinator:
             self._put("job", job)
         cancel = threading.Event()
         thread = threading.Thread(
-            target=self._execute, args=(job["id"], cancel), daemon=True
+            target=self._execute_generic if packet.get("workflow") == "objects-v1" else self._execute,
+            args=(job["id"], cancel), daemon=True
         )
         with self.lock:
             self._cancels[job["id"]] = cancel
@@ -1343,6 +1391,8 @@ class Coordinator:
         }
 
     def _publish(self, packet, candidate, expected_revision):
+        if packet.get("workflow") == "objects-v1":
+            return self._publish_generic(packet, candidate, expected_revision)
         project = self._get("project", packet["projectId"])
         if project["publicationRevision"] != expected_revision:
             raise WorkflowError(409, "STALE_PUBLICATION", "候选基线已过期，无法发布。")
@@ -1459,6 +1509,7 @@ class Coordinator:
                 if project["snapshotId"]
                 else {
                     "projectId": project_id,
+                    "workflow": project.get("workflow", "collect-loop-v1"),
                     "title": project["title"],
                     "publicationRevision": 0,
                     "kind": "CONCEPT",
@@ -1475,6 +1526,7 @@ class Coordinator:
                 and job["status"] == "READY_FOR_REVIEW"
             ]
             return {
+                "workflow": project.get("workflow", "collect-loop-v1"),
                 "snapshot": snapshot,
                 "capabilities": {"fields": fields},
                 "candidates": candidates,

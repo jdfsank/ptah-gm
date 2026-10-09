@@ -248,9 +248,9 @@ Write evaluation results to `.godotmaker/evaluation.json`:
 {
   "tag": "<Tag>",
   "run_id": "<exact reviewed check run_id>",
-  "spec_digest": "<sha256:... from that run manifest>",
-  "source_digest": "<sha256:... from that run manifest>",
-  "test_digest": "<sha256:... from that run manifest>",
+  "spec_digest": "<git:blob:<native object ID> from that run manifest>",
+  "source_digest": "<git:blob:<native object ID> from that run manifest>",
+  "test_digest": "<git:blob:<native object ID> from that run manifest>",
   "result": "approve | reject",
   "playable_closed_loop": {
     "builds_clean": true,

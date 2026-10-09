@@ -52,6 +52,10 @@ class CodexDriver:
         self.model = model
         self.disabled_mcp_servers = tuple(disabled_mcp_servers or ())
         profiles = {
+            "managed_read_only": {
+                "sandbox": "read-only",
+                "approvalPolicy": "on-request",
+            },
             "managed_workspace_write": {
                 "sandbox": "workspace-write",
                 "approvalPolicy": "on-request",
@@ -90,6 +94,8 @@ class CodexDriver:
         )
         image_paths = _validate_reference_images(reference_images or [])
         prompt = (
+            "Do not spawn subagents, delegate tasks, send messages to any other agent or chat, or wait for other agents. "
+            "This is one standalone managed session; complete its assigned role yourself and return its result here. "
             "Carry out the following frozen workflow packet as the user request using the available tools. "
             "If it requests a file edit, make the actual edit in the current workspace within allowedFiles; "
             "a description of the desired file is not completion. "
@@ -122,6 +128,11 @@ class CodexDriver:
             errors="replace",
             bufsize=1,
             start_new_session=True,
+            env={key: value for key, value in os.environ.items() if key not in {
+                "CODEX_THREAD_ID", "CODEX_SESSION_ID", "CODEX_APP_TOOLS_PIPE_PATH",
+                "CODEX_TASK_WORKSPACE_VERIFYING_IDENTITY", "CODEX_PERMISSION_PROFILE",
+                "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+            }},
         )
         lease = {
             "pid": proc.pid,
@@ -154,6 +165,7 @@ class CodexDriver:
         request_id = 0
         transcript: list[dict] = []
         response_parts: list[str] = []
+        completed_messages: list[tuple[str | None, str]] = []
         thread_id = turn_id = None
         approval_requests: list[dict] = []
         protocol_errors: list[dict] = []
@@ -222,6 +234,8 @@ class CodexDriver:
                 item = params.get("item") or {}
                 if item.get("type") in ("agentMessage", "assistantMessage", "message"):
                     text = _extract_text(item)
+                    if text:
+                        completed_messages.append((item.get("phase"), text))
                     if text and not response_parts:
                         response_parts.append(text)
             # App-server approval callbacks are not permission to approve. Deny/cancel
@@ -294,8 +308,8 @@ class CodexDriver:
                 "initialize",
                 {
                     "clientInfo": {
-                        "name": "ptah-workflow",
-                        "title": "Ptah workflow",
+                        "name": "gm-studio-workflow",
+                        "title": "GM Studio workflow",
                         "version": "0.1.0",
                     },
                     "capabilities": {"experimentalApi": True},
@@ -304,12 +318,17 @@ class CodexDriver:
             send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
             thread_params: dict[str, Any] = {"cwd": self.cwd}
             thread_params.update(self._profile_params)
+            if self.execution_profile:
+                # Each workflow role owns one native session. Inheriting the
+                # desktop's proactive delegation can join the parent's team
+                # and interrupt an otherwise independent planning round.
+                thread_params["config"] = {"features": {"multi_agent": False}}
             if self.disabled_mcp_servers:
-                thread_params["config"] = {
+                thread_params.setdefault("config", {}).update({
                     "mcp_servers": {
                         name: {"enabled": False} for name in self.disabled_mcp_servers
                     }
-                }
+                })
             if self.model:
                 thread_params["model"] = self.model
             thread_result = request("thread/start", thread_params)
@@ -341,6 +360,13 @@ class CodexDriver:
             )
             turn_id = turn.get("id") or turn.get("turnId")
             state = drain_until_turn_done()
+            # Completed message items preserve final-answer boundaries. Deltas
+            # may also contain commentary, which is not strict planner JSON.
+            final_messages = [text for phase, text in completed_messages if phase == "final_answer"]
+            if final_messages:
+                response_parts = [final_messages[-1]]
+            elif completed_messages:
+                response_parts = [completed_messages[-1][1]]
             result = self._result(
                 thread_id,
                 turn_id,

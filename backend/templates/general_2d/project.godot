@@ -1,0 +1,17 @@
+; Generic 2D Godot scaffold. User-visible game design lives in design/game.json.
+config_version=5
+
+[application]
+config/name="Studio 2D Project"
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/size/window_width_override=960
+window/size/window_height_override=540
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

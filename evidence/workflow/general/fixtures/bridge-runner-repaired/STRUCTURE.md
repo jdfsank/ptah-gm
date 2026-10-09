@@ -1,0 +1,24 @@
+# Project Structure
+
+- `bridge-runner` (project): Bridge Runner. A self-contained Godot 4 GDScript 2D MVP with a single playable level. Sources: not bound yet.
+- `main-scene` (scene): Main Scene. Contains the player, three platforms, exit, procedural renderer, and HUD. Coordinates level state, the shared restart path, and exit-contact validity after teleporting to spawn. Sources: scenes/main.tscn, scripts/level_controller.gd.
+- `input-actions` (mechanic): Keyboard Input Actions. Define move_left for Left Arrow, move_right for Right Arrow, jump for Space, and reset_level for R. Translate input into movement, jump, and reset intent. Sources: scripts/input_actions.gd.
+- `player` (entity): Player. A 24x32 rectangular CharacterBody2D rendered cyan (#00FFFF) so it is easier to track. Start centered at (100, 414) on the first platform. Read speed and jump-speed from the frozen fields through StudioRuntime.object_value(). Sources: scenes/main.tscn, scripts/player.gd.
+- `player.speed` (number): Speed; current value `300`; editable `true`.
+- `player.jump-speed` (number): Jump Speed; current value `420`; editable `true`.
+- `horizontal-movement` (mechanic): Horizontal Movement. Apply left/right intent using the player's speed field. Stop horizontal movement when neither direction is held; opposing inputs cancel. Sources: scripts/player.gd.
+- `jump` (mechanic): Grounded Jump. A fresh Space press while grounded sets upward velocity from jump-speed. Apply gravity of 1000 px/s² during physics updates. Holding Space does not cause repeated jumps. Sources: scripts/player.gd.
+- `platform-one` (entity): Starting Platform. A visible solid rectangle at (40, 430), sized 260x24 pixels. Holds the initial player spawn. Sources: scenes/main.tscn.
+- `platform-two` (entity): Middle Platform. A visible solid rectangle at (370, 350), sized 210x24 pixels. Provides the intermediate jump destination. Sources: scenes/main.tscn.
+- `platform-three` (entity): Exit Platform. A visible solid rectangle at (650, 410), sized 270x24 pixels. Supports the green exit. Sources: scenes/main.tscn.
+- `platform-collision` (rule): Solid Platform Collision. Use static platform collision shapes matching the rendered rectangles. Player physics handles landing and grounded detection. Gaps remain open, with no invisible floor. Sources: scenes/main.tscn, scripts/player.gd.
+- `exit` (entity): Green Exit. A green rectangular Area2D at (860, 350), sized 40x60 pixels, resting on the third platform. Label it EXIT. Exit-contact handling must reject stale contact evidence after a restart teleport. Sources: scenes/main.tscn, scripts/level_controller.gd.
+- `win` (mechanic): Reach Exit. When the player currently overlaps the exit during play, enter the won state, stop player motion, and display the win message and R restart instruction. Pre-reset overlap data, contact flags, or delayed callbacks must not trigger victory at spawn. Sources: scripts/level_controller.gd.
+- `fall-restart` (mechanic): Fall Restart. During play, restart when the player's center passes y=600. Use the shared restart path to return to the initial spawn, clear velocity and stale exit contact, restore playing state, and show the normal HUD. Sources: scripts/level_controller.gd.
+- `manual-reset` (mechanic): R Reset. R restores the initial level state from either playing or won state, including spawn, zero velocity, active controls, and the normal HUD. Clear stale exit contact so resetting after victory remains in playing state at spawn and permits another complete attempt. Sources: scripts/level_controller.gd.
+- `level-state` (rule): Level State. Maintain playing and won states. Use one restart path for falling and R. Evaluate reset before other transitions and end transition processing for the reset tick. Invalidate exit-contact evidence from before the teleport and require valid current contact for any later win. Suppress falling and movement after winning until reset. Sources: scripts/level_controller.gd.
+- `fixed-view` (rule): Fixed View. Use a fixed 960x540 logical viewport showing the entire level. Do not follow the player or scroll. Preserve aspect ratio when the window changes size. Sources: scenes/main.tscn, scripts/view_setup.gd.
+- `procedural-rendering` (mechanic): Procedural Shapes. Render the background, cyan (#00FFFF) player, existing platforms, and green exit using simple Godot shapes and colors. Keep drawing separate from physics, input handling, and HUD text. Sources: scenes/main.tscn, scripts/procedural_visuals.gd.
+- `hud` (interface): Controls and Win HUD. Show: Left/Right: move \| Space: jump \| R: reset. Explain the goal: Cross the platforms to the green exit. On victory, show: You win! Press R to restart. Keep text clear of the jump route. Sources: scenes/main.tscn, scripts/hud.gd.
+
+Backend-owned protocol files: `design/game.json` and `studio/runtime.gd`. Producer-owned paths remain subject to the frozen scope audit.

@@ -1,0 +1,56 @@
+{
+  "testData": true,
+  "productionAuthorized": false,
+  "humanAcceptance": "NOT PERFORMED",
+  "sourceCommit": "a48afacc34667adf9f092c55180e75861ca088a9",
+  "projectId": "project-bf35a723b8034bcb81a51e186c73ad9c",
+  "kind": "puzzle",
+  "scope": "backend-authored fixture-specific input/state assertions; no visual or human acceptance",
+  "status": "PASS",
+  "commands": [
+    {
+      "name": "fresh_import",
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/var/folders/9y/c3k_d7_n18vbjrms85z6kmxm0000gn/T/gm-gameplay-zdi8qec4/project",
+        "--editor",
+        "--import",
+        "--quit"
+      ],
+      "returnCode": 0,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | Started 项目初始化 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在扫描文件结构……\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在加载全局类名……\u001b[39m\u001b[0m\n[  33% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在校验 GDExtension……\u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在创建自动加载脚本……\u001b[39m\u001b[0m\n[  66% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在初始化插件……\u001b[39m\u001b[0m\n[  83% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在启动文件扫描……\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mfirst_scan_filesystem\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | Started 正在注册全局类…… (7 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  12% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  25% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  37% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  62% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | StudioRuntime\u001b[39m\u001b[0m\n[  75% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mupdate_scripts_classes\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | Started 正在加载编辑器 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | 正在加载编辑器布局……\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | 正在加载停靠面板……\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mloading_editor_layout\u001b[22m\n\u001b[0m\n",
+      "stderr": ""
+    },
+    {
+      "name": "gameplay",
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/var/folders/9y/c3k_d7_n18vbjrms85z6kmxm0000gn/T/gm-gameplay-zdi8qec4/project",
+        "--script",
+        "res://backend_gameplay.gd"
+      ],
+      "returnCode": 0,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\nBACKEND_GAMEPLAY_PROBE_PASS [\"initial nine-button diagonal board has zero moves\",\"lit button uses frozen object accent\",\"mouse selection 0 toggles only its orthogonal cross and counts once\",\"mouse selection 1 toggles only its orthogonal cross and counts once\",\"mouse selection 4 toggles only its orthogonal cross and counts once\",\"R echo does not reset the active board\",\"Reset button restores initial board and move count\",\"documented mouse solution wins in three moves\",\"win message renders after solving\",\"won board ignores further mouse selection\",\"R resets after win and restores enabled input\",\"Reset button clears a second win and its message\"]\n",
+      "stderr": ""
+    }
+  ],
+  "checks": [
+    "initial nine-button diagonal board has zero moves",
+    "lit button uses frozen object accent",
+    "mouse selection 0 toggles only its orthogonal cross and counts once",
+    "mouse selection 1 toggles only its orthogonal cross and counts once",
+    "mouse selection 4 toggles only its orthogonal cross and counts once",
+    "R echo does not reset the active board",
+    "Reset button restores initial board and move count",
+    "documented mouse solution wins in three moves",
+    "win message renders after solving",
+    "won board ignores further mouse selection",
+    "R resets after win and restores enabled input",
+    "Reset button clears a second win and its message"
+  ],
+  "fixturePath": "evidence/workflow/general/fixtures/light-grid"
+}

@@ -1,6 +1,6 @@
-# Ptah 本机工作台部署与维护说明书
+# 造物工作台部署与维护说明书
 
-本文面向在 macOS 上安装、启动和维护 Ptah 本机工作台的部署者。本文对应 r4-local-1 工作流和实现检查点 `13b3a03`。开始维护前，请先确认实际检出的 Git 版本。用户在页面中的完整操作步骤见[工作台用户说明书](USER-MANUAL.zh-CN.md)。
+本文面向在 macOS 上安装、启动和维护本机游戏制作工作台的部署者。工作台包含旧 collect-loop 工作流和新 `objects-v1` 通用对象工作流。开始维护前，请用 Git 核对实际检出版本及差异；不要把此前 `r4-local-1` 检查点当成本次通用工作流版本。用户操作见[工作台用户说明书](USER-MANUAL.zh-CN.md)。
 
 本手册说明当前已实现的本机能力。备份、升级、恢复等没有专用程序支持的操作会明确标为人工运维步骤。
 
@@ -22,13 +22,13 @@
 
 ## 1. 产品与部署模型
 
-Ptah 工作台由一个本机 Python HTTP 服务和静态浏览器前端组成。前端从同一服务的 `/studio/` 路径加载，通过同源 `/api` 与服务交互。 浏览器负责录入概念、选择图片用途、回答澄清问题、编辑受支持参数、提交制作表单和审阅候选结果。
+工作台由本机 Python HTTP 服务和静态 Studio 前端组成，前端通过同源 `/api` 与服务通信。默认访问 `http://127.0.0.1:8765/studio/`。后端持有项目路径、Git 仓库、隔离 worktree、原生 Codex session 启动方式、审批状态、验证命令和快照切换；浏览器不能传入 cwd、shell 命令、程序路径或权限配置。
 
-后端拥有项目路径、Git 仓库、隔离 worktree、Codex session 启动方式、验证命令、审批记录和发布快照。 浏览器不能提交本机 cwd、shell 命令、程序路径或执行配置。工作目录和验证命令由服务器代码固定管理。
+新项目通过 `objects-v1` 处理：只读策划 session 输出结构化问题、对象文档、制作任务和验收条件；用户确认完整计划后，后端冻结提案并启动另一条制作 session；独立验证完成后返回候选，用户体验并接受后才更新工作台快照。迭代请求把自然语言、实际字段变更和对象反馈分开保存。已有 collect-loop 项目继续由旧工作流处理，旧审批不会自动升级。
 
-制作完成、引擎验证通过和用户接受是三个不同状态。模型报告 `completed` 只表示回合结束，不能代替独立验证或用户决定。
+通用实现目标是 Godot 4、2D、GDScript。后端写入的对象文档和 `StudioRuntime` 桥接文件、GM 规格文件及验证器保持受保护。制作写入白名单为 `project.godot`、`scripts/**/*.gd`、`scenes/**/*.tscn`、`resources/**/*.tres` 及 `assets/` 下 PNG/JPEG/WebP；不接受插件、编辑器扩展、制作方测试或其它可执行入口。
 
-当前可用适配器只支持收集挑战模板。它不是通用游戏生成平台，也不支持随意指定玩法并自动转化为任意游戏。 相关结构与使用范围见[后端工作台说明](../backend/README.zh-CN.md)和[工作流实施记录](WORKFLOW-IMPLEMENTATION.zh-CN.md)。
+**验证状态（2026-10-09）：**隔离原生探针 r3 已完成两个非收集玩法的策划和制作 session，验证器用 Godot 4.6.3 对三轮结果执行干净导入和后端主场景短运行冒烟；Bridge Runner 另完成 speed 220→300 px/s 以及玩家青色（`#00FFFF`）反馈迭代。后续 fixture 专项玩法复测也通过：Light Grid 以真实 viewport 鼠标与 R 键检查角/边/中心规则、moves、三步胜利、胜后锁定和按钮/按键重置；Bridge Runner 检查两段跳跃路线、胜利、按 R 重置后再次获胜、坠落恢复，并验证 speed/cyan 参数保留。缺陷准确表现为“获胜后按 R 返回出生点，却因旧出口接触立即再次进入 WON”，不是一般跳跃后重开失败。修复证据和结果见[反馈修复记录](../evidence/workflow/general/reset-feedback-probe.json)、[Bridge Runner 复测](../evidence/workflow/general/bridge-gameplay-repaired-r2.json)和[Light Grid 玩法探针](../evidence/workflow/general/puzzle-gameplay.json)；Bridge Runner 检查对应源码版本 `b4d535762b38dbb932c886c4e46db10972d4c762`。所有探针均为测试数据（`testData=true`、`productionAuthorized=false`、`humanAcceptance=NOT PERFORMED`）。这些 fixture 专项断言不改变一般生产报告中玩法需求仍为 `NOT_TESTED` 的状态，也不构成用户验收。前两次探针的策划响应不是严格 JSON，因此在策划阶段失败；r3 才跑通完整制作链路。模型报告 `completed` 仅表示回合结束；技术 PASS 仅表示报告列出的检查通过。
 
 ## 2. 支持范围与部署前提
 
@@ -50,9 +50,11 @@ Ptah 工作台由一个本机 Python HTTP 服务和静态浏览器前端组成�
 
 ### 2.3 代码位置和检查点
 
-工作流代码、静态前端和受控模板必须一起保留在同一份仓库检出中。 版本基准为 `13b3a03` / `r4-local-1`。可用 `git status --short` 检查工作区是否含未提交修改。 此版本的后端入口为[`backend/server.py`](../backend/server.py)，工作流持久化和任务编排位于[`backend/coordinator.py`](../backend/coordinator.py)。 模型 session 驱动器位于[`backend/codex_driver.py`](../backend/codex_driver.py)，受控 Godot 验证位于[`backend/verification.py`](../backend/verification.py)。
+部署时应使用一份完整、来源清楚的 Git 检出，包括 `backend/`、`frontend/studio/`、`backend/templates/collect_loop/`、`backend/templates/general_2d/` 及固定 GM non-pk 来源。用 `git status --short` 和已审查的提交/分支确认版本，不要只复制单个 Python 文件。
 
-应用级部署记录和 Git 校验迁移说明见[`LOCAL-SETUP-GIT.zh-CN.md`](../LOCAL-SETUP-GIT.zh-CN.md)。 根目录[`AGENTS.md`](../AGENTS.md)规定构建期间禁止单独 SHA/MD5 哈希检查，当前维护应使用 Git 提交、Git 管理的对象身份和差异审阅。本说明书使用 Git 记录版本、变更范围与差异。
+主要实现入口：[`backend/server.py`](../backend/server.py)、旧工作流 [`backend/coordinator.py`](../backend/coordinator.py)、通用流程 [`backend/generic_workflow.py`](../backend/generic_workflow.py)、对象协议 [`backend/object_protocol.py`](../backend/object_protocol.py)、通用验证器 [`backend/general_verification.py`](../backend/general_verification.py)。通用工作流的协议和验收计划见[实施契约](GENERAL-GAME-TOOL-PLAN.zh-CN.md)。
+
+根目录 [`AGENTS.md`](../AGENTS.md)禁止构建期间独立 SHA/MD5 哈希检查。部署核对使用 Git 提交、Git 管理的对象引用和差异审阅；不要运行独立校验和脚本。
 
 ## 3. 首次安装
 
@@ -261,11 +263,11 @@ lsof -nP -iTCP:8765 -sTCP:LISTEN
 
 ## 6. 用户手册与部署者交接
 
-用户操作流程独立维护在[Ptah 工作台用户说明书](USER-MANUAL.zh-CN.md)，包含概念输入、澄清、表单确认、候选审阅、迭代和作业状态说明。
+用户操作流程独立维护在[工作台用户说明书](USER-MANUAL.zh-CN.md)，包含通用概念策划、对象字段与反馈、冻结计划、候选审阅、旧 collect-loop 兼容和作业状态说明。
 
-部署者交付时请告知用户本机 Studio URL、当前连接的是生产还是测试工作区，以及工作流只支持收集挑战模板。若页面出现“测试工作区”提示，确认和发布都只属于测试记录。
+部署者交付时请告知用户本机 Studio URL 和当前连接的是生产还是测试工作区。r3 原生探针属于独立测试 state-root，测试工作区中的合成接受不能迁移成生产批准；不得将该探针的报告、数据库、候选或项目仓库复制到生产工作区。若页面出现“测试工作区”提示，确认和发布都只属于测试记录。生产用户仍需在候选页启动本机 Godot 试玩，并按计划逐条给出自己的体验决定。
 
-用户需要了解图片用途、支持参数、确认含义或错误状态时，请交付用户说明书；不要让部署人员以口头确认代替用户在正式工作台做出的决定。Godot 本机预览一次最多运行 15 分钟，同时只允许一个预览进程；到时服务会结束预览。
+用户需要了解对象计划、字段值、反馈类别、确认含义或错误状态时，请交付用户说明书；不要让部署人员以口头确认代替用户在正式工作台做出的决定。Godot 本机预览一次最多运行 15 分钟，同时只允许一个预览进程；到时服务会结束预览。
 
 ## 7. 安全和隐私边界
 
@@ -279,9 +281,11 @@ lsof -nP -iTCP:8765 -sTCP:LISTEN
 
 ### 7.3 受控执行
 
-生产工作流通过服务器预设的 `workspace-write` 沙箱和 `on-request` 策略启动 Codex session，但 Studio 没有等待用户点击授权的界面。app-server 的文件变更和命令执行授权回调会被显式拒绝，权限请求不会获批；未知回调失败关闭。作业可能因此失败或进入待核实状态，不能等待用户在 Studio 弹窗批准。 程序限制制作文件范围，并将正式验证作为独立阶段。模型不能改写服务端项目路径或验证命令。不要通过扩大本机权限解决路径或依赖配置错误。
+生产工作流通过服务器预设的 Codex 执行配置启动 session。Studio 不提供等待授权回调的用户界面；权限请求会被拒绝，未知请求失败关闭。策划 session 使用只读工作目录，不应写入输入或项目；制作 session 只可修改对象计划授权的工程范围。冻结计划、对象文档、GM 规格、`StudioRuntime` 桥接和验证证据均由后端保护。
 
-“本机工作台”描述的是服务、项目管理和 Godot 验证的位置。Codex 使用当前用户配置的模型提供方；如果该提供方在远端，概念、制作表单及参考图会按该配置提交给模型服务。它不代表模型推理完全离线。Git 身份与范围审计用于本机协作变更检测，不能代替操作系统隔离或远程身份认证。
+通用 Godot 验证器会在干净的临时工程副本上导入并启动后端自带的主场景冒烟程序；临时副本不带入 `.godot` 缓存或 `.godotmaker` 审批记录。验证过程需要运行项目中的 GDScript。**当前没有已实证的 OS 级沙箱**，因此这属于本机合作型执行，不能抵御恶意或刻意对抗的工程代码。Git 写入范围和服务端记录用于检查文件变更，不等于操作系统隔离。
+
+“本机工作台”描述服务、项目管理和验证的运行地点，不代表模型推理完全离线。Codex 使用当前用户配置的模型提供方；若使用远端提供方，概念、计划、代码上下文及图片会按该提供方策略传输。
 
 ## 8. 状态目录、文件与权限
 
@@ -542,10 +546,10 @@ curl -i http://127.0.0.1:8765/api/workspace
 | Session 无法连接模型 | 当前运行服务用户的 provider 配置或认证不可用 | 核对实际选用的模型提供方和凭据；不要仅凭 `sessionDispatch=READY` 判断认证已通过 |
 | Codex 请求授权或工作流进入不确定状态 | app-server 回调需要处理，或协议请求不受支持 | Studio 不提供权限审批等待界面，相关回调会拒绝或失败关闭；不要等待浏览器批准或扩大本机权限 |
 | `Godot 4 executable was not found` | Godot 不在固定路径、`GODOT_BIN` 错误或未安装 | 检查 `GODOT_BIN`、PATH、Godot 可执行权限及固定 macOS 路径 |
-| Godot 验证失败 | 规则、导入、Git 改动范围或闭环检查失败 | 在 UI 打开验证报告，按第一条失败诊断处理，不要直接接受候选 |
+| 通用 Godot 验证失败 | 对象文档/源绑定不一致、Git 写入越界、存在多余忽略文件、干净导入失败或主场景无法加载 | 查看验证报告中的首条诊断；不要删除审批/GM 服务记录或直接接受候选。修复范围或代码后重新策划和确认。 |
 | 项目显示 `UNCERTAIN` | 服务重启时没有确认原制作或验证进程停止 | 通过“向服务对账”检查租约；确认进程组不可观测时保留阻塞并升级处理 |
 | 上传图片被拒绝 | 图片超限、类型/MIME 不符、编码损坏或超过像素限制 | 使用有效 PNG/JPEG/WebP，单张不超过 5 MiB，提案最多六张 |
-| 预览按钮不可用 | 候选尚未验证通过或预览已在运行 | 只对状态为 `READY_FOR_REVIEW` 或 `PUBLISHED` 且验证 PASS 的玩法候选预览；先关闭本机现有预览 |
+| 预览按钮不可用 | 候选没有形成、通用验证未通过或本机已有预览 | 先检查候选与报告状态并关闭现有预览。技术 PASS 仍需用户运行候选，且不代表玩法要求已经通过。 |
 | 恢复备份后 Git worktree 错误 | 只恢复了部分文件或路径发生变化 | 停止服务，核对完整备份和原绝对路径；不要手工修复数据库/worktree 指针 |
 
 ### 12.4 需要提供给维护者的信息
@@ -566,7 +570,7 @@ git status --short
 .venv/bin/python -m unittest discover -s backend/tests -p 'test*.py'
 ```
 
-前端 DOM/浏览器测试依赖前端开发依赖。执行前先阅读仓库内前端说明，并确保所用状态和浏览器都是测试用途。 真实 session 探针只能使用单独 `--state-root` 与 `--test-data`。不要把测试数据库、测试候选或合成接受记录合并到生产工作区。 任何制作或验证测试都应确认不会写入用户真实项目，且测试决策保留 `testData=true` 与 `productionAuthorized=false`。 部署冒烟检查应仅验证静态页面和只读 `/api/workspace` 响应。不要以启动真实制作 session 作为简单健康检查。 更新后重新核对生产启动命令、默认状态路径、监听地址、Godot 和 Codex 能力状态。 任何新增远程部署、多用户认证、数据库迁移、权限策略或游戏适配器都超出当前 r4-local-1 本机部署基准，需要单独设计与安全审查。
+前端 DOM/浏览器测试依赖前端开发依赖。执行前先阅读仓库内前端说明，并确保所用状态和浏览器都是测试用途。未来真实 session 探针仍必须使用单独 `--state-root` 与 `--test-data`；不要把测试数据库、测试候选或合成接受记录合并到生产工作区。任何制作或验证测试都应确认不会写入用户真实项目，且测试决策保留 `testData=true` 与 `productionAuthorized=false`。部署冒烟检查应仅验证静态页面和只读 `/api/workspace` 响应。不要以启动真实制作 session 作为简单健康检查。更新后重新核对生产启动命令、默认状态路径、监听地址、Godot 和 Codex 能力状态。任何新增远程部署、多用户认证、数据库迁移、权限策略、OS 沙箱或 3D/插件/音频等适配器都超出当前本机部署边界，需要单独设计与安全审查。fixture 专项玩法探针通过不等于用户试玩当前候选；通用候选的玩法证据仍需用户独立体验。
 
 ## 14. 部署完成检查表
 
@@ -585,7 +589,11 @@ git status --short
 
 ## 15. 当前已知限制
 
-当前只提供一个受控 collect-loop 模板，三个规则参数范围固定。其他题材、任意机制、自动素材生产和通用多模态策划尚未接入。 后端接受图片作为参考输入，但模板使用程序化图形；上传图像不会自动变成游戏运行资源。 服务只面向本机单用户使用。项目没有提供网络部署、远程认证、多用户角色、备份恢复程序或自动数据库迁移。 Godot 能力检查、预览路径与 verifier 的查找逻辑不完全一致。非标准 Godot 安装布局需要维护者逐处确认。 本工作流执行的模板验证不代表整个 GodotMaker/GM pipeline 的完整认证，也不执行导出、签名、发布或发行验收。 人类对游戏概念、规格和最终候选的判断仍是独立步骤。任何自动测试报告都不能冒充真人接受。
+通用路径已按稳定对象 ID、字段、关系、源绑定和需求建立流程，但当前范围只涵盖 Godot 4 的 2D GDScript 工程。插件、编辑器扩展、任意二进制资源、音频制作、远程协作、多人账号、导出签名和商店发布都不在当前写入或部署能力内。参考图片可以送入策划/制作流程，但上传本身不等于生成、许可核对或导入美术。
+
+验证器的技术报告只说明它实际运行的范围检查、干净导入和后端拥有的主场景冒烟。它不能由主场景启动推断所有玩法正确；候选中每条没有自动观察的游戏要求都仍需要人工体验。r3 已提供真实 Godot 引擎集成证据和两种游戏的端到端制作记录，但仅在隔离测试数据中完成。报告中的 `technicalStatus=PASS` 不等于玩法验收；不得把 mock、session 完成或合成测试接受描述为用户验收或生产批准。
+
+项目代码在本机同用户权限上下文中执行，没有 OS 级沙箱。Git 文件范围、临时副本和服务端审批记录是应用层控制，不会阻挡恶意代码读取或改动当前用户可访问的资源。上线给非可信输入或多人共享前，必须另行设计和验证进程、文件和网络隔离。旧 collect-loop 工程仍走原有流程；不存在自动迁移旧审批的功能。Bridge Runner 的获胜后重置缺陷已在指定 fixture 版本修复并通过专项复测；该证据不能推导为其它游戏或当前生产候选的玩法通过。人工验收仍未执行。
 
 ## 16. 实现参考
 
@@ -595,7 +603,9 @@ git status --short
 - [协调器项目、作业与隔离 worktree](../backend/coordinator.py)
 - [协调器预览与关停](../backend/coordinator.py)
 - [Codex app-server 驱动](../backend/codex_driver.py)
-- [Godot 查找和固定验证流程](../backend/verification.py)
-- [Godot 路径解析](../backend/verification.py)
+- [旧 collect-loop 验证器](../backend/verification.py)
+- [通用对象工作流与验证器](../backend/generic_workflow.py) · [通用验证器](../backend/general_verification.py)
+- [GM non-pk 来源与审批适配器](../backend/general_gm_integration.py) · [GM non-pk 源码说明](../sources/GodotMaker-non-pk/README.zh-CN.md)
+- [GameStudio 参考版本 0722921](https://github.com/openai/plugins/tree/0722921d5542fc593105c27bd52630babd8b8c2a/plugins/game-studio)
 - [Git 校验迁移与本机安装记录](../LOCAL-SETUP-GIT.zh-CN.md)
 - [仓库执行约束](../AGENTS.md)

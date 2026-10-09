@@ -15,7 +15,7 @@
   </header>
   <main id="app" class="shell" aria-live="polite">
     <section class="hero">
-      <div><p class="eyebrow">从想法到可运行的作品</p><h1>把一个想法，变成可继续调整的 Demo。</h1><p class="intro">先说说你想做什么。我们会一起明确本轮目标，制作并验证后，再把可编辑的结果带回这里。</p><p class="scope-note">当前本机原型限定为「收集挑战」模板和三个规则参数；澄清围绕此模板进行。图片是概念、风格或布局参考，不代表系统能理解任意游戏或自动生成原始美术素材。</p></div>
+      <div><p class="eyebrow">从想法到可运行的作品</p><h1>把一个想法，变成可继续调整的 Demo。</h1><p class="intro">先说说你想做什么。我们会一起明确本轮目标，制作并验证后，再把可编辑的结果带回这里。</p><p class="scope-note">工作台以项目对象、属性和关系为单位整理制作范围。图片是概念、风格或布局参考，是否纳入制作计划会在提案中单独说明。</p></div>
       <div class="hero-badge"><span class="spark" aria-hidden="true">造</span><span>你的工作台<br><b>始终在这里</b></span></div>
     </section>
     <div id="notice" class="notice hidden" role="alert"></div>
@@ -35,7 +35,7 @@
               <label class="field-label" for="project">制作目标</label>
               <select id="project" name="projectId"><option value="">创建一个新 Demo</option></select>
               <label class="field-label" for="concept">用自己的话描述</label>
-              <textarea id="concept" name="text" rows="4" maxlength="5000" placeholder="例如：做一个小型收集游戏，控制角色收集散落的星星，集齐后到达出口。" required></textarea>
+              <textarea id="concept" name="text" rows="4" maxlength="5000" placeholder="描述你想做的 2D 游戏、核心体验和最想先验证的部分。" required></textarea>
               <div class="upload-row"><label class="button secondary upload-button" for="images">添加图片</label><input id="images" type="file" accept="image/png,image/jpeg,image/webp" multiple><select id="asset-purpose" aria-label="图片用途"><option value="reference">概念参考</option><option value="style">风格参考</option><option value="layout">布局参考</option><option value="asset">素材输入</option></select><span id="asset-help" class="muted">PNG、JPEG、WebP，单张不超过 5 MB</span></div>
               <div id="image-list" class="image-list" aria-live="polite"></div>
               <div class="form-footer"><span class="muted">图片仅作为本轮参考，是否用于游戏由你决定。</span><button class="button primary" type="submit">梳理我的想法 <span aria-hidden="true">→</span></button></div>
@@ -44,6 +44,7 @@
           <section id="proposal-panel" class="panel hidden" aria-labelledby="proposal-title">
             <div class="panel-heading"><div><p class="eyebrow">一起明确本轮范围</p><h2 id="proposal-title">初步方案</h2></div><span id="proposal-status" class="status-pill">待确认</span></div>
             <div id="proposal-content"></div>
+            <div id="planning-status" class="notice hidden" role="status"></div>
             <form id="answers-form" class="hidden"><div id="questions"></div><button class="button primary" type="submit">提交回答</button></form>
             <div id="freeze-area" class="hidden">
               <div class="review-card"><h3>制作前请核对</h3><p>确认后将冻结本轮方案並发送给制作 session。你可以先返回修改想法。</p><label class="check-row"><input id="reviewed" type="checkbox"><span id="review-label">我已阅读并确认上面的方案和制作范围</span></label></div>
@@ -62,9 +63,11 @@
           <section id="workbench-panel" class="panel hidden" aria-labelledby="workbench-title">
             <div class="panel-heading"><div><p class="eyebrow">继续迭代</p><h2 id="workbench-title">当前工作台</h2></div><span id="snapshot-version" class="status-pill">读取中</span></div>
             <div id="snapshot-summary"></div><div id="candidate-preview" class="hidden"></div>
+            <section id="object-catalog" class="object-catalog hidden" aria-labelledby="object-catalog-title"><h3 id="object-catalog-title">项目对象</h3><p class="muted">选择对象查看说明、关系与文件绑定；本轮自然语言和反馈会关联到所选对象。</p><div id="object-list" class="object-list"></div><div id="object-detail" class="object-detail"></div></section>
             <div id="draft-state" class="draft-state" role="status"></div>
-            <form id="edit-form"><h3>提出下一步调整</h3><label class="field-label" for="edit-text">自然语言说明</label><textarea id="edit-text" rows="3" maxlength="3000" placeholder="例如：把移动速度稍微调快一些，其他规则保持不变。"></textarea>
-              <div class="parameter-grid"><label>收集目标 <span data-bound-for="goalCount">由项目能力确定</span><input name="goalCount" type="number" disabled></label><label>时限（秒） <span data-bound-for="durationSeconds">由项目能力确定</span><input name="durationSeconds" type="number" disabled></label><label>移动速度 <span data-bound-for="playerSpeed">由项目能力确定</span><input name="playerSpeed" type="number" disabled></label></div>
+            <form id="edit-form"><h3>提出下一步调整</h3><label class="field-label" for="edit-text">自然语言说明</label><textarea id="edit-text" rows="3" maxlength="3000" placeholder="说明对所选对象希望做什么调整。"></textarea>
+              <div id="selected-object-label" class="muted">未选择对象；可先从项目对象中选择。</div><div id="dynamic-fields" class="parameter-grid"></div>
+              <div id="feedback-editor" class="feedback-editor"><label class="field-label" for="feedback-message">对象反馈</label><textarea id="feedback-message" rows="2" maxlength="2000" placeholder="记录问题、视觉或行为反馈；反馈会单独发送，不会自动批准修改。"></textarea><div class="feedback-controls"><select id="feedback-category" aria-label="反馈类别"><option value="general">一般</option><option value="bug">问题</option><option value="visual">视觉</option><option value="behavior">行为</option></select><button id="add-feedback" class="button secondary" type="button">添加到所选对象</button></div><ul id="feedback-list" class="feedback-list"></ul></div>
               <div class="form-footer"><span id="capability-note" class="muted">仅显示此项目声明支持的调整。</span><button class="button primary" type="submit">整理本轮调整 <span aria-hidden="true">→</span></button></div>
             </form>
           </section>

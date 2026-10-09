@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "studio.objects.v1",
+  "dimension": "2d",
+  "title": "新游戏",
+  "summary": "等待确认的游戏制作计划。",
+  "objects": [
+    {
+      "id": "main-scene",
+      "kind": "scene",
+      "name": "主场景",
+      "description": "通用 2D 游戏入口场景。",
+      "sourceBindings": ["scenes/main.tscn", "scripts/main.gd"],
+      "fields": []
+    }
+  ],
+  "requirements": [
+    {
+      "id": "main-scene-loads",
+      "text": "游戏主场景可以加载并运行。",
+      "objectIds": ["main-scene"],
+      "verification": "manual"
+    }
+  ]
+}

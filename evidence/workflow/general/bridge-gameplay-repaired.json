@@ -1,0 +1,71 @@
+{
+  "testData": true,
+  "productionAuthorized": false,
+  "humanAcceptance": "NOT PERFORMED",
+  "sourceCommit": "b4d535762b38dbb932c886c4e46db10972d4c762",
+  "projectId": "project-9e2c49d78cc54824bdf85f3236419279",
+  "kind": "bridge",
+  "scope": "backend-authored fixture-specific input/state assertions; no visual or human acceptance",
+  "status": "PASS",
+  "commands": [
+    {
+      "name": "fresh_import",
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/var/folders/9y/c3k_d7_n18vbjrms85z6kmxm0000gn/T/gm-gameplay-7thpwtzy/project",
+        "--editor",
+        "--import",
+        "--quit"
+      ],
+      "returnCode": 0,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | Started 项目初始化 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在扫描文件结构……\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在加载全局类名……\u001b[39m\u001b[0m\n[  33% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在校验 GDExtension……\u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在创建自动加载脚本……\u001b[39m\u001b[0m\n[  66% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在初始化插件……\u001b[39m\u001b[0m\n[  83% ] \u001b[90m\u001b[1mfirst_scan_filesystem\u001b[22m | 正在启动文件扫描……\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mfirst_scan_filesystem\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | Started 正在注册全局类…… (9 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  10% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  20% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  30% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  40% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  50% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  60% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n[  70% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | StudioRuntime\u001b[39m\u001b[0m\n[  80% ] \u001b[90m\u001b[1mupdate_scripts_classes\u001b[22m | \u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mupdate_scripts_classes\u001b[22m\n\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | Started 正在加载编辑器 (5 steps)\u001b[39m\u001b[0m\n[   0% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | 正在加载编辑器布局……\u001b[39m\u001b[0m\n[  16% ] \u001b[90m\u001b[1mloading_editor_layout\u001b[22m | 正在加载停靠面板……\u001b[39m\u001b[0m\n\u001b[92m[ DONE ]\u001b[39m \u001b[1mloading_editor_layout\u001b[22m\n\u001b[0m\n",
+      "stderr": ""
+    },
+    {
+      "name": "gameplay",
+      "argv": [
+        "/Applications/Godot.app/Contents/MacOS/Godot",
+        "--headless",
+        "--path",
+        "/var/folders/9y/c3k_d7_n18vbjrms85z6kmxm0000gn/T/gm-gameplay-7thpwtzy/project",
+        "--script",
+        "res://backend_gameplay.gd"
+      ],
+      "returnCode": 0,
+      "stdout": "Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\nBACKEND_GAMEPLAY_PROBE: {\"checks\":[\"player speed uses the frozen object field\",\"speed 300 and cyan feedback survive the reset repair\",\"right input moves player\",\"jump input lifts player\",\"R reset restores spawn and playing state\",\"first jump lands on the raised second platform\",\"second jump lands on third platform\",\"actual route reaches exit and locks the won state\",\"R restarts after winning; observed state=0 x=100.0 exitOverlap=false\",\"fall threshold restores spawn\"],\"humanAcceptance\":\"NOT PERFORMED\",\"observedSpeed\":300.0,\"status\":\"PASS\"}\n",
+      "stderr": ""
+    }
+  ],
+  "checks": [
+    "player speed uses the frozen object field",
+    "speed 300 and cyan feedback survive the reset repair",
+    "right input moves player",
+    "jump input lifts player",
+    "R reset restores spawn and playing state",
+    "first jump lands on the raised second platform",
+    "second jump lands on third platform",
+    "actual route reaches exit and locks the won state",
+    "R restarts after winning; observed state=0 x=100.0 exitOverlap=false",
+    "fall threshold restores spawn"
+  ],
+  "observations": {
+    "checks": [
+      "player speed uses the frozen object field",
+      "speed 300 and cyan feedback survive the reset repair",
+      "right input moves player",
+      "jump input lifts player",
+      "R reset restores spawn and playing state",
+      "first jump lands on the raised second platform",
+      "second jump lands on third platform",
+      "actual route reaches exit and locks the won state",
+      "R restarts after winning; observed state=0 x=100.0 exitOverlap=false",
+      "fall threshold restores spawn"
+    ],
+    "humanAcceptance": "NOT PERFORMED",
+    "observedSpeed": 300.0,
+    "status": "PASS"
+  },
+  "fixturePath": "evidence/workflow/general/fixtures/bridge-runner-repaired"
+}

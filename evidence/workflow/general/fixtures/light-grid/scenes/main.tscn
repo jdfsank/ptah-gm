@@ -1,0 +1,80 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/rules.gd" id="2_rules"]
+[ext_resource type="Script" path="res://scripts/puzzle_board.gd" id="3_board"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/puzzle_input.gd" id="5_input"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_board_frame"]
+bg_color = Color(0.0705882, 0.101961, 0.156863, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.164706, 0.211765, 0.290196, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_left = 16
+corner_radius_bottom_right = 16
+
+[node name="LightGrid" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_main")
+metadata/object_id = "main-scene"
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0431373, 0.0705882, 0.12549, 1)
+
+[node name="BoardFrame" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 322.0
+offset_top = 112.0
+offset_right = 638.0
+offset_bottom = 428.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_board_frame")
+
+[node name="Rules" type="Node" parent="."]
+script = ExtResource("2_rules")
+metadata/object_id = "rules"
+
+[node name="PuzzleBoard" type="GridContainer" parent="."]
+layout_mode = 0
+offset_left = 338.0
+offset_top = 128.0
+offset_right = 622.0
+offset_bottom = 412.0
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
+script = ExtResource("3_board")
+metadata/object_id = "puzzle-board"
+
+[node name="HUD" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_hud")
+metadata/object_id = "hud"
+
+[node name="PuzzleInput" type="Node" parent="."]
+script = ExtResource("5_input")
+metadata/object_id = "main-scene"

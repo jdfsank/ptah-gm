@@ -51,10 +51,20 @@ def test_internal_types_and_reserved_fields_rejected(project, fields):
     assert not (project / ".godotmaker/stage.jsonl").exists()
 
 
+@pytest.mark.parametrize("object_id", ["1" * 40, "a" * 64])
+def test_stage_digest_fields_accept_native_git_object_id_lengths(object_id):
+    stage.validate_fields("verify", {"spec_digest": "git:blob:" + object_id})
+
+
+def test_stage_digest_fields_reject_legacy_sha_prefix():
+    with pytest.raises(ValueError, match="native Git blob identity"):
+        stage.validate_fields("verify", {"spec_digest": "sha256:" + "1" * 64})
+
+
 def acceptance_fields():
     return {"tag": "v0.1.0", "decision": "accept", "run_id": "run-1",
-            "spec_digest": "sha256:" + "1" * 64, "source_digest": "sha256:" + "2" * 64,
-            "test_digest": "sha256:" + "3" * 64,
+            "spec_digest": "git:blob:" + "1" * 40, "source_digest": "git:blob:" + "2" * 40,
+            "test_digest": "git:blob:" + "3" * 40,
             "evidence_ref": ".godotmaker/runs/run-1/manifest.json",
             "reviewed_profiles": ["desktop"]}
 
@@ -83,7 +93,8 @@ def test_bound_accept_needs_every_binding(project, missing):
 
 def test_resolution_needs_interactive_current_evidence(project):
     fields = {"feedback_id": "door", "resolved_run_id": "run-2", "resolution": "verified",
-              "spec_digest": "1" * 64, "source_digest": "2" * 64, "test_digest": "3" * 64}
+              "spec_digest": "git:blob:" + "1" * 40, "source_digest": "git:blob:" + "2" * 40,
+              "test_digest": "git:blob:" + "3" * 40}
     with pytest.raises(ValueError):
         stage.append_event(project, "fixgap", fields)
     assert stage.append_event(project, "fixgap", fields,
@@ -277,14 +288,14 @@ def evaluation_fields():
     fields = acceptance_fields()
     fields.pop("decision")
     fields.pop("reviewed_profiles")
-    fields["evaluation_digest"] = "sha256:" + "4" * 64
+    fields["evaluation_digest"] = "git:blob:" + "4" * 40
     return fields
 
 
 def test_bound_evaluator_event_retains_original_role_without_human_claim(project):
     event = stage.append_event(project, "evaluate", evaluation_fields())
     assert event["role"] == "evaluate"
-    assert event["evaluation_digest"] == "sha256:" + "4" * 64
+    assert event["evaluation_digest"] == "git:blob:" + "4" * 40
     assert "provenance" not in event
     archive = project / ".godotmaker/evaluation-runs/latest.json"
     assert archive.is_file()
@@ -302,12 +313,12 @@ def test_bound_evaluator_event_requires_complete_input_and_report_identity(proje
 
 def test_accept_can_bind_exact_evaluation_digest(project):
     fields = acceptance_fields()
-    fields["evaluation_digest"] = "sha256:" + "4" * 64
+    fields["evaluation_digest"] = "git:blob:" + "4" * 40
     event = stage.append_event(project, "accept", fields,
                                decision_provenance=stage.LOCAL_PROVENANCE)
     assert event["evaluation_digest"] == fields["evaluation_digest"]
     fields["evaluation_digest"] = "not-a-report-digest"
-    with pytest.raises(ValueError, match="SHA-256"):
+    with pytest.raises(ValueError, match="native Git blob identity"):
         stage.append_event(project, "accept", fields,
                            decision_provenance=stage.LOCAL_PROVENANCE)
 

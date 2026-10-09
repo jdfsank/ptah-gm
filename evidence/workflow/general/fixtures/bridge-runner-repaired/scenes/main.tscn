@@ -1,0 +1,225 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/level_controller.gd" id="1_level"]
+[ext_resource type="Script" path="res://scripts/input_actions.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="3_player"]
+[ext_resource type="Script" path="res://scripts/view_setup.gd" id="4_view"]
+[ext_resource type="Script" path="res://scripts/procedural_visuals.gd" id="5_visuals"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="6_hud"]
+
+[sub_resource type="RectangleShape2D" id="PlayerShape"]
+size = Vector2(24, 32)
+
+[sub_resource type="RectangleShape2D" id="PlatformOneShape"]
+size = Vector2(260, 24)
+
+[sub_resource type="RectangleShape2D" id="PlatformTwoShape"]
+size = Vector2(210, 24)
+
+[sub_resource type="RectangleShape2D" id="PlatformThreeShape"]
+size = Vector2(270, 24)
+
+[sub_resource type="RectangleShape2D" id="ExitShape"]
+size = Vector2(40, 60)
+
+[sub_resource type="StyleBoxFlat" id="HUDPanelStyle"]
+bg_color = Color(0.075, 0.13, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19, 0.3, 0.41, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[node name="MainScene" type="Node2D"]
+script = ExtResource("1_level")
+metadata/object_id = "main-scene"
+metadata/project_id = "bridge-runner"
+metadata/mechanism_ids = PackedStringArray("win", "fall-restart", "manual-reset", "level-state")
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/level_controller.gd")
+
+[node name="InputActions" type="Node" parent="."]
+script = ExtResource("2_input")
+metadata/object_id = "input-actions"
+metadata/source_bindings = PackedStringArray("scripts/input_actions.gd")
+
+[node name="FixedView" type="Camera2D" parent="."]
+position = Vector2(480, 270)
+script = ExtResource("4_view")
+metadata/object_id = "fixed-view"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/view_setup.gd")
+
+[node name="ProceduralRendering" type="Node2D" parent="."]
+z_index = -1
+script = ExtResource("5_visuals")
+shape_kind = "background"
+shape_size = Vector2(960, 540)
+fill_color = Color(0.055, 0.09, 0.145, 1)
+metadata/object_id = "procedural-rendering"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/procedural_visuals.gd")
+
+[node name="Platforms" type="Node2D" parent="."]
+metadata/object_id = "platform-collision"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/player.gd")
+
+[node name="PlatformOne" type="StaticBody2D" parent="Platforms"]
+position = Vector2(40, 430)
+collision_layer = 1
+collision_mask = 2
+metadata/object_id = "platform-one"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platforms/PlatformOne"]
+position = Vector2(130, 12)
+shape = SubResource("PlatformOneShape")
+
+[node name="Visual" type="Node2D" parent="Platforms/PlatformOne"]
+script = ExtResource("5_visuals")
+shape_kind = "platform"
+shape_size = Vector2(260, 24)
+fill_color = Color(0.17, 0.28, 0.39, 1)
+accent_color = Color(0.38, 0.69, 0.83, 1)
+
+[node name="PlatformTwo" type="StaticBody2D" parent="Platforms"]
+position = Vector2(370, 350)
+collision_layer = 1
+collision_mask = 2
+metadata/object_id = "platform-two"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platforms/PlatformTwo"]
+position = Vector2(105, 12)
+shape = SubResource("PlatformTwoShape")
+
+[node name="Visual" type="Node2D" parent="Platforms/PlatformTwo"]
+script = ExtResource("5_visuals")
+shape_kind = "platform"
+shape_size = Vector2(210, 24)
+fill_color = Color(0.17, 0.28, 0.39, 1)
+accent_color = Color(0.38, 0.69, 0.83, 1)
+
+[node name="PlatformThree" type="StaticBody2D" parent="Platforms"]
+position = Vector2(650, 410)
+collision_layer = 1
+collision_mask = 2
+metadata/object_id = "platform-three"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platforms/PlatformThree"]
+position = Vector2(135, 12)
+shape = SubResource("PlatformThreeShape")
+
+[node name="Visual" type="Node2D" parent="Platforms/PlatformThree"]
+script = ExtResource("5_visuals")
+shape_kind = "platform"
+shape_size = Vector2(270, 24)
+fill_color = Color(0.17, 0.28, 0.39, 1)
+accent_color = Color(0.38, 0.69, 0.83, 1)
+
+[node name="Exit" type="Area2D" parent="."]
+position = Vector2(860, 350)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+metadata/object_id = "exit"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/level_controller.gd")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Exit"]
+position = Vector2(20, 30)
+shape = SubResource("ExitShape")
+
+[node name="Visual" type="Node2D" parent="Exit"]
+script = ExtResource("5_visuals")
+shape_kind = "exit"
+shape_size = Vector2(40, 60)
+fill_color = Color(0.17, 0.71, 0.4, 1)
+accent_color = Color(0.48, 1, 0.65, 1)
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(100, 414)
+collision_layer = 2
+collision_mask = 1
+floor_snap_length = 4.0
+script = ExtResource("3_player")
+metadata/object_id = "player"
+metadata/mechanism_ids = PackedStringArray("horizontal-movement", "jump")
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/player.gd")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("PlayerShape")
+
+[node name="Visual" type="Node2D" parent="Player"]
+position = Vector2(-12, -16)
+script = ExtResource("5_visuals")
+shape_kind = "player"
+shape_size = Vector2(24, 32)
+fill_color = Color(0, 1, 1, 1)
+accent_color = Color(1, 0.9, 0.65, 1)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 10
+script = ExtResource("6_hud")
+metadata/object_id = "hud"
+metadata/source_bindings = PackedStringArray("scenes/main.tscn", "scripts/hud.gd")
+
+[node name="Panel" type="Panel" parent="HUD"]
+offset_left = 40.0
+offset_top = 28.0
+offset_right = 920.0
+offset_bottom = 188.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("HUDPanelStyle")
+
+[node name="Title" type="Label" parent="HUD/Panel"]
+offset_left = 24.0
+offset_top = 10.0
+offset_right = 850.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 30
+text = "Bridge Runner"
+
+[node name="Goal" type="Label" parent="HUD/Panel"]
+offset_left = 24.0
+offset_top = 54.0
+offset_right = 850.0
+offset_bottom = 80.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.93, 1)
+theme_override_font_sizes/font_size = 20
+text = "Cross the platforms to the green exit."
+
+[node name="Controls" type="Label" parent="HUD/Panel"]
+offset_left = 24.0
+offset_top = 84.0
+offset_right = 850.0
+offset_bottom = 110.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Left/Right: move | Space: jump | R: reset"
+
+[node name="Status" type="Label" parent="HUD/Panel"]
+offset_left = 24.0
+offset_top = 119.0
+offset_right = 850.0
+offset_bottom = 148.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.65, 0.74, 0.83, 1)
+theme_override_font_sizes/font_size = 22
+text = "Falling restarts the level."
+
+[node name="ExitLabel" type="Label" parent="HUD"]
+offset_left = 850.0
+offset_top = 322.0
+offset_right = 910.0
+offset_bottom = 348.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.48, 1, 0.65, 1)
+theme_override_font_sizes/font_size = 18
+text = "EXIT"
+horizontal_alignment = 1

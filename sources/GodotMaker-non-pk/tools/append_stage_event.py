@@ -177,6 +177,7 @@ BINDING_FIELDS = {"run_id", "spec_digest", "source_digest", "test_digest",
 LOCAL_PROVENANCE = {"kind": "local_interactive", "input": "tty", "recorded_by": "gm_review"}
 FRONTEND_PROVENANCE_FIELDS = {"kind", "input", "recorded_by", "event_id", "operator_id",
                               "phase", "production_authorized", "test_data"}
+GIT_BLOB_IDENTITY = re.compile(r"git:blob:(?:[0-9a-f]{40}|[0-9a-f]{64})")
 
 
 def validate_fields(role: str, fields: dict[str, object]) -> None:
@@ -209,8 +210,8 @@ def validate_fields(role: str, fields: dict[str, object]) -> None:
                 raise ValueError("provenance must come from a valid TTY or registered frontend approval")
         elif not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key} must be a nonempty string")
-        if key.endswith("_digest") and not re.fullmatch(r"(?:sha256:)?[0-9a-f]{64}", str(value)):
-            raise ValueError(f"{key} must be a SHA-256 hex digest")
+        if key.endswith("_digest") and not GIT_BLOB_IDENTITY.fullmatch(str(value)):
+            raise ValueError(f"{key} must be a native Git blob identity")
     if "tag" in fields and not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", str(fields["tag"])):
         raise ValueError("tag must be a SemVer tag such as v0.1.0")
     if "git_spec_ref" in fields and not re.fullmatch(r"git:blob:(?:[0-9a-f]{40}|[0-9a-f]{64})", str(fields["git_spec_ref"])):

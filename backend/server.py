@@ -1,4 +1,4 @@
-"""Same-origin loopback HTTP boundary for the independent Ptah Studio UI.
+"""Same-origin loopback HTTP boundary for the independent GM Studio UI.
 
 The service never accepts a client supplied cwd, command, or host path. Project
 ownership and workflow state stay in the coordinator; this module serves static
@@ -335,6 +335,11 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                         "capabilities": self.server.context.coordinator.capabilities(),
                     }
                 return self._send_json(200, result)
+            match = re.fullmatch(r"/api/proposals/([^/]+)", path)
+            if match:
+                proposal_id = unquote(match.group(1))
+                _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                return self._send_json(200, self.server.context.coordinator.get_proposal(proposal_id))
             match = re.fullmatch(r"/api/assets/([^/]+)", path)
             if match:
                 asset_id = unquote(match.group(1))
@@ -449,17 +454,27 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                 body = self._read_json()
                 _exact_fields(
                     body,
-                    {"text", "projectId", "assetIds", "expectedPublicationRevision"},
+                    {"text", "projectId", "assetIds", "expectedPublicationRevision", "workflow", "changeRequest"},
                     {"text"},
                 )
                 text = body["text"]
-                if not isinstance(text, str) or not text.strip() or len(text) > 5000:
+                structured_change = body.get("changeRequest")
+                has_structured_change = (body.get("projectId") is not None and
+                    isinstance(structured_change, dict) and
+                    bool(structured_change.get("fields") or structured_change.get("feedback")))
+                if not isinstance(text, str) or len(text) > 5000 or (not text.strip() and not has_structured_change):
                     raise RequestError(
-                        400, "Concept text must contain 1–5000 characters."
+                        400, "Provide concept text or explicit object fields/feedback for an existing project."
                     )
                 project_id = body.get("projectId")
                 if project_id is not None:
                     _required_string(project_id, "projectId", pattern=ID_RE)
+                workflow = body.get("workflow")
+                if workflow is not None and workflow not in {"objects-v1", "collect-loop-v1"}:
+                    raise RequestError(400, "Unsupported workflow version.")
+                change_request = body.get("changeRequest")
+                if change_request is not None and not isinstance(change_request, dict):
+                    raise RequestError(400, "changeRequest must be a structured object.")
                 asset_ids = body.get("assetIds", [])
                 if (
                     not isinstance(asset_ids, list)
@@ -487,8 +502,20 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                     project_id=project_id,
                     asset_ids=asset_ids,
                     expected_publication_revision=expected_pub,
+                    **({"workflow": workflow} if workflow is not None else {}),
+                    **({"change_request": change_request} if change_request is not None else {}),
                 )
                 return self._send_json(201, result)
+
+            match = re.fullmatch(r"/api/proposals/([^/]+)/(cancel|reconcile)", path)
+            if match:
+                proposal_id, action = unquote(match.group(1)), match.group(2)
+                _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                body = self._read_json()
+                _exact_fields(body, set(), set())
+                handler = getattr(self.server.context.coordinator, action + "_proposal")
+                result = handler(operator_id=self.server.context.operator_id, proposal_id=proposal_id)
+                return self._send_json(200, result)
 
             match = re.fullmatch(r"/api/proposals/([^/]+)/answers", path)
             if match:
@@ -724,7 +751,7 @@ def make_server(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Start the local-only Ptah Studio API and frontend."
+        description="Start the local-only GM Studio API and frontend."
     )
     parser.add_argument(
         "--project-root",
@@ -748,7 +775,7 @@ def main():
         test_data=args.test_data,
     )
     server = make_server(coordinator, host=args.host, port=args.port)
-    print(f"Ptah Studio is available at http://127.0.0.1:{server.server_port}/studio/")
+    print(f"GM Studio is available at http://127.0.0.1:{server.server_port}/studio/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,0 +1,31 @@
+# Game Design Document — Light Grid
+
+## Concept
+A small 2D puzzle in a fixed 960×540 window. Clicking a square toggles its light and its orthogonal neighbors. Turn every light off to win. Display moves, concise instructions, a Reset button, and a win message. Use procedural squares and labels without external assets, plugins, network, or audio.
+
+## Object Model
+- `main-scene` (scene): Light Grid Main Scene. Owns scene composition and coordinates input, puzzle state, board rendering, and HUD updates. Input actions are handled separately in puzzle_input.gd. Sources: scenes/main.tscn, scripts/main.gd, scripts/puzzle_input.gd.
+- `puzzle-board` (entity): Puzzle Board. Renders nine square buttons in three rows and three columns. Emits cell selections and displays state supplied by the rules. Lit squares use the chosen accent; unlit squares use a dark neutral fill. ON and OFF labels distinguish states independently of color. Sources: scripts/puzzle_board.gd.
+- `puzzle-board.accent-color` (choice): Accent color; current value `"#38BDF8"`; editable `true`.
+- `rules` (rule): Lights Out Rules. Owns the nine light states, legal toggles, deterministic start generation, move count, solved detection, and reset. Contains no rendering or input handling. Sources: scripts/rules.gd.
+- `hud` (interface): Puzzle HUD. Displays Light Grid, instructions, move count, Reset, and the win message. Emits reset requests without mutating puzzle state. Sources: scripts/hud.gd.
+
+## Requirements
+- `project-scope`: Implement one local Godot 4 GDScript 2D puzzle. Use procedural visuals and native controls only. Exclude external assets, plugins, network access, audio, additional levels, persistence, and export packaging from this MVP. (objects: main-scene, puzzle-board, rules, hud; requested check: manual; verification state: pending).
+- `fixed-window`: Run in a fixed, non-resizable 960×540 window. Keep the complete board, title, instructions, move counter, Reset button, and win message visible without scrolling or overlap. (objects: main-scene, puzzle-board, hud; requested check: manual; verification state: pending).
+- `board-layout`: Display exactly nine evenly spaced square buttons as a centered 3×3 grid. Each button shows its current ON or OFF state. Provide clear hover and pressed feedback while retaining readable state labels. (objects: puzzle-board; requested check: manual; verification state: pending).
+- `toggle-rule`: Before a win, one mouse activation toggles the selected cell and each in-bounds orthogonal neighbor exactly once. Do not toggle diagonal cells or wrap at edges. A corner affects three cells, an edge-center affects four, and the center affects five. (objects: puzzle-board, rules; requested check: manual; verification state: pending).
+- `solvable-start`: Generate the fixed start from nine OFF cells by applying the toggle rule to (0,0), (1,1), and (2,2), in order, using zero-based row and column coordinates. The required starting state has only the main diagonal ON. Seeding does not count as player moves. Replaying these three selections is the documented solution. (objects: rules; requested check: manual; verification state: pending).
+- `move-count`: Display Moves: 0 on launch and reset. Increment the count once for each accepted cell activation, regardless of how many lights change. Preserve the final count when the puzzle is won. (objects: rules, hud; requested check: manual; verification state: pending).
+- `win-state`: Detect a win when all nine lights are OFF after a player move. Show All lights out! and retain the final move count. Disable further cell activations until reset; keep both reset controls available. (objects: rules, puzzle-board, hud; requested check: manual; verification state: pending).
+- `reset-controls`: The Reset button and the R key invoke the same reset operation before and after winning. Reset reconstructs the fixed starting board, sets moves to zero, clears the win message, and enables cell input. Ignore repeated key events from holding R. R must work when a board button or Reset has focus. (objects: main-scene, puzzle-board, rules, hud; requested check: manual; verification state: pending).
+- `hud-content`: Show the title Light Grid and concise instructions explaining that clicking toggles a square and its orthogonal neighbors, the goal is all lights OFF, and R resets. Keep the move counter and Reset button visible throughout play. (objects: hud; requested check: manual; verification state: pending).
+- `editable-accent`: Expose puzzle-board.accent-color as the editable choice field defined in this document. Game source obtains its frozen value through StudioRuntime.object_value() and uses the selected hexadecimal color for lit squares. Each supported choice must retain readable labels and a clear distinction from unlit squares. (objects: puzzle-board; requested check: manual; verification state: pending).
+- `separate-responsibilities`: Use scripts/rules.gd for simulation, scripts/puzzle_board.gd for board rendering, scripts/puzzle_input.gd for routing cell selections and the R reset input action, scripts/hud.gd for interface rendering and reset requests, and scripts/main.gd for coordination. Bind the main scene to scenes/main.tscn. Keep input and interface code from directly mutating the rules' board state. (objects: main-scene, puzzle-board, rules, hud; requested check: manual; verification state: pending).
+- `manual-gameplay-review`: Later manual review must inspect the initial diagonal pattern; check corner, edge-center, and center toggles from fresh resets; check one move per activation; solve with (0,0), (1,1), (2,2) and inspect the three-move win; check post-win input lock; exercise both reset controls during play and after winning; and inspect each accent choice. Record observed results without claiming formal verification. (objects: main-scene, puzzle-board, rules, hud; requested check: manual; verification state: pending).
+
+## Scope and Evidence
+The object document is the structured source of intent. Planning questions must be resolved before implementation. Technical smoke cannot claim unobserved game behavior; human acceptance remains a separate user decision.
+
+## Current Iteration Input
+- No structured field changes or feedback were attached to this planning turn.
