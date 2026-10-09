@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>造物工作台</title>
+  <link rel="stylesheet" href="./studio.css">
+  <script type="module" src="./studio.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="造物工作台首页"><span class="brand-mark">造</span><span>造物工作台</span></a>
+    <div class="top-actions"><span id="connection" class="connection pending" role="status">正在连接本机服务…</span><a class="legacy-link" href="/legacy/">旧版工作台</a></div>
+  </header>
+  <main id="app" class="shell" aria-live="polite">
+    <section class="hero">
+      <div><p class="eyebrow">从想法到可运行的作品</p><h1>把一个想法，变成可继续调整的 Demo。</h1><p class="intro">先说说你想做什么。我们会一起明确本轮目标，制作并验证后，再把可编辑的结果带回这里。</p><p class="scope-note">当前本机原型限定为「收集挑战」模板和三个规则参数；澄清围绕此模板进行。图片是概念、风格或布局参考，不代表系统能理解任意游戏或自动生成原始美术素材。</p></div>
+      <div class="hero-badge"><span class="spark" aria-hidden="true">造</span><span>你的工作台<br><b>始终在这里</b></span></div>
+    </section>
+    <div id="notice" class="notice hidden" role="alert"></div>
+    <section id="blocked" class="panel blocked hidden" aria-labelledby="blocked-title">
+      <div class="panel-heading"><div><p class="eyebrow">当前状态</p><h2 id="blocked-title">服务能力尚未就绪</h2></div><span class="status-pill blocked-pill">暂不可用</span></div>
+      <p id="blocked-copy">后端尚未提供新工作流所需的接口，当前页面不会模拟制作、确认或验证结果。</p>
+      <button id="retry" class="button secondary" type="button">重新连接</button>
+    </section>
+    <section id="workspace" class="hidden">
+      <div id="test-banner" class="test-banner hidden" role="status">测试工作区：此处的确认和发布只用于验证，不构成生产授权或真实用户验收。</div>
+      <div class="workspace-heading"><div><p class="eyebrow">工作区</p><h2 id="workspace-name">正在读取工作区…</h2></div><button id="refresh" class="button quiet" type="button">刷新状态</button></div>
+      <div class="grid">
+        <div class="main-column">
+          <section class="panel" aria-labelledby="concept-title">
+            <div class="panel-heading"><div><p class="eyebrow">第一步 · 说出想法</p><h2 id="concept-title">你想做怎样的游戏？</h2></div><span class="step-number">01</span></div>
+            <form id="concept-form">
+              <label class="field-label" for="project">制作目标</label>
+              <select id="project" name="projectId"><option value="">创建一个新 Demo</option></select>
+              <label class="field-label" for="concept">用自己的话描述</label>
+              <textarea id="concept" name="text" rows="4" maxlength="5000" placeholder="例如：做一个小型收集游戏，控制角色收集散落的星星，集齐后到达出口。" required></textarea>
+              <div class="upload-row"><label class="button secondary upload-button" for="images">添加图片</label><input id="images" type="file" accept="image/png,image/jpeg,image/webp" multiple><select id="asset-purpose" aria-label="图片用途"><option value="reference">概念参考</option><option value="style">风格参考</option><option value="layout">布局参考</option><option value="asset">素材输入</option></select><span id="asset-help" class="muted">PNG、JPEG、WebP，单张不超过 5 MB</span></div>
+              <div id="image-list" class="image-list" aria-live="polite"></div>
+              <div class="form-footer"><span class="muted">图片仅作为本轮参考，是否用于游戏由你决定。</span><button class="button primary" type="submit">梳理我的想法 <span aria-hidden="true">→</span></button></div>
+            </form>
+          </section>
+          <section id="proposal-panel" class="panel hidden" aria-labelledby="proposal-title">
+            <div class="panel-heading"><div><p class="eyebrow">一起明确本轮范围</p><h2 id="proposal-title">初步方案</h2></div><span id="proposal-status" class="status-pill">待确认</span></div>
+            <div id="proposal-content"></div>
+            <form id="answers-form" class="hidden"><div id="questions"></div><button class="button primary" type="submit">提交回答</button></form>
+            <div id="freeze-area" class="hidden">
+              <div class="review-card"><h3>制作前请核对</h3><p>确认后将冻结本轮方案並发送给制作 session。你可以先返回修改想法。</p><label class="check-row"><input id="reviewed" type="checkbox"><span id="review-label">我已阅读并确认上面的方案和制作范围</span></label></div>
+              <button id="freeze" class="button primary" type="button" disabled>确认方案并继续</button>
+              <p id="frozen-note" class="notice hidden">此表单已冻结。继续操作会使用相同表单编号，不会重新提交确认。</p>
+              <button id="resume-packet" class="button primary hidden" type="button">恢复并继续此制作表单</button>
+            </div>
+          </section>
+          <section id="job-panel" class="panel hidden" aria-labelledby="job-title">
+            <div class="panel-heading"><div><p class="eyebrow">制作与验证</p><h2 id="job-title">本轮进度</h2></div><span id="job-status" class="status-pill">排队中</span></div>
+            <p id="job-message" class="muted"></p><div id="job-evidence"></div>
+            <div id="cancel-area" class="hidden"><button id="cancel" class="button danger" type="button">请求取消</button><span class="muted">服务确认停止前，项目仍处于制作中。</span></div>
+            <div id="reconcile-area" class="hidden"><button id="reconcile" class="button secondary" type="button">向服务对账此作业</button><span class="muted">不会自动重新派发；仅读取本机服务记录和执行状态。</span></div>
+            <div id="candidate-area" class="hidden"></div>
+          </section>
+          <section id="workbench-panel" class="panel hidden" aria-labelledby="workbench-title">
+            <div class="panel-heading"><div><p class="eyebrow">继续迭代</p><h2 id="workbench-title">当前工作台</h2></div><span id="snapshot-version" class="status-pill">读取中</span></div>
+            <div id="snapshot-summary"></div><div id="candidate-preview" class="hidden"></div>
+            <div id="draft-state" class="draft-state" role="status"></div>
+            <form id="edit-form"><h3>提出下一步调整</h3><label class="field-label" for="edit-text">自然语言说明</label><textarea id="edit-text" rows="3" maxlength="3000" placeholder="例如：把移动速度稍微调快一些，其他规则保持不变。"></textarea>
+              <div class="parameter-grid"><label>收集目标 <span data-bound-for="goalCount">由项目能力确定</span><input name="goalCount" type="number" disabled></label><label>时限（秒） <span data-bound-for="durationSeconds">由项目能力确定</span><input name="durationSeconds" type="number" disabled></label><label>移动速度 <span data-bound-for="playerSpeed">由项目能力确定</span><input name="playerSpeed" type="number" disabled></label></div>
+              <div class="form-footer"><span id="capability-note" class="muted">仅显示此项目声明支持的调整。</span><button class="button primary" type="submit">整理本轮调整 <span aria-hidden="true">→</span></button></div>
+            </form>
+          </section>
+        </div>
+        <aside class="side-column">
+          <section class="panel compact"><p class="eyebrow">项目</p><div id="project-list" class="project-list"><p class="muted">等待服务连接</p></div></section>
+          <section class="panel compact"><p class="eyebrow">最近制作</p><div id="job-list" class="job-list"><p class="muted">还没有制作记录</p></div></section>
+          <section class="panel compact note-panel"><p class="eyebrow">版本与保存</p><p>草稿保存在此浏览器，并按项目和版本区分。制作结果会先作为候选显示；只有服务返回确认后，当前版本才会更新。</p><p id="persistence-note" class="muted">正在检查本机草稿存储…</p></section>
+        </aside>
+      </div>
+    </section>
+    <footer class="page-footer">本机工作台 · 制作和运行由本机服务管理 <span id="api-version"></span></footer>
+  </main>
+  <dialog id="rebase-dialog" aria-labelledby="rebase-title"><form method="dialog"><div class="panel-heading"><div><p class="eyebrow">草稿基线有变化</p><h2 id="rebase-title">检查草稿重关联</h2></div></div><div id="rebase-content"></div><p class="muted">确认前，旧草稿和当前已发布版本都保持不变。</p><div class="dialog-actions"><button class="button secondary" value="keep">保留旧草稿</button><button id="confirm-rebase" class="button primary" value="rebase">预览后更新草稿基线</button></div></form></dialog>
+</body>
+</html>

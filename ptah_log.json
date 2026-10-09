@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "module": "ptah",
+  "updated_at": "2026-10-09T07:35:48.370765+00:00",
+  "summary": {
+    "attempted": 1,
+    "active": 0,
+    "completed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "cancelled": 0,
+    "superseded": 0
+  },
+  "tasks": [
+    {
+      "task_id": "WORKFLOW-R4-IMPLEMENT",
+      "task_revision": "r4",
+      "attempt": 1,
+      "status": "completed",
+      "started_at": "2026-10-09T05:35:01.061176+00:00",
+      "finished_at": "2026-10-09T07:35:48.370765+00:00",
+      "objective": "Implement authorized frontend/backend workflow with native sessions, durable approvals and verified Godot return",
+      "result": "Completed bounded collect-loop frontend/backend prototype with durable approvals, isolated native sessions, independent verification, evidence and seven implementation self-check rounds. Human production game acceptance not performed.",
+      "changed_files": [
+        "backend/",
+        "frontend/studio/",
+        "frontend/tests/studio-qa.cjs",
+        "frontend/package.json",
+        "frontend/bridge/gm_contract.py",
+        "frontend/bridge/gm-capability-lock.json",
+        "sources/velvet-eclipse/tools/",
+        "sources/GodotMaker-non-pk/tools/",
+        "tools/run_workflow_probe.py",
+        "tools/run_codex_image_probe.py",
+        "start-studio.command",
+        "docs/WORKFLOW-IMPLEMENTATION.zh-CN.md",
+        "docs/WORKFLOW-IMPLEMENTATION-SELF-CHECK.zh-CN.md",
+        "evidence/workflow/"
+      ],
+      "verification": [
+        {
+          "check": "backend regression",
+          "result": "PASS",
+          "test_count": 65
+        },
+        {
+          "check": "frontend npm test + Studio QA",
+          "result": "PASS",
+          "python_test_count": 81
+        },
+        {
+          "check": "native three-session loop",
+          "result": "PASS",
+          "evidence": "evidence/workflow/integration/real-workflow-probe.json"
+        },
+        {
+          "check": "no-edit rejection",
+          "result": "EXPECTED REJECTION",
+          "evidence": "evidence/workflow/integration/final-source-gate-rejection.json"
+        },
+        {
+          "check": "self-check",
+          "result": "PASS; final three clean rounds",
+          "evidence": "evidence/workflow/self-check-rounds.json"
+        }
+      ],
+      "acceptance_ref": "docs/WORKFLOW-IMPLEMENTATION.zh-CN.md",
+      "next_action": "User may start a real project in production Studio; each game specification and candidate acceptance remains a separate explicit user decision."
+    }
+  ]
+}

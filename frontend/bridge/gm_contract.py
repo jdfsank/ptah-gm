@@ -236,7 +236,8 @@ import git_baseline
 root = Path(sys.argv[1])
 spec = gm.extract_spec(root)
 events = gm.read_events(root)
-confirmed = any(e.get('role')=='gdd' and e.get('tag')==spec['tag'] and e.get('spec_digest')==spec['spec_digest'] and e.get('provenance',{}).get('kind')=='local_interactive' for e in events)
+current_spec_git_ref = gm.spec_git_ref(spec, root)
+confirmed = any(gm._spec_confirmation_matches(e, spec, current_spec_git_ref, root) for e in events)
 status = gm.status(root)
 run = None
 if status.get('run'):

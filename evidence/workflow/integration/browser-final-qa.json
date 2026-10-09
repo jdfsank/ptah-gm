@@ -1,0 +1,11 @@
+{
+  "testData": true,
+  "productionAuthorized": false,
+  "testCandidateRestored": true,
+  "testPublicationRevision": 3,
+  "productionProjects": 0,
+  "productionJobs": 0,
+  "humanAcceptance": "NOT PERFORMED",
+  "testConsole": [],
+  "productionConsole": []
+}

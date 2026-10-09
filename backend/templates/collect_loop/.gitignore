@@ -1,0 +1,4 @@
+.godot/
+.godotmaker/frontend-approval.json
+.godotmaker/stage.jsonl
+.godotmaker/run.lock

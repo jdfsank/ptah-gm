@@ -1,0 +1,10 @@
+{
+  "testData": false,
+  "productionAuthorized": true,
+  "projectCount": 0,
+  "jobCount": 0,
+  "humanProductionApprovals": "NOT PERFORMED",
+  "gracefulShutdownObserved": true,
+  "portReleasedAfterShutdown": true,
+  "restartObserved": true
+}

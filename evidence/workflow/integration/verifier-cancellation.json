@@ -1,0 +1,26 @@
+{
+  "testData": true,
+  "productionAuthorized": false,
+  "observedLiveGodotChild": true,
+  "threadStopped": true,
+  "groupGone": true,
+  "terminationConfirmed": true,
+  "result": {
+    "errorCode": "VERIFY_CANCELLED",
+    "message": "已请求停止验证进程，等待整个进程组退出。"
+  },
+  "lease": {
+    "argv": [
+      "/Users/typ/Desktop/godot_project/ptah-gm/local-codex-handoff-20261008-compact/.venv/bin/python",
+      "-m",
+      "backend.verification_worker",
+      "/Users/typ/Desktop/godot_project/ptah-gm/local-codex-handoff-20261008-compact/.workbench/probe-r4-final-20261009/jobs/job-79c0c4e4849e483891bec7139dce606e/worktree",
+      "IMPLEMENTATION"
+    ],
+    "cwd": "/Users/typ/Desktop/godot_project/ptah-gm/local-codex-handoff-20261008-compact/.workbench/probe-r4-final-20261009/jobs/job-79c0c4e4849e483891bec7139dce606e/worktree",
+    "pid": 8228,
+    "processGroupId": 8228,
+    "startedAt": "2026-10-09T06:46:05.589723+00:00"
+  },
+  "status": "PASS"
+}

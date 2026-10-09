@@ -1,0 +1,16 @@
+{
+  "sessionId": "01a11f28-5381-7db1-8787-1142292cb7e0",
+  "turnId": "01a11f28-5425-7720-a1bb-b6b813cafaa1",
+  "turnStatus": "approval_denied",
+  "expected": {
+    "file": "test-config.json",
+    "test_parameter": "after_codex_probe"
+  },
+  "observed": {
+    "test_parameter": "before"
+  },
+  "baselineFile": "evidence/workflow/session-probe/fixture-baseline.json",
+  "gitDiff": "",
+  "formalVerificationCertified": false,
+  "note": "Read-only native session requested write approval; driver declined. This attempt made no change."
+}

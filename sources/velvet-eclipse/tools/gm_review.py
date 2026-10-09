@@ -34,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
             command.add_argument("--reviewed-profile", action="append", default=[])
         if name == "resolve-feedback":
             command.add_argument("--id", required=True)
+        if name == "confirm-spec":
+            command.add_argument("--frontend-event-id", help="Consume a backend-registered frontend approval event")
     command = commands.add_parser("smoke")
     command.add_argument("--fixture", choices=("one_room_loop",), required=True)
     command.add_argument("--output", required=True, type=Path)
@@ -61,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "feedback":
             result = review.add_feedback(args.project, args.run, review.load_json(args.file))
         elif args.command == "confirm-spec":
-            result = review.confirm_spec(args.project)
+            result = review.confirm_spec(args.project, args.frontend_event_id)
         elif args.command == "decision":
             result = review.decision(args.project, args.run, args.choice, args.reviewed_profile)
         elif args.command == "bind-evaluation":

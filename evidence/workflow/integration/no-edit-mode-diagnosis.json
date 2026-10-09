@@ -1,0 +1,21 @@
+{
+  "testData": true,
+  "productionAuthorized": false,
+  "result": "The rejected no-edit sessions used default execution mode, not plan mode. No automatic retry or permission widening was performed.",
+  "sessions": [
+    {
+      "rolloutFile": "rollout-2026-10-09T15-17-59-01a11f86-a136-7e23-b577-f71eb37644ad.jsonl",
+      "observedModes": [
+        "default",
+        "default"
+      ]
+    },
+    {
+      "rolloutFile": "rollout-2026-10-09T15-21-59-01a11f8a-4cd7-7411-b022-6b4a366e3e08.jsonl",
+      "observedModes": [
+        "default",
+        "default"
+      ]
+    }
+  ]
+}

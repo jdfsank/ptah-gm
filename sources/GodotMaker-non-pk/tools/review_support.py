@@ -18,11 +18,17 @@ import platform
 import re
 import shutil
 import signal
+import sqlite3
+import stat
 import subprocess
 import sys
 import uuid
 
 from agent_runtime import detect_agent, godotmaker_yaml, read_godot_path
+from frontend_approval import (
+    ApprovalContext, ApprovalError, consume_frontend_approval,
+    validate_durable_approval_record,
+)
 
 BASELINE = "1d4702caa2ac5fdbe1b0139e1787691cb52ae290"
 RESULT_CODES = {"PASS": 0, "FAIL": 1, "BLOCKED": 2, "ERROR": 3}
@@ -396,6 +402,117 @@ def extract_spec(project: Path) -> dict:
     return {"tag": tag.group(1), "spec_digest": digest_bytes(canonical(docs)), "text": docs, "profiles": profiles}
 
 
+def spec_git_ref(spec: dict, project: Path) -> str:
+    """Git blob identity for canonical normative spec text, independent of legacy digest fields."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project), "hash-object", "--stdin"],
+            input=canonical(spec["text"]), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, check=False, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ReviewError("Cannot derive Git identity for current specification", "BLOCKED") from exc
+    object_id = result.stdout.decode("ascii", "replace").strip()
+    if result.returncode or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", object_id):
+        raise ReviewError("Cannot derive Git identity for current specification", "BLOCKED")
+    return "git:blob:" + object_id
+
+
+def frontend_approval_binding(project: Path) -> dict:
+    """Load only the backend-registered binding at its fixed project path."""
+    path = safe_child(project, ".godotmaker/frontend-approval.json")
+    if not path.is_file():
+        raise ReviewError("Backend frontend approval binding is missing", "BLOCKED")
+    binding = load_json(path)
+    required = {"schemaVersion", "storePath", "operatorId", "projectId", "testData", "productionAuthorized",
+                "proposalId", "packetId", "jobId", "candidateId", "revision"}
+    if not isinstance(binding, dict) or set(binding) != required or binding["schemaVersion"] != 1:
+        raise ReviewError("Backend frontend approval binding has an unsupported schema", "BLOCKED")
+    if type(binding["testData"]) is not bool or type(binding["productionAuthorized"]) is not bool:
+        raise ReviewError("Backend approval authorization flags must be booleans", "BLOCKED")
+    for field in ("operatorId", "projectId", "storePath"):
+        if not isinstance(binding[field], str) or not binding[field].strip():
+            raise ReviewError(f"Backend approval binding has invalid {field}", "BLOCKED")
+    store_path = Path(binding["storePath"])
+    if not store_path.is_absolute() or store_path.is_symlink() or not store_path.is_file():
+        raise ReviewError("Registered approval database path is unsafe or missing", "BLOCKED")
+    if stat.S_IMODE(store_path.stat().st_mode) & 0o077:
+        raise ReviewError("Registered approval database must be private to its owner", "BLOCKED")
+    if hasattr(os, "getuid") and store_path.stat().st_uid != os.getuid():
+        raise ReviewError("Registered approval database must be owned by the current user", "BLOCKED")
+    return binding
+
+
+class SQLiteFrontendApprovalStore:
+    """Read/consume the registered approval table with a single-use transaction."""
+    def __init__(self, path: Path):
+        self.path = path
+
+    def get(self, event_id: str):
+        uri = self.path.as_uri() + "?mode=ro"
+        connection = None
+        try:
+            connection = sqlite3.connect(uri, uri=True)
+            row = connection.execute(
+                "SELECT payload FROM approvals WHERE id = ? AND consumed = 0", (event_id,)
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise ReviewError(f"Cannot read registered frontend approval: {exc}", "BLOCKED") from exc
+        finally:
+            if connection is not None:
+                connection.close()
+        return strict_json(row[0]) if row else None
+
+    def consume_once(self, event_id: str) -> bool:
+        try:
+            connection = sqlite3.connect(self.path, timeout=5)
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                cursor = connection.execute(
+                    "UPDATE approvals SET consumed = 1 WHERE id = ? AND consumed = 0", (event_id,)
+                )
+                connection.commit()
+                return cursor.rowcount == 1
+            finally:
+                connection.close()
+        except sqlite3.Error as exc:
+            raise ReviewError(f"Cannot consume registered frontend approval: {exc}", "BLOCKED") from exc
+
+    def get_consumed(self, event_id: str):
+        connection = None
+        try:
+            connection = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
+            row = connection.execute(
+                "SELECT payload, consumed FROM approvals WHERE id = ?", (event_id,)
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise ReviewError(f"Cannot verify consumed frontend approval: {exc}", "BLOCKED") from exc
+        finally:
+            if connection is not None:
+                connection.close()
+        return strict_json(row[0]) if row and row[1] == 1 else None
+
+
+def consume_registered_frontend_approval(project: Path, event_id: str, spec: dict) -> dict:
+    binding = frontend_approval_binding(project)
+    if binding["testData"] or not binding["productionAuthorized"]:
+        raise ReviewError("Test-mode or unauthorized approvals cannot confirm production specifications", "BLOCKED")
+    context = ApprovalContext(
+        operator_id=binding["operatorId"], project_id=binding["projectId"],
+        phase="specification", proposal_id=binding["proposalId"],
+        packet_id=binding["packetId"], job_id=binding["jobId"],
+        candidate_id=binding["candidateId"], revision=binding["revision"],
+            git_spec_ref=spec_git_ref(spec, project), run_id=None,
+        test_data=binding["testData"], production_authorized=binding["productionAuthorized"],
+    )
+    try:
+        return consume_frontend_approval(
+            {"eventId": event_id}, context, SQLiteFrontendApprovalStore(Path(binding["storePath"]))
+        )
+    except ApprovalError as exc:
+        raise ReviewError(str(exc), "BLOCKED") from exc
+
+
 def runner_digest(project: Path, tests: dict) -> str:
     tools = {p.name: digest_file(p) for p in Path(__file__).parent.glob("*.py")}
     configs = {}
@@ -723,6 +840,51 @@ def pending_feedback(project: Path, run_id: str | None = None) -> list[dict]:
     return pending
 
 
+def _spec_confirmation_matches(event: dict, spec: dict, current_git_ref: str, project: Path) -> bool:
+    if event.get("role") != "gdd" or event.get("tag") != spec["tag"] or event.get("spec_digest") != spec["spec_digest"]:
+        return False
+    provenance = event.get("provenance", {})
+    if provenance.get("kind") == "local_interactive":
+        return True
+    if not (
+        provenance.get("kind") == "interactive_frontend"
+        and provenance.get("phase") == "specification"
+        and provenance.get("production_authorized") is True
+        and provenance.get("test_data") is False
+        and bool(provenance.get("event_id"))
+        and bool(provenance.get("operator_id"))
+        and event.get("git_spec_ref") == current_git_ref
+    ):
+        return False
+    try:
+        binding = frontend_approval_binding(project)
+        if binding["testData"] is not False or binding["productionAuthorized"] is not True:
+            return False
+        if (provenance.get("operator_id") != binding["operatorId"]
+                or event.get("git_spec_ref") != current_git_ref):
+            return False
+        store = SQLiteFrontendApprovalStore(Path(binding["storePath"]))
+        stored = store.get_consumed(str(provenance["event_id"]))
+        if stored is None:
+            return False
+        context = ApprovalContext(
+            operator_id=binding["operatorId"], project_id=binding["projectId"],
+            phase="specification", proposal_id=binding["proposalId"],
+            packet_id=binding["packetId"], job_id=binding["jobId"],
+            candidate_id=binding["candidateId"], revision=binding["revision"],
+            git_spec_ref=current_git_ref, run_id=None,
+            test_data=binding["testData"], production_authorized=binding["productionAuthorized"],
+        )
+        validated = validate_durable_approval_record(str(provenance["event_id"]), stored, context)
+        return (
+            validated["action"] == "approve"
+            and validated["provenance"] == provenance
+            and stored.get("action") == "approve"
+        )
+    except (ApprovalError, ReviewError, OSError, TypeError, KeyError):
+        return False
+
+
 def _gate_unlocked(project: Path, run_id: str | None, require_accept: bool) -> dict:
     reasons = []
     run = _run_path(project, run_id)
@@ -800,7 +962,8 @@ def _gate_unlocked(project: Path, run_id: str | None, require_accept: bool) -> d
     evaluation_issues, evaluation_digest = evaluation_gate_issues(project, run, manifest)
     reasons.extend(evaluation_issues)
     events = read_events(project)
-    confirmed = any(e.get("role") == "gdd" and e.get("tag") == spec["tag"] and e.get("spec_digest") == current["spec_digest"] and e.get("provenance", {}).get("kind") == "local_interactive" for e in events)
+    current_spec_git_ref = spec_git_ref(spec, project)
+    confirmed = any(_spec_confirmation_matches(e, spec, current_spec_git_ref, project) for e in events)
     if not confirmed:
         reasons.append("needs_human: current GDD/PLAN specification confirmation")
     feedback = pending_feedback(project, manifest["run_id"])
@@ -905,11 +1068,20 @@ def interactive_confirmation(prompt: str, expected: str):
         raise ReviewError("Human confirmation deferred", "BLOCKED")
 
 
-def confirm_spec(project: Path) -> dict:
+def confirm_spec(project: Path, frontend_event_id: str | None = None) -> dict:
     from append_stage_event import append_event
     project = project_path(project)
     with OperationLock(project):
         spec = extract_spec(project)
+        if frontend_event_id is not None:
+            approval = consume_registered_frontend_approval(project, frontend_event_id, spec)
+            event = append_event(
+                project, "gdd",
+                {"tag": spec["tag"], "spec_digest": spec["spec_digest"],
+                 "git_spec_ref": spec_git_ref(spec, project)},
+                decision_provenance=approval["provenance"],
+            )
+            return {"result": "PASS", "event": event}
         interactive_confirmation(f"Confirm the current GDD and PLAN are consistent and these exact requirements/platforms are approved:\n{spec['text']['PLAN.md']}", spec["spec_digest"])
         if extract_spec(project)["spec_digest"] != spec["spec_digest"]:
             raise ReviewError("Specification changed during confirmation", "BLOCKED")

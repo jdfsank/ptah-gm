@@ -8,7 +8,14 @@
 **/.venv/
 **/__pycache__/
 **/*.pyc
+**/.ruff_cache/
 **/.DS_Store
 **/.workbench.sqlite3*
 **/.godotmaker/runs/
 **/.godotmaker-gdunit-*/
+**/.godotmaker/frontend-approval.json
+**/.godotmaker/stage.jsonl
+**/.godotmaker/run.lock
+/.workbench/
+/.selfcheck/
+/evidence/workflow/*/schema/

@@ -1,0 +1,234 @@
+{
+  "project": ".",
+  "rounds": [
+    {
+      "round": 1,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "security-approval-binding",
+        "concurrency-process-leases",
+        "data-integrity-freeze-inventory",
+        "api-contract-studio-controls",
+        "documentation-evidence-status"
+      ],
+      "dynamic_subjects": [
+        "security-approval-binding",
+        "concurrency-process-leases",
+        "data-integrity-freeze-inventory",
+        "api-contract-studio-controls",
+        "documentation-evidence-status"
+      ],
+      "issues_found": 7,
+      "issues_fixed": 7,
+      "smoke": "pass",
+      "clean": false
+    },
+    {
+      "round": 2,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "robustness-timeout-quarantine",
+        "backward-compat-legacy-source-lock",
+        "data-integrity-rebase-drafts",
+        "boundary-json-exponent",
+        "resource-usage-startup-shutdown"
+      ],
+      "dynamic_subjects": [
+        "robustness-timeout-quarantine",
+        "backward-compat-legacy-source-lock",
+        "data-integrity-rebase-drafts",
+        "boundary-json-exponent",
+        "resource-usage-startup-shutdown"
+      ],
+      "issues_found": 3,
+      "issues_fixed": 3,
+      "smoke": "pass",
+      "clean": false
+    },
+    {
+      "round": 3,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "concurrency-response-generation",
+        "error-handling-project-load",
+        "security-client-execution-fields",
+        "determinism-candidate-publication",
+        "testability-cross-project-regression"
+      ],
+      "dynamic_subjects": [
+        "concurrency-response-generation",
+        "error-handling-project-load",
+        "security-client-execution-fields",
+        "determinism-candidate-publication",
+        "testability-cross-project-regression"
+      ],
+      "issues_found": 7,
+      "issues_fixed": 7,
+      "smoke": "pass",
+      "clean": false
+    },
+    {
+      "round": 4,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "data-integrity-rebase-confirm-cancel",
+        "robustness-no-storage-draft",
+        "security-production-execution-seams",
+        "boundary-producer-cache-files",
+        "error-transparency-model-no-edit"
+      ],
+      "dynamic_subjects": [
+        "data-integrity-rebase-confirm-cancel",
+        "robustness-no-storage-draft",
+        "security-production-execution-seams",
+        "boundary-producer-cache-files",
+        "error-transparency-model-no-edit"
+      ],
+      "issues_found": 3,
+      "issues_fixed": 3,
+      "smoke": "pass",
+      "clean": false
+    },
+    {
+      "round": 5,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "concurrency-rebase-read-write-return",
+        "data-integrity-reviewed-draft-content",
+        "compatibility-native-default-mode",
+        "logging-isolated-failure-evidence",
+        "maintainability-final-interface-map"
+      ],
+      "dynamic_subjects": [
+        "concurrency-rebase-read-write-return",
+        "data-integrity-reviewed-draft-content",
+        "compatibility-native-default-mode",
+        "logging-isolated-failure-evidence",
+        "maintainability-final-interface-map"
+      ],
+      "issues_found": 0,
+      "issues_fixed": 0,
+      "smoke": "pass",
+      "clean": true
+    },
+    {
+      "round": 6,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "documentation-certification-limits",
+        "config-consistency-production-store",
+        "resource-usage-verifier-cleanup",
+        "backward-compat-reviewed-source-mismatch",
+        "dependency-health-local-launch"
+      ],
+      "dynamic_subjects": [
+        "documentation-certification-limits",
+        "config-consistency-production-store",
+        "resource-usage-verifier-cleanup",
+        "backward-compat-reviewed-source-mismatch",
+        "dependency-health-local-launch"
+      ],
+      "issues_found": 0,
+      "issues_fixed": 0,
+      "smoke": "pass",
+      "clean": true
+    },
+    {
+      "round": 7,
+      "subjects": [
+        "correctness",
+        "comparison",
+        "standards",
+        "emoji",
+        "style",
+        "smoke",
+        "security-checkpoint-file-scope",
+        "documentation-launch-handoff",
+        "testability-final-regression-inventory",
+        "data-integrity-evidence-links",
+        "resource-usage-test-surface-cleanup"
+      ],
+      "dynamic_subjects": [
+        "security-checkpoint-file-scope",
+        "documentation-launch-handoff",
+        "testability-final-regression-inventory",
+        "data-integrity-evidence-links",
+        "resource-usage-test-surface-cleanup"
+      ],
+      "issues_found": 0,
+      "issues_fixed": 0,
+      "smoke": "pass",
+      "clean": true
+    }
+  ],
+  "streak": 3,
+  "used_dynamic_subjects": [
+    "security-approval-binding",
+    "concurrency-process-leases",
+    "data-integrity-freeze-inventory",
+    "api-contract-studio-controls",
+    "documentation-evidence-status",
+    "robustness-timeout-quarantine",
+    "backward-compat-legacy-source-lock",
+    "data-integrity-rebase-drafts",
+    "boundary-json-exponent",
+    "resource-usage-startup-shutdown",
+    "concurrency-response-generation",
+    "error-handling-project-load",
+    "security-client-execution-fields",
+    "determinism-candidate-publication",
+    "testability-cross-project-regression",
+    "data-integrity-rebase-confirm-cancel",
+    "robustness-no-storage-draft",
+    "security-production-execution-seams",
+    "boundary-producer-cache-files",
+    "error-transparency-model-no-edit",
+    "concurrency-rebase-read-write-return",
+    "data-integrity-reviewed-draft-content",
+    "compatibility-native-default-mode",
+    "logging-isolated-failure-evidence",
+    "maintainability-final-interface-map",
+    "documentation-certification-limits",
+    "config-consistency-production-store",
+    "resource-usage-verifier-cleanup",
+    "backward-compat-reviewed-source-mismatch",
+    "dependency-health-local-launch",
+    "security-checkpoint-file-scope",
+    "documentation-launch-handoff",
+    "testability-final-regression-inventory",
+    "data-integrity-evidence-links",
+    "resource-usage-test-surface-cleanup"
+  ],
+  "stagnation_streak": 0,
+  "last_issue_ids": []
+}

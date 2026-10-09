@@ -1,7 +1,7 @@
 {
   "frameworkRevision": "c16d4bb8091af784fc801ca6734e79d6b17b136e",
   "version_scheme": "git",
-  "adaptation": "local-git-baseline-v1",
+  "adaptation": "local-git-baseline-v1+interactive-frontend-r4",
   "original_checkpoint": "handoff-v6-original",
   "files": {
     ".agents/skills/gm-asset/SKILL.md": "git:100644:blob:e47d73dd0baa1d4412c242229c2e69179a9398f1",
@@ -12,7 +12,7 @@
     ".agents/skills/gm-verify/SKILL.md": "git:100644:blob:5353eacdab19a0a77edd31c8237d7e1ba6db798e",
     "tools/_version.py": "git:100644:blob:e20b0f562c1ee7a1ef654e38e6580e3f798e192d",
     "tools/agent_runtime.py": "git:100644:blob:7d9104744a84eec960245f279bddfccf5084aa6e",
-    "tools/append_stage_event.py": "git:100644:blob:f96cfc8ecc1d1f754d7aa42a924a121795f6c9da",
+    "tools/append_stage_event.py": "git:100644:blob:e6d7b0482f386f184f8be7e2b32e91349a165d7a",
     "tools/asset_action_batch_merge.py": "git:100644:blob:86270e2cf5244ff8cfd03edba0a0e5da50b89d9b",
     "tools/asset_action_process.py": "git:100644:blob:fd9e95c095aa88d8249fb5379540a816632670b2",
     "tools/asset_animated_bundle_contract_check.py": "git:100644:blob:b599fd1b7e36d901fbfcf5e9861f5e887aba68a1",
@@ -44,13 +44,14 @@
     "tools/check_project.py": "git:100644:blob:1632117889d071961b3798f517aa9b7dd88762cf",
     "tools/codex_image_claim.py": "git:100644:blob:a8919b6c0bbcc907fa2334240cfdf95e69b65ff1",
     "tools/git_baseline.py": "git:100644:blob:9f36f0bac4de1e84353693cd6b94d3f13a651525",
-    "tools/gm_review.py": "git:100644:blob:e37cab09f40bf44c455c470333dd30d4403c0ee8",
+    "tools/gm_review.py": "git:100644:blob:6250d8a4613b2e7948440a47de5d7e071fb511ee",
     "tools/godot_output.py": "git:100644:blob:905b31deea887626fc5c073c5d878e55aef0bbd5",
     "tools/migrate.py": "git:100644:blob:eab4e0e517239b6e6882fa4c046152d46d550d53",
     "tools/project_config.py": "git:100644:blob:4e4f396c89d09a8accba5e48fc14add1226a2560",
     "tools/publish.py": "git:100644:blob:0fa3314a23d2349a7e57e011b6dc8ffc880d1daa",
-    "tools/review_support.py": "git:100644:blob:4ac7ba8e722e80c972cfff46d0ddeed371bac61f",
+    "tools/review_support.py": "git:100644:blob:60cfd7aad3143ece63a0ea8af4e550dbe3342097",
     "tools/run_verify.py": "git:100644:blob:d7267b031cc282f59fdf61182faf4bca0924d5ae",
-    "tools/seal_tag.py": "git:100644:blob:9ac459d7c35f87f1c5415fbabfa7f710836de7c6"
+    "tools/seal_tag.py": "git:100644:blob:9ac459d7c35f87f1c5415fbabfa7f710836de7c6",
+    "tools/frontend_approval.py": "git:100644:blob:6a7a9a3aedb53c301f8abaa46a962d4a69ea886e"
   }
 }
