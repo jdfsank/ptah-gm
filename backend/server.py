@@ -302,7 +302,8 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
 
     def _path(self):
         parsed = urlsplit(self.path)
-        if parsed.query or parsed.fragment:
+        # Studio restores project/stage from the page URL; API paths stay exact.
+        if parsed.fragment or (parsed.query and parsed.path != "/studio/"):
             raise RequestError(
                 400, "Query parameters are not accepted on this endpoint."
             )
@@ -313,6 +314,20 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             return self._error(403, "Only the configured loopback origin is allowed.")
         try:
             path = self._path()
+            scoped_project = None
+            project_route = re.fullmatch(r"/api/projects/([^/]+)(/.*)", path)
+            if project_route:
+                scoped_project = unquote(project_route.group(1))
+                _required_string(scoped_project, "projectId", pattern=ID_RE)
+                path = project_route.group(2)
+            if path == "/workspace" and scoped_project:
+                return self._send_json(200, self.server.context.coordinator.project_workspace(scoped_project))
+            if path == "/workbench" and scoped_project:
+                return self._send_json(200, self.server.context.coordinator.workbench(scoped_project))
+            if scoped_project and not re.match(r"/(?:assets|proposals|packets|jobs)(?:/|$)", path):
+                raise RequestError(404, "Unknown project-scoped route.")
+            if scoped_project and path.startswith("/") and path not in {"/settings", "/workspace"}:
+                path = "/api" + path
             if path in {"/studio", "/legacy"}:
                 self.send_response(308)
                 self.send_header("Location", path + "/")
@@ -328,7 +343,10 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                     },
                 )
             if path == "/api/workspace":
-                result = self.server.context.coordinator.workspace()
+                summarize = getattr(self.server.context.coordinator, "workspace_summary", None)
+                result = summarize() if callable(summarize) else self.server.context.coordinator.workspace()
+                if isinstance(result, dict):
+                    result = {**result, "jobs": [], "proposals": [], "packets": []}
                 if isinstance(result, dict) and "capabilities" not in result:
                     result = {
                         **result,
@@ -339,11 +357,18 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 proposal_id = unquote(match.group(1))
                 _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                if not scoped_project:
+                    raise RequestError(404, "Project-scoped route required.")
+                proposal = self.server.context.coordinator.require_project_resource(scoped_project, "proposal", proposal_id)
+                self.server.context.coordinator.validate_project_assets(scoped_project, proposal.get("assets", []))
                 return self._send_json(200, self.server.context.coordinator.get_proposal(proposal_id))
             match = re.fullmatch(r"/api/assets/([^/]+)", path)
             if match:
                 asset_id = unquote(match.group(1))
                 _required_string(asset_id, "assetId", pattern=ID_RE)
+                if not scoped_project:
+                    raise RequestError(404, "Project-scoped route required.")
+                self.server.context.coordinator.require_project_asset(scoped_project, asset_id)
                 file_path, mime_type = self.server.context.coordinator.asset_file(
                     asset_id
                 )
@@ -381,9 +406,21 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 job_id = unquote(match.group(1))
                 _required_string(job_id, "jobId", pattern=ID_RE)
+                if not scoped_project:
+                    raise RequestError(404, "Project-scoped route required.")
+                self.server.context.coordinator.require_project_resource(scoped_project, "job", job_id)
                 return self._send_json(
                     200, self.server.context.coordinator.get_job(job_id)
                 )
+            match = re.fullmatch(r"/api/packets/([^/]+)", path)
+            if match:
+                packet_id = unquote(match.group(1))
+                _required_string(packet_id, "packetId", pattern=ID_RE)
+                if not scoped_project:
+                    raise RequestError(404, "Project-scoped route required.")
+                packet = self.server.context.coordinator.require_project_resource(scoped_project, "packet", packet_id)
+                self.server.context.coordinator.validate_project_assets(scoped_project, packet.get("assets", []))
+                return self._send_json(200, packet)
             match = re.fullmatch(r"/api/projects/([^/]+)/workbench", path)
             if match:
                 project_id = unquote(match.group(1))
@@ -428,6 +465,36 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             )
         try:
             path = self._path()
+            scoped_project = None
+            project_route = re.fullmatch(r"/api/projects/([^/]+)(/.*)", path)
+            if project_route:
+                scoped_project = unquote(project_route.group(1))
+                _required_string(scoped_project, "projectId", pattern=ID_RE)
+                path = project_route.group(2)
+            if scoped_project and path != "/settings" and not re.match(r"/(?:assets|proposals|packets|jobs|concepts)(?:/|$)", path):
+                raise RequestError(404, "Unknown project-scoped route.")
+            if scoped_project and path.startswith("/") and path != "/settings":
+                path = "/api" + path
+            if path == "/api/projects" and scoped_project is None:
+                body = self._read_json()
+                _exact_fields(body, {"title", "workflow"}, {"title", "workflow"})
+                if body["workflow"] != "objects-v1":
+                    raise RequestError(400, "New projects must use objects-v1.")
+                project = self.server.context.coordinator.create_project(
+                    operator_id=self.server.context.operator_id, title=body["title"], workflow=body["workflow"])
+                return self._send_json(201, {"project": project})
+            if path == "/settings" and scoped_project:
+                body = self._read_json()
+                _exact_fields(body, {"title", "archived"}, set())
+                if not body:
+                    raise RequestError(400, "Provide at least one project setting.")
+                project = self.server.context.coordinator.update_project_settings(
+                    operator_id=self.server.context.operator_id, project_id=scoped_project,
+                    title=body.get("title"), archived=body.get("archived"))
+                return self._send_json(200, {"project": project})
+            if path.startswith("/api/") and not scoped_project and path not in {"/api/projects", "/api/workspace"}:
+                # Resource mutations must carry an explicit project scope.
+                raise RequestError(404, "Project-scoped route required.")
             if path == "/api/assets":
                 body = self._read_json(max_bytes=MAX_ASSET_JSON_BYTES)
                 _exact_fields(
@@ -447,6 +514,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                     mime_type=body["mimeType"],
                     data_base64=body["dataBase64"],
                     purpose=body["purpose"],
+                    project_id=scoped_project,
                 )
                 return self._send_json(201, {"asset": asset})
 
@@ -467,6 +535,12 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                         400, "Provide concept text or explicit object fields/feedback for an existing project."
                     )
                 project_id = body.get("projectId")
+                if scoped_project:
+                    if project_id is not None and project_id != scoped_project:
+                        raise RequestError(404, "Project-scoped route required.")
+                    project_id = scoped_project
+                if project_id is None:
+                    raise RequestError(400, "Create a project before submitting a concept.")
                 if project_id is not None:
                     _required_string(project_id, "projectId", pattern=ID_RE)
                 workflow = body.get("workflow")
@@ -511,6 +585,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 proposal_id, action = unquote(match.group(1)), match.group(2)
                 _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "proposal", proposal_id)
                 body = self._read_json()
                 _exact_fields(body, set(), set())
                 handler = getattr(self.server.context.coordinator, action + "_proposal")
@@ -521,6 +596,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 proposal_id = unquote(match.group(1))
                 _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "proposal", proposal_id)
                 body = self._read_json()
                 _exact_fields(
                     body,
@@ -558,6 +634,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 proposal_id = unquote(match.group(1))
                 _required_string(proposal_id, "proposalId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "proposal", proposal_id)
                 body = self._read_json()
                 _exact_fields(
                     body,
@@ -610,6 +687,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                 packet_id = _required_string(
                     body["packetId"], "packetId", pattern=ID_RE
                 )
+                self.server.context.coordinator.require_project_resource(scoped_project, "packet", packet_id)
                 idempotency_key = _required_string(
                     body["idempotencyKey"], "idempotencyKey", max_length=200
                 )
@@ -624,6 +702,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 job_id = unquote(match.group(1))
                 _required_string(job_id, "jobId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "job", job_id)
                 body = self._read_json()
                 _exact_fields(body, set(), set())
                 result = self.server.context.coordinator.preview_job(
@@ -635,6 +714,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 job_id = unquote(match.group(1))
                 _required_string(job_id, "jobId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "job", job_id)
                 body = self._read_json()
                 _exact_fields(body, set(), set())
                 result = self.server.context.coordinator.reconcile_job(
@@ -646,6 +726,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 job_id = unquote(match.group(1))
                 _required_string(job_id, "jobId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "job", job_id)
                 body = self._read_json()
                 _exact_fields(body, set(), set())
                 result = self.server.context.coordinator.cancel_job(
@@ -657,6 +738,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             if match:
                 job_id = unquote(match.group(1))
                 _required_string(job_id, "jobId", pattern=ID_RE)
+                self.server.context.coordinator.require_project_resource(scoped_project, "job", job_id)
                 body = self._read_json()
                 _exact_fields(
                     body,

@@ -14,7 +14,8 @@
 | 查看协议、实施范围与待验项目 | [通用对象工作流实施契约](GENERAL-GAME-TOOL-PLAN.zh-CN.md) | 文档结构、通讯流程、验收目标和文件责任 |
 | 查看实际完成情况与验证证据 | [实现与验证报告](GENERAL-GAME-TOOL-VERIFICATION.zh-CN.md) | 与原计划的变化、真实 session、玩法观察与限制 |
 | 排查策划失败与工作台恢复 | [策划诊断与恢复修复](PLANNING-FAILURE-FIX.zh-CN.md) | 原生错误、超时问题恢复、重试核账与项目隔离 |
-| 查看项目管理与阶段分离的改进方案 | [项目隔离与分阶段交互方案](STUDIO-PROJECT-STAGES-PLAN.zh-CN.md) | 待实施：项目首页、初始策划/迭代页面、信息来源和顶部工作状态 |
+| 查看项目与阶段改造的评估和交付 | [可行性复核与实施记录](STUDIO-PROJECT-STAGES-REVIEW.zh-CN.md) | 收敛范围：项目管理、项目作用域、初始/迭代页面、信息来源和顶部状态 |
+| 对照原始项目管理方案 | [项目隔离与分阶段交互方案](STUDIO-PROJECT-STAGES-PLAN.zh-CN.md) | 原始设计；分库、消息总线和新隔离基础设施已暂缓 |
 | 查看后端当前范围 | [后端说明](../backend/README.zh-CN.md) | 工作流组成、写入边界与验证限制 |
 
 ## 快速启动

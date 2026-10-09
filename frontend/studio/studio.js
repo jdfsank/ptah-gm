@@ -32,18 +32,21 @@ export class DraftStore {
   }
   async get(key) { const db = await this.open(); return new Promise((resolve, reject) => { const req = db.transaction('drafts').objectStore('drafts').get(key); req.onsuccess = () => resolve(req.result || null); req.onerror = () => reject(req.error); }); }
   async put(value) { const db = await this.open(); return new Promise((resolve, reject) => { const req = db.transaction('drafts', 'readwrite').objectStore('drafts').put(value); req.onsuccess = () => resolve(value); req.onerror = () => reject(req.error || new Error('草稿保存失败。')); }); }
+  async delete(key) { const db = await this.open(); return new Promise((resolve, reject) => { const req = db.transaction('drafts', 'readwrite').objectStore('drafts').delete(key); req.onsuccess = () => resolve(); req.onerror = () => reject(req.error); }); }
 }
 
 export class StudioApp {
   constructor({ fetchImpl = globalThis.fetch?.bind(globalThis), documentImpl = globalThis.document, timers = globalThis } = {}) {
-    this.fetch = fetchImpl; this.document = documentImpl; this.timers = timers; this.token = null; this.session = null; this.workspace = null;
+    this.fetch = fetchImpl; this.document = documentImpl; this.timers = timers; this.token = null; this.session = null; this.workspace = null; this.manager = null; this.projectId = null; this.stage = 'initial';
     this.proposal = null; this.packet = null; this.job = null; this.snapshot = null; this.capabilities = null; this.candidates = [];
     this.assets = []; this.pollHandle = null; this.drafts = new DraftStore(); this.draftRevision = 0; this.draftKey = null; this.persistenceOK = false;
-    this.draftTimer = null; this.destroyed = false; this.bound = false; this.selectionBusy = false; this.workbenchLoad = null; this.workbenchGeneration = 0;
+    this.draftTimer = null; this.conceptDraftTimer = null; this.destroyed = false; this.bound = false; this.selectionBusy = false; this.workbenchLoad = null; this.workbenchGeneration = 0;
     this.proposalPollHandle = null; this.proposalGeneration = 0; this.workflow = null; this.selectedObjectId = null; this.feedback = []; this.dirtyFields = new Set(); this.fieldDraftValues = {};
-    this.selectionGeneration = 0; this.conceptGeneration = 0; this.proposalMutationGeneration = 0; this.jobLoadGeneration = 0; this.jobMutationGeneration = 0; this.retryOutcomeUnknown = null;
+    this.selectionGeneration = 0; this.conceptGeneration = 0; this.proposalMutationGeneration = 0; this.jobLoadGeneration = 0; this.jobMutationGeneration = 0; this.retryOutcomeUnknown = null; this.activity = null;
   }
-  async request(path, { method = 'GET', body, token = false } = {}) {
+  async request(path, { method = 'GET', body, token = false, projectId = this.projectId } = {}) {
+    const activeProject = projectId;
+    if (activeProject && /^\/(?:concepts|assets|proposals|jobs|packets)(?:\/|$)/.test(path)) path = `/projects/${encodeURIComponent(activeProject)}${path}`;
     const headers = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (token) { if (!this.token) throw new Error('本机服务会话尚未建立。'); headers['X-Workbench-Token'] = this.token; }
@@ -56,8 +59,8 @@ export class StudioApp {
     try {
       this.session = await this.request('/session'); this.token = this.session.token;
       if (!this.token) throw new Error('服务没有建立工作台会话，写入功能已暂停。');
-      this.workspace = await this.request('/workspace');
-      if (!this.workspace || !Array.isArray(this.workspace.projects) || !Array.isArray(this.workspace.jobs)) throw new Error('工作区响应格式不完整。');
+      this.manager = await this.request('/workspace'); this.workspace = this.manager;
+      if (!this.workspace || !Array.isArray(this.workspace.projects)) throw new Error('项目列表响应格式不完整。');
       $('#connection').textContent = '已连接本机服务'; $('#connection').className = 'connection connected';
       $('#api-version').textContent = this.workspace.apiVersion ? `· 接口 ${this.workspace.apiVersion}` : '';
       hide($('#blocked')); hide($('#workspace'), false); this.renderWorkspace();
@@ -65,27 +68,23 @@ export class StudioApp {
       this.applyReadinessGate();
       try { await this.drafts.open(); this.persistenceOK = true; $('#persistence-note').textContent = '此浏览器的草稿存储可用。'; }
       catch (error) { this.persistenceOK = false; $('#persistence-note').textContent = `草稿无法持久保存：${error.message}`; $('#persistence-note').className = 'muted danger-text'; }
-      let selectedProject = $('#project')?.value || '';
-      if (!selectedProject) selectedProject = this.latestRecoverableProposal()?.projectId || '';
-      if (selectedProject) await this.openProject(selectedProject);
-      const jobs = this.workspace.jobs.filter(item => !selectedProject || item.projectId === selectedProject);
-      const latest = jobs.find(item => ACTIVE.has(item.status)) || this.latestByDate(jobs);
-      if (latest) await this.loadJob(latest.id);
+      this.renderWorkspace();
+      const params = new URLSearchParams(globalThis.location?.search || '');
+      const selectedProject = params.get('project');
+      if (selectedProject && this.manager.projects.some(item => item.id === selectedProject)) await this.openProject(selectedProject, params.get('stage') === 'iteration' ? 'iteration' : 'initial', false);
+      else this.showProjectManager();
     } catch (error) { this.showBlocked(error); }
   }
   bind() {
     if (this.bound) return; this.bound = true;
     $('#retry')?.addEventListener('click', () => this.start());
     $('#refresh')?.addEventListener('click', () => this.refresh());
+    $('#back-projects')?.addEventListener('click', () => this.showProjectManager());
+    $('#new-project-form')?.addEventListener('submit', event => { event.preventDefault(); this.createProject(); });
+    $('#rename-project')?.addEventListener('click', () => this.updateProjectSettings({ title: globalThis.prompt?.('项目新名称', this.currentProject()?.title || '') }));
+    $('#archive-project')?.addEventListener('click', () => this.updateProjectSettings({ archived: true }));
     $('#concept-form')?.addEventListener('submit', event => { event.preventDefault(); this.submitConcept(); });
-    $('#project')?.addEventListener('change', async event => {
-      const projectId = event.target.value;
-      if (!projectId) this.advanceSelection();
-      try {
-        if (projectId) await this.openProject(projectId);
-        else { this.snapshot = null; this.capabilities = null; this.workflow = null; this.selectedObjectId = null; this.candidates = []; this.draftKey = null; hide($('#workbench-panel')); $('#edit-text').value = ''; this.applyReadinessGate(); }
-      } catch (error) { this.notify(`无法读取所选项目：${error.message}`); }
-    });
+    $('#concept')?.addEventListener('input', () => this.queueConceptDraftSave());
     $('#images')?.addEventListener('change', event => this.uploadImages(event.target.files));
     $('#answers-form')?.addEventListener('submit', event => { event.preventDefault(); this.answerQuestions(); });
     $('#reviewed')?.addEventListener('change', event => { $('#freeze').disabled = !event.target.checked || !this.readiness?.ready; });
@@ -120,11 +119,13 @@ export class StudioApp {
   async refresh() {
     let context = this.captureSelectionContext();
     try {
-      const workspace = await this.request('/workspace');
+      const workspace = await this.request(this.projectId ? `/projects/${encodeURIComponent(this.projectId)}/workspace` : '/workspace');
       if (context.generation !== this.selectionGeneration) return;
-      this.workspace = workspace; this.renderWorkspace();
+      if (!this.projectId) { this.manager = workspace; this.workspace = workspace; this.renderWorkspace(); return true; }
+      if (!workspace.projects?.some(project => project.id === this.projectId)) throw new Error('服务未返回当前项目，已拒绝加载跨项目数据。');
+      this.workspace = workspace; this.mergeProjectSummary(workspace.projects[0]); this.renderWorkspace();
       context = this.captureSelectionContext();
-      const selectedProject = $('#project')?.value || '';
+      const selectedProject = this.projectId || '';
       if (this.retryOutcomeUnknown && selectedProject) {
         const uncertain = (this.workspace.proposals || []).find(item => item.id === this.retryOutcomeUnknown);
         const latestForProject = this.latestProposalForProject(selectedProject);
@@ -159,8 +160,8 @@ export class StudioApp {
       const projectId = selectedProject || this.job?.projectId || this.snapshot?.projectId || this.snapshot?.id;
       if (projectId) await this.ensureWorkbench(projectId);
       if (!this.selectionContextMatches(context)) return;
-      $('#connection').textContent = '已连接本机服务'; $('#connection').className = 'connection connected'; return true;
-    } catch (error) { this.notify(`刷新失败：${error.message}`); return false; }
+      this.activity = null; $('#connection').textContent = '已连接本机服务'; $('#connection').className = 'connection connected'; this.renderWorkflowStatus(); return true;
+    } catch (error) { if (!this.selectionContextMatches(context)) return false; this.activity = '项目状态未确认'; this.renderWorkflowStatus(); this.notify(`刷新失败：${error.message}`); return false; }
   }
   latestByDate(items) { return [...items].sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))[0] || null; }
   packetFor(proposal) { return (this.workspace?.packets || []).find(item => item.id === proposal.packetId || item.packetId === proposal.packetId || item.proposalId === proposal.id) || null; }
@@ -174,7 +175,7 @@ export class StudioApp {
     this.workbenchLoad = { projectId, promise };
     return promise;
   }
-  pendingProposal(projectId = $('#project')?.value || null) {
+  pendingProposal(projectId = this.projectId || null) {
     if (!projectId) return null;
     const latest = this.latestProposalForProject(projectId);
     if (!latest) return null;
@@ -201,36 +202,94 @@ export class StudioApp {
       String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0] || null;
   }
   renderWorkspace() {
-    const projects = this.workspace?.projects || [], jobs = this.workspace?.jobs || [];
-    $('#workspace-name').textContent = this.workspace?.name || '我的工作区';
-    const select = $('#project'); const selected = select.value; select.replaceChildren();
-    const fresh = el('option', '', '创建一个新 Demo'); fresh.value = ''; select.append(fresh);
-    for (const project of projects) { const option = el('option', '', project.title || project.name || project.id); option.value = project.id; select.append(option); }
-    if (projects.some(p => p.id === selected)) select.value = selected;
+    const projects = this.manager?.projects || this.workspace?.projects || [], jobs = this.workspace?.jobs || [];
     const projectList = $('#project-list'); projectList.replaceChildren();
     if (!projects.length) projectList.append(el('p', 'muted', '还没有项目，从一个想法开始。'));
-    for (const project of projects) { const row = el('button', 'list-row', project.title || project.name || project.id); row.type = 'button'; row.addEventListener('click', () => this.openProject(project.id)); projectList.append(row); }
+    for (const project of projects.filter(item => !item.archived)) { const row = el('article', 'project-card'); const info = el('div'); info.append(el('h3', '', project.title || project.name || '未命名项目')); const revision = Number(project.publicationRevision || 0); info.append(el('p', 'muted', revision > 0 ? `当前版本 ${revision}` : '初始策划 · 尚无已接受 Demo')); const open = el('button', 'button primary', '继续项目'); open.type = 'button'; open.addEventListener('click', () => this.openProject(project.id)); row.append(info, open); projectList.append(row); }
+    const archived = projects.filter(item => item.archived);
+    if (archived.length) { const section = el('details', 'archived-projects'); section.append(el('summary', '', `已归档项目 (${archived.length})`)); for (const project of archived) { const row = el('article', 'project-card'); row.append(el('span', '', project.title || project.id)); const restore = el('button', 'button secondary', '恢复项目'); restore.type = 'button'; restore.addEventListener('click', () => this.updateProjectSettings({ archived: false }, project.id)); row.append(restore); section.append(row); } projectList.append(section); }
     const jobList = $('#job-list'); jobList.replaceChildren();
     if (!jobs.length) jobList.append(el('p', 'muted', '还没有制作记录'));
     for (const job of jobs.slice(0, 8)) { const row = el('button', 'job-row'); row.type = 'button'; row.append(el('span', '', job.title || job.projectTitle || job.id)); const status = el('span', 'mini-status', JOB_LABELS[job.status] || job.status); row.append(status); row.addEventListener('click', () => this.loadJob(job.id)); jobList.append(row); }
   }
-  async openProject(projectId) {
-    this.advanceSelection();
-    const selectionGeneration = this.selectionGeneration;
+  currentProject() { return (this.manager?.projects || this.workspace?.projects || []).find(item => item.id === this.projectId) || null; }
+  mergeProjectSummary(project) { if (!project?.id || !this.manager) return; this.manager.projects = (this.manager.projects || []).map(item => item.id === project.id ? { ...item, ...project } : item); }
+  async showProjectManager() {
+    const projectId = this.projectId;
+    this.advanceSelection(); this.stopPolling(); this.stopProposalPolling(); const generation = this.selectionGeneration;
+    if (projectId && this.conceptDraftTimer != null) { this.timers.clearTimeout(this.conceptDraftTimer); this.conceptDraftTimer = null; await this.saveConceptDraft(projectId); }
+    if (projectId && this.draftTimer != null) { this.timers.clearTimeout(this.draftTimer); this.draftTimer = null; await this.saveDraft(); }
+    if (generation !== this.selectionGeneration) return;
+    this.projectId = null; this.stage = 'initial';
+    this.proposal = null; this.packet = null; this.job = null; this.snapshot = null; this.capabilities = null; this.workflow = null; this.candidates = []; this.assets = []; this.feedback = []; this.fieldDraftValues = {}; this.selectedObjectId = null; this.dirtyFields.clear(); this.draftKey = null; this.activity = null; this.retryOutcomeUnknown = null; this.pendingRebase = null;
+    if ($('#rebase-dialog')?.open) $('#rebase-dialog').close(); $('#notice').textContent = ''; hide($('#notice')); hide($('#home-hero'), false); hide($('#project-view')); hide($('#project-manager'), false); hide($('#job-panel')); hide($('#proposal-panel')); hide($('#workbench-panel')); this.updateUrl(); this.renderWorkspace();
+    try { const manager = await this.request('/workspace'); if (generation !== this.selectionGeneration || this.projectId) return; this.manager = manager; this.workspace = manager; this.renderWorkspace(); }
+    catch (error) { if (generation === this.selectionGeneration) this.notify(`项目列表刷新失败：${error.message}`); }
+  }
+  updateUrl() { if (!globalThis.history?.replaceState) return; const params = new URLSearchParams(); if (this.projectId) params.set('project', this.projectId); if (this.projectId && this.stage === 'iteration') params.set('stage', 'iteration'); globalThis.history.replaceState(null, '', `${globalThis.location.pathname}${params.size ? `?${params}` : ''}`); }
+  async createProject() {
+    const title = $('#new-project-title').value.trim(); if (!title) return;
+    const submit = $('#new-project-form button[type="submit"]'); submit.disabled = true;
+    const generation = this.selectionGeneration, activeProject = this.projectId;
+    const selectionUnchanged = () => generation === this.selectionGeneration && activeProject === this.projectId;
+    try {
+      const response = await this.request('/projects', { method: 'POST', token: true, body: { title, workflow: 'objects-v1' } }); const project = response.project || response;
+      if (!project.id) throw new Error('服务没有返回项目编号。');
+      this.manager.projects = [project, ...(this.manager.projects || []).filter(item => item.id !== project.id)];
+      if (selectionUnchanged()) { $('#new-project-title').value = ''; await this.openProject(project.id); }
+      else this.renderWorkspace();
+    } catch (error) { if (selectionUnchanged()) this.notify(`项目未创建：${error.message}`); }
+    finally { submit.disabled = false; }
+  }
+  async updateProjectSettings(changes, projectId = this.projectId) {
+    const project = (this.manager?.projects || []).find(item => item.id === projectId); if (!project) return;
+    const activeProjectAtStart = this.projectId, generation = this.selectionGeneration;
+    if (changes.title === null) return;
+    if (changes.archived === true && !globalThis.confirm?.(`归档“${project.title}”？归档项目仍可恢复查看。`)) return;
+    try { const response = await this.request(`/projects/${encodeURIComponent(project.id)}/settings`, { method: 'POST', token: true, body: changes, projectId }); const updated = response.project || response; this.manager.projects = this.manager.projects.map(item => item.id === project.id ? { ...item, ...updated } : item); if (activeProjectAtStart !== this.projectId || generation !== this.selectionGeneration) return; if (changes.archived === true) return this.showProjectManager(); if (this.workspace?.projects) this.workspace.projects = this.workspace.projects.map(item => item.id === project.id ? { ...item, ...updated } : item); this.renderWorkspace(); $('#workspace-name').textContent = updated.title || project.title; $('#sidebar-project-name').textContent = updated.title || project.title; }
+    catch (error) { if (activeProjectAtStart === this.projectId && generation === this.selectionGeneration) this.notify(`项目设置未保存：${error.message}`); }
+  }
+  async openProject(projectId, stage = 'initial', updateUrl = true) {
+    const priorActiveProject = this.projectId;
     const previousSnapshot = this.snapshot;
+    const previousWorkspace = this.workspace;
+    const previousProposal = this.proposal;
+    const previousPacket = this.packet;
+    const previousJob = this.job;
     const previousCapabilities = this.capabilities;
     const previousCandidates = this.candidates;
-    const previousProjectId = previousSnapshot?.projectId || previousSnapshot?.id || $('#project').value;
+    const previousProjectId = previousSnapshot?.projectId || previousSnapshot?.id || priorActiveProject;
     const previousDraft = previousSnapshot ? this.readVisibleDraft() : null;
+    this.advanceSelection();
+    const selectionGeneration = this.selectionGeneration;
+    this.stopPolling(); this.stopProposalPolling();
+    if (previousProjectId && previousProjectId !== projectId) {
+      if (this.conceptDraftTimer != null) { this.timers.clearTimeout(this.conceptDraftTimer); this.conceptDraftTimer = null; await this.saveConceptDraft(previousProjectId); }
+      if (this.draftTimer != null) { this.timers.clearTimeout(this.draftTimer); this.draftTimer = null; await this.saveDraft(); }
+      if (selectionGeneration !== this.selectionGeneration) return;
+    }
+    this.projectId = projectId; this.stage = stage;
+    if (updateUrl) this.updateUrl();
+    this.activity = null; this.retryOutcomeUnknown = null; this.pendingRebase = null; this.selectedObjectId = null; this.dirtyFields.clear();
+    if ($('#rebase-dialog')?.open) $('#rebase-dialog').close(); $('#notice').textContent = ''; hide($('#notice'));
     this.selectionBusy = true; this.applyReadinessGate();
-    const load = this.loadWorkbench(projectId);
-    const generation = this.workbenchGeneration;
+    this.workspace = null;
+    if (previousProjectId !== projectId) { this.proposal = null; this.packet = null; this.job = null; this.snapshot = null; this.capabilities = null; this.workflow = null; this.candidates = []; this.assets = []; this.feedback = []; this.fieldDraftValues = {}; this.draftKey = null; $('#concept').value = ''; $('#images').disabled = false; $('#images').value = ''; this.renderAssets(); hide($('#proposal-panel')); hide($('#job-panel')); hide($('#workbench-panel')); hide($('#concept-form')?.closest('.panel')); }
+    let loadGeneration = this.workbenchGeneration;
     try {
-      await load;
-      if (generation !== this.workbenchGeneration || selectionGeneration !== this.selectionGeneration || (this.snapshot?.projectId || this.snapshot?.id) !== projectId) return;
+      const scoped = await this.request(`/projects/${encodeURIComponent(projectId)}/workspace`);
+      if (selectionGeneration !== this.selectionGeneration) return;
+      if (!scoped.projects?.some(project => project.id === projectId)) throw new Error('项目工作区响应身份不匹配。');
+      this.workspace = scoped; this.mergeProjectSummary(scoped.projects.find(item => item.id === projectId));
+      const workbenchRequest = this.loadWorkbench(projectId); loadGeneration = this.workbenchGeneration; await workbenchRequest;
+      loadGeneration = this.workbenchGeneration;
+      if (selectionGeneration !== this.selectionGeneration || (this.snapshot?.projectId || this.snapshot?.id) !== projectId) return;
+      const project = this.currentProject(); $('#workspace-name').textContent = project?.title || projectId; $('#sidebar-project-name').textContent = project?.title || projectId; $('#concept-project-label').textContent = project?.title || projectId;
+      await this.restoreConceptDraft(projectId, selectionGeneration);
       if (this.job && this.job.projectId !== projectId) { this.jobLoadGeneration++; this.stopPolling(); this.job = null; hide($('#job-panel')); }
       const proposal = this.pendingProposal(projectId);
-      if (!proposal) { this.proposal = null; this.packet = null; hide($('#proposal-panel')); hide($('#freeze-area')); return; }
+      if (!proposal) { this.proposal = null; this.packet = null; hide($('#proposal-panel')); hide($('#freeze-area')); }
+      else {
       this.proposal = proposal;
       if (proposal.status === 'FROZEN') {
         this.packet = this.packetFor(proposal); this.renderProposal(); this.renderFrozenPacket();
@@ -238,28 +297,38 @@ export class StudioApp {
         if (associatedJob) await this.loadJob(associatedJob.id);
         else hide($('#resume-packet'), false);
       } else { this.packet = null; this.renderProposal(); }
+      }
+      const activeJobs = this.workspace.jobs || []; const selectedJob = activeJobs.find(item => ACTIVE.has(item.status)) || this.latestByDate(activeJobs);
+      if (selectedJob) await this.loadJob(selectedJob.id);
+      hide($('#home-hero')); hide($('#project-manager')); hide($('#project-view'), false);
+      if (this.stage === 'iteration' && this.canEnterIteration()) this.enterIterationStage(); else if (this.stage === 'iteration') { this.stage = 'initial'; this.updateUrl(); }
+      this.renderWorkflowStatus(); this.renderWorkspace();
     }
     catch (error) {
-      if (generation !== this.workbenchGeneration) return;
-      if (previousSnapshot) {
-        this.snapshot = previousSnapshot; this.capabilities = previousCapabilities; this.candidates = previousCandidates;
+      if (selectionGeneration !== this.selectionGeneration) return;
+      if (previousSnapshot && previousProjectId === projectId) {
+        this.workspace = previousWorkspace; this.snapshot = previousSnapshot; this.proposal = previousProposal; this.packet = previousPacket; this.job = previousJob; this.capabilities = previousCapabilities; this.candidates = previousCandidates;
         this.draftKey = this.makeDraftKey(previousSnapshot);
         this.renderWorkbench(); if (previousDraft) this.applyVisibleDraft(previousDraft);
-      } else { this.snapshot = null; this.capabilities = null; this.candidates = []; this.draftKey = null; hide($('#workbench-panel')); }
-      $('#project').value = previousProjectId || '';
-      this.notify(`无法读取所选项目：${error.message}。已保留原项目与草稿。`);
+        this.renderWorkflowStages(); this.renderWorkflowStatus();
+      } else {
+        this.projectId = null; this.workspace = this.manager; this.snapshot = null; this.proposal = null; this.packet = null; this.job = null; this.capabilities = null; this.candidates = []; this.draftKey = null;
+        hide($('#project-view')); hide($('#project-manager'), false); hide($('#home-hero'), false); this.updateUrl();
+      }
+      this.stage = 'initial'; this.notify(`无法读取所选项目：${error.message}。项目列表和原有草稿仍可访问。`);
     }
-    finally { if (generation === this.workbenchGeneration) { this.selectionBusy = false; this.applyReadinessGate(); } }
+    finally { if (selectionGeneration === this.selectionGeneration && loadGeneration === this.workbenchGeneration) { this.selectionBusy = false; this.applyReadinessGate(); } }
   }
   advanceSelection() {
     this.selectionGeneration++;
+    this.workbenchGeneration++; this.workbenchLoad = null;
     this.conceptGeneration++; this.proposalMutationGeneration++; this.jobMutationGeneration++; this.jobLoadGeneration++;
     $('#cancel').disabled = false; $('#reconcile').disabled = false; $('#resume-packet').disabled = false;
     $('#freeze').textContent = '确认方案并继续'; $('#freeze').disabled = !$('#reviewed').checked || !this.readiness?.ready;
     this.applyReadinessGate();
   }
-  captureSelectionContext() { return { generation: this.selectionGeneration, projectId: $('#project')?.value || '' }; }
-  selectionContextMatches(context) { return !!context && context.generation === this.selectionGeneration && context.projectId === ($('#project')?.value || ''); }
+  captureSelectionContext() { return { generation: this.selectionGeneration, projectId: this.projectId || '' }; }
+  selectionContextMatches(context) { return !!context && context.generation === this.selectionGeneration && context.projectId === (this.projectId || ''); }
   proposalBelongsToSelection(proposal, context) { return !proposal?.projectId || !context?.projectId || proposal.projectId === context.projectId; }
   snapshotMatchesProject(projectId) {
     return !!projectId && (this.snapshot?.projectId || this.snapshot?.id) === projectId && Number.isInteger(this.snapshot.publicationRevision) && this.snapshot.publicationRevision >= 0;
@@ -275,7 +344,7 @@ export class StudioApp {
     const missing = Object.entries(REQUIRED_CAPABILITIES).filter(([key]) => !this.capabilityReady(key));
     this.readiness = { ready: missing.length === 0, missing };
     const submit = $('#concept-form [type="submit"]');
-    const selectedProject = $('#project')?.value || '';
+    const selectedProject = this.projectId || '';
     const projectReady = !selectedProject || this.snapshotMatchesProject(selectedProject);
     if (submit) submit.disabled = !this.readiness.ready || this.selectionBusy || !projectReady;
     const iteration = $('#edit-form [type="submit"]');
@@ -292,6 +361,7 @@ export class StudioApp {
   }
   async uploadImages(files) {
     if (!files?.length) return;
+    const projectId = this.projectId, context = this.captureSelectionContext(); if (!projectId) return this.notify('请先在项目管理页创建或选择项目。');
     const input = $('#images'); input.disabled = true;
     try {
       for (const file of Array.from(files)) {
@@ -299,24 +369,26 @@ export class StudioApp {
         if (this.assets.length >= 6) throw new Error('本轮最多添加 6 张图片。');
         if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} 超过 5 MB。`);
         const dataBase64 = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); });
-        const result = await this.request('/assets', { method: 'POST', token: true, body: { name: file.name, mimeType: file.type, dataBase64, purpose: $('#asset-purpose').value } });
+        if (!this.selectionContextMatches(context)) return;
+        const result = await this.request('/assets', { method: 'POST', token: true, projectId, body: { name: file.name, mimeType: file.type, dataBase64, purpose: $('#asset-purpose').value } });
+        if (!this.selectionContextMatches(context)) return;
         const asset = result.asset || result; if (!asset.id) throw new Error('服务没有返回图片编号。'); this.assets.push(asset);
       }
-      this.renderAssets();
-    } catch (error) { this.notify(`图片尚未添加：${error.message}`); }
-    finally { input.disabled = false; input.value = ''; }
+      this.renderAssets(); this.queueConceptDraftSave();
+    } catch (error) { if (this.selectionContextMatches(context)) this.notify(`图片尚未添加：${error.message}`); }
+    finally { if (this.selectionContextMatches(context)) { input.disabled = false; input.value = ''; } }
   }
   renderAssets() {
     const list = $('#image-list'); list.replaceChildren();
     for (const asset of this.assets) {
-      const chip = el('span', 'asset-chip'); const thumb = el('img', 'asset-thumb'); thumb.src = `${API}/assets/${encodeURIComponent(asset.id)}`; thumb.alt = `${asset.name || '参考图片'} 预览`;
-      const text = el('span', '', `${asset.name || '参考图片'} · ${asset.purpose || '已添加'}`); const remove = el('button', '', '移除'); remove.type = 'button'; remove.setAttribute('aria-label', `移除 ${asset.name || '参考图片'}`); remove.addEventListener('click', () => { this.assets = this.assets.filter(item => item.id !== asset.id); this.renderAssets(); }); chip.append(thumb, text, remove); list.append(chip);
+      const chip = el('span', 'asset-chip'); const thumb = el('img', 'asset-thumb'); thumb.src = `${API}/projects/${encodeURIComponent(this.projectId)}/assets/${encodeURIComponent(asset.id)}`; thumb.alt = `${asset.name || '参考图片'} 预览`;
+      const text = el('span', '', `${asset.name || '参考图片'} · ${asset.purpose || '已添加'}`); const remove = el('button', '', '移除'); remove.type = 'button'; remove.setAttribute('aria-label', `移除 ${asset.name || '参考图片'}`); remove.addEventListener('click', () => { this.assets = this.assets.filter(item => item.id !== asset.id); this.renderAssets(); this.queueConceptDraftSave(); }); chip.append(thumb, text, remove); list.append(chip);
     }
   }
   async submitConcept(iterationText = '', isIteration = false) {
     if (!this.readiness?.ready) return this.notify('制作入口暂不可用；请先完成服务能力启动检查。');
     if (this.selectionBusy) return this.notify('正在读取所选项目版本，请稍后再提交。');
-    const selectedProject = $('#project').value;
+    const selectedProject = this.projectId;
     const context = this.captureSelectionContext(), requestGeneration = ++this.conceptGeneration;
     if (selectedProject && !this.snapshotMatchesProject(selectedProject)) return this.notify('所选项目的版本尚未读取成功；请刷新该项目后再提交。');
     if (selectedProject && !Number.isInteger(this.snapshot.publicationRevision)) return this.notify('所选项目缺少有效发布版本号；没有提交提案。');
@@ -324,33 +396,34 @@ export class StudioApp {
     const changeRequest = isIteration && selectedProject && this.objectsWorkflow() ? this.buildChangeRequest() : undefined;
     if (!text && !(changeRequest?.fields?.length || changeRequest?.feedback?.length)) return this.notify('先写下一个想法或调整目标。');
     const button = (isIteration ? $('#edit-form') : form).querySelector('[type="submit"]'); button.disabled = true;
+    this.activity = isIteration ? '正在提交本轮对象调整和反馈' : '正在提交用户想法'; this.renderWorkflowStatus();
     try {
       const expectedPublicationRevision = selectedProject ? this.snapshot.publicationRevision : undefined;
       const requestBody = { text, ...(selectedProject ? { projectId: selectedProject } : {}), ...(expectedPublicationRevision != null ? { expectedPublicationRevision } : {}), assetIds: this.assets.map(asset => asset.id), ...(!selectedProject ? { workflow: 'objects-v1' } : {}), ...(changeRequest ? { changeRequest } : {}) };
-      const response = await this.request('/concepts', { method: 'POST', token: true, body: requestBody });
+      const response = await this.request('/concepts', { method: 'POST', token: true, projectId: selectedProject, body: requestBody });
       if (!this.selectionContextMatches(context) || requestGeneration !== this.conceptGeneration) return;
       this.proposal = response.proposal || response; if (!this.proposal.id || !Number.isInteger(this.proposal.revision)) throw new Error('服务返回的提案缺少身份或修订号。');
       this.packet = null;
-      this.renderProposal(); this.assets = []; this.renderAssets(); $('#proposal-panel').scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      this.activity = null; this.renderProposal(); if (!isIteration) { this.assets = []; this.renderAssets(); $('#concept').value = ''; await this.deleteConceptDraft(selectedProject); } $('#proposal-panel').scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       this.startProposalPolling();
-    } catch (error) { if (this.selectionContextMatches(context) && requestGeneration === this.conceptGeneration) this.notify(`提案没有提交：${error.message}`); }
-    finally { if (this.selectionContextMatches(context) && requestGeneration === this.conceptGeneration) button.disabled = false; }
+    } catch (error) { if (this.selectionContextMatches(context) && requestGeneration === this.conceptGeneration) { this.activity = !Number.isInteger(error.status) || error.status >= 500 ? '提交结果待核实' : null; this.notify(`提案没有提交：${error.message}`); } }
+    finally { if (this.selectionContextMatches(context) && requestGeneration === this.conceptGeneration) { button.disabled = false; if (this.activity === '正在提交用户想法' || this.activity === '正在提交本轮对象调整和反馈') this.activity = null; this.renderWorkflowStatus(); } }
   }
   objectsWorkflow() { return this.workflow === 'objects-v1' || this.proposal?.workflow === 'objects-v1' || this.snapshot?.workflow === 'objects-v1'; }
   startProposalPolling() {
     this.stopProposalPolling();
     if (!this.proposal?.id || !PLANNING.has(this.proposal.status)) return;
-    const id = this.proposal.id, generation = ++this.proposalGeneration;
+    const id = this.proposal.id, projectId = this.proposal.projectId || this.projectId, generation = ++this.proposalGeneration;
     this.proposalPollHandle = this.timers.setInterval(async () => {
       if (this.destroyed || generation !== this.proposalGeneration || this.proposal?.id !== id) return;
       try {
-        const response = await this.request(`/proposals/${encodeURIComponent(id)}`);
+        const response = await this.request(`/proposals/${encodeURIComponent(id)}`, { projectId });
         const latest = response.proposal || response;
         if (generation !== this.proposalGeneration || this.proposal?.id !== id || latest.id !== id) return;
         if (Number(latest.revision) < Number(this.proposal.revision)) return;
-        this.proposal = latest; this.renderProposal();
+        this.activity = null; this.proposal = latest; this.renderProposal();
       } catch (error) {
-        if (generation === this.proposalGeneration) this.renderPlanningStatus(this.proposal, `暂时无法读取策划进度：${error.message}`);
+        if (generation === this.proposalGeneration) { this.renderPlanningStatus(this.proposal, `暂时无法读取策划进度：${error.message}`); this.activity = '策划状态未确认'; this.renderWorkflowStatus(); }
       }
     }, 2000);
   }
@@ -432,7 +505,7 @@ export class StudioApp {
     const context = this.captureSelectionContext(), generation = ++this.conceptGeneration;
     if (!this.proposalBelongsToSelection(proposal, context) || !proposal.projectId || !Number.isInteger(proposal.publicationRevision)) return this.notify('无法确认原项目版本；请刷新工作区后重试。');
     if (this.snapshot?.projectId !== proposal.projectId && this.snapshot?.id !== proposal.projectId) return this.notify('原项目尚未选中；请先选择该项目再重试。');
-    button.disabled = true;
+    button.disabled = true; this.activity = '正在重新请求策划反馈'; this.renderWorkflowStatus();
     try {
       const body = {
         text: typeof proposal.text === 'string' ? proposal.text : '', projectId: proposal.projectId,
@@ -445,10 +518,11 @@ export class StudioApp {
       const latest = response.proposal || response;
       if (!this.selectionContextMatches(context) || generation !== this.conceptGeneration || this.proposal?.id !== proposal.id) return;
       if (!latest.id || !Number.isInteger(latest.revision) || latest.id === proposal.id) throw new Error('服务没有创建新的策划修订。');
-      this.proposal = latest; this.packet = null; this.renderProposal(); this.startProposalPolling();
+      this.proposal = latest; this.packet = null; this.activity = null; this.renderProposal(); this.startProposalPolling();
     } catch (error) {
       if (this.selectionContextMatches(context) && generation === this.conceptGeneration && this.proposal?.id === proposal.id) {
         const outcomeUnknown = !Number.isInteger(error.status) || error.status >= 500;
+        this.activity = outcomeUnknown ? '策划重试结果待核实' : null; this.renderWorkflowStatus();
         if (outcomeUnknown) { this.retryOutcomeUnknown = proposal.id; this.renderProposal(); this.notify('策划重试结果待确认；请先刷新工作台核账，避免重复创建。'); }
         else this.notify(`策划重试没有提交：${error.message}`);
       }
@@ -462,14 +536,15 @@ export class StudioApp {
       && proposal.planningFailure?.clarificationAvailable === true && proposal.planningTerminationConfirmed === true;
     if (!proposal?.id || !(PLANNING.has(proposal.status) || clarificationRecovery) || !this.proposalBelongsToSelection(proposal, context)) return;
     const existingAnswers = clarificationRecovery ? Object.fromEntries([...($('#questions')?.querySelectorAll('[name]') || [])].map(control => [control.name, control.value])) : null;
+    this.activity = action === 'cancel' ? '正在请求停止策划' : '正在核实策划状态'; this.renderWorkflowStatus();
     try {
       const response = await this.request(`/proposals/${encodeURIComponent(proposal.id)}/${action}`, { method: 'POST', token: true, body: {} });
       const latest = response.proposal || response;
       if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id && latest.id === proposal.id && Number(latest.revision) >= Number(proposal.revision)) {
-        this.proposal = latest; this.renderProposal();
+        this.activity = null; this.proposal = latest; this.renderProposal();
         if (existingAnswers && latest.status === 'NEEDS_CLARIFICATION') for (const control of $('#questions')?.querySelectorAll('[name]') || []) if (Object.hasOwn(existingAnswers, control.name)) control.value = existingAnswers[control.name];
       }
-    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) this.notify(`策划${action === 'cancel' ? '取消' : '对账'}未确认：${error.message}`); }
+    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) { this.activity = '策划状态未确认'; this.notify(`策划${action === 'cancel' ? '取消' : '对账'}未确认：${error.message}`); this.renderWorkflowStatus(); } }
   }
   objectDocument(proposal = this.proposal) { return proposal?.document || proposal?.designDocument || proposal?.objectDocument || null; }
   objectItems(source = this.snapshot) { const catalog = source?.catalog || {}; const document = source?.document || source?.objectDocument || {}; return catalog.objects || document.objects || source?.objects || []; }
@@ -497,13 +572,19 @@ export class StudioApp {
   }
   renderProposal() {
     const proposal = this.proposal; if (!proposal) return;
+    const iterationProposal = this.isIterationProposal(proposal);
     hide($('#planning-status'));
     $('#review-label').textContent = this.workspace?.testData ? '我已阅读并确认本次测试方案和制作范围' : '我已阅读并确认上面的方案和制作范围';
-    hide($('#proposal-panel'), false); $('#proposal-title').textContent = proposal.title || '初步方案';
+    hide($('#proposal-panel'), false); $('#proposal-title').textContent = PLANNING.has(proposal.status) ? (iterationProposal ? '本轮调整讨论' : '初始想法讨论') : proposal.status === 'NEEDS_CLARIFICATION' ? '需要你补充的信息' : proposal.title || (iterationProposal ? '本轮调整方案' : '初步方案');
     const proposalStatusLabel = proposal.status === 'FAILED' ? '策划失败' : proposal.status === 'READY' ? '方案待确认' : proposal.status === 'NEEDS_CLARIFICATION' ? '需要补充信息' : proposal.status === 'FROZEN' ? '已冻结，沿用原制作表单' : JOB_LABELS[proposal.status] || `服务状态：${proposal.status || '未知'}`;
     setStatus($('#proposal-status'), proposal.status, proposalStatusLabel);
     const area = $('#proposal-content'); area.replaceChildren();
-    area.append(el('p', 'proposal-summary', proposal.text || '服务尚未提供方案摘要。'));
+    if (proposal.text) { const block = el('section', 'role-block user-info'); block.append(el('h3', '', iterationProposal ? '用户本轮调整' : '用户原始想法')); block.append(el('p', 'proposal-summary', proposal.text)); area.append(block); }
+    if (PLANNING.has(proposal.status)) area.append(el('p', 'muted', 'AI 策划正在梳理需求；完成前不会显示方案。'));
+    else {
+      const aiSummary = proposal.aiSummary || proposal.summary || proposal.document?.summary || proposal.designDocument?.summary;
+      if (aiSummary) { const block = el('section', 'role-block ai-info'); block.append(el('h3', '', 'AI 策划反馈')); block.append(el('p', 'proposal-summary', aiSummary)); area.append(block); }
+    }
     if (proposal.projectId) area.append(el('p', 'meta-line', `项目：${proposal.projectId} · 方案修订 ${proposal.revision}`));
     if (proposal.workflow !== 'objects-v1' && proposal.initializationRequired) { const hint = el('div', 'notice', '这是一个新项目。确认范围后，服务会按受控初始化流程准备项目；初始化通过后才会制作玩法。'); area.append(hint); }
     if (proposal.baseCommit) area.append(el('p', 'meta-line', `工程基线：${proposal.baseCommit}`));
@@ -526,7 +607,7 @@ export class StudioApp {
     const decisions = proposal.decisions || {}; const decisionList = el('dl', 'decision-list');
     for (const key of TEMPLATE_FIELDS) if (decisions[key] != null) { decisionList.append(el('dt', '', LABELS[key]), el('dd', '', String(decisions[key]))); }
     if (decisionList.childNodes.length) area.append(decisionList);
-    if (proposal.workflow === 'objects-v1' || this.objectsWorkflow()) this.renderObjectsProposal(area, proposal);
+    if ((proposal.workflow === 'objects-v1' || this.objectsWorkflow()) && proposal.status === 'READY') this.renderObjectsProposal(area, proposal);
     const requirements = proposal.requirements || proposal.document?.requirements || []; if (requirements.length && proposal.workflow !== 'objects-v1' && !this.objectsWorkflow()) { const heading = el('h3', '', '本轮目标'); const list = el('ul', 'requirement-list'); for (const req of requirements) list.append(el('li', '', typeof req === 'string' ? req : req.text || req.title || JSON.stringify(req))); area.append(heading, list); }
     const questions = proposal.questions || [];
     const ask = $('#answers-form'); const freeze = $('#freeze-area');
@@ -536,6 +617,7 @@ export class StudioApp {
     else if (proposal.status === 'READY') { this.stopProposalPolling(); hide(ask); this.renderPacketPreview(proposal); hide(freeze, false); $('#reviewed').checked = false; $('#reviewed').disabled = false; $('#freeze').disabled = true; }
     else if (['FAILED', 'CANCELLED', 'BLOCKED'].includes(proposal.status)) { this.stopProposalPolling(); hide(ask); hide(freeze); area.append(el('div', 'notice', proposal.status === 'FAILED' && proposal.planningFailure ? '策划 session 未能完成。' : proposal.message || `策划状态：${proposal.status}`)); if (proposal.status === 'FAILED') this.renderPlanningFailure(proposal, area); this.renderPlanningControls(proposal); }
     else { this.stopProposalPolling(); hide(ask); hide(freeze); area.append(el('p', 'muted', `当前方案状态为 ${proposal.status || '未知'}，服务未声明可以确认。`)); }
+    this.renderWorkflowStages(); this.renderWorkflowStatus();
   }
   parameterInput(key) { return $(`#edit-form [name="${key}"]`); }
   renderQuestions(questions) {
@@ -583,17 +665,19 @@ export class StudioApp {
       else if (type === 'choice') answers[control.name] = (proposal.workflow === 'objects-v1' || this.objectsWorkflow() || control.dataset.optionMode === 'index') ? this.readChoiceValue(control) : control.value;
       else answers[control.name] = control.value;
     }
+    this.activity = '正在提交用户回答'; this.renderWorkflowStatus();
     try {
       const response = await this.request(`/proposals/${encodeURIComponent(proposal.id)}/answers`, { method: 'POST', token: true, body: { expectedRevision: proposal.revision, answers } });
       if (!this.selectionContextMatches(context) || generation !== this.proposalMutationGeneration || this.proposal?.id !== proposal.id || Number(this.proposal?.revision) !== Number(proposal.revision)) return;
-      this.proposal = response.proposal || response; this.renderProposal(); this.startProposalPolling();
-    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) this.notify(`回答没有保存：${error.message}${error.status === 409 ? ' 方案已更新，请刷新后重新核对。' : ''}`); }
+      this.activity = null; this.proposal = response.proposal || response; this.renderProposal(); this.startProposalPolling();
+    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) { this.activity = !Number.isInteger(error.status) || error.status >= 500 ? '回答提交结果待核实' : null; this.notify(`回答没有保存：${error.message}${error.status === 409 ? ' 方案已更新，请刷新后重新核对。' : ''}`); this.renderWorkflowStatus(); } }
   }
   async freezeProposal() {
     if (!this.readiness?.ready || !$('#reviewed').checked || !this.proposal) return;
     const context = this.captureSelectionContext(), proposal = structuredClone(this.proposal), generation = ++this.proposalMutationGeneration;
     if (!this.proposalBelongsToSelection(proposal, context)) return;
     const button = $('#freeze'); button.disabled = true; button.textContent = '正在冻结方案…';
+    this.activity = '正在提交确认的制作表单'; this.renderWorkflowStatus();
     try {
       if (this.packet && proposal.status === 'FROZEN' && (!this.packet.proposalId || this.packet.proposalId === proposal.id) && (!this.packet.projectId || !proposal.projectId || this.packet.projectId === proposal.projectId)) { await this.createJob(this.packet, { context, proposal }); return; }
       const reviewedProposal = proposal;
@@ -609,7 +693,7 @@ export class StudioApp {
         return;
       }
       await this.createJob(frozenPacket, { context, proposal });
-    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) { this.notify(`方案未能冻结或派发：${error.message}${error.status === 409 ? ' 版本发生变化，请刷新并重新审阅。' : ''}`); button.textContent = '重新尝试确认'; button.disabled = !$('#reviewed').checked || !this.readiness?.ready; } }
+    } catch (error) { if (this.selectionContextMatches(context) && generation === this.proposalMutationGeneration && this.proposal?.id === proposal.id) { this.activity = !Number.isInteger(error.status) || error.status >= 500 ? '制作表单提交状态待核实' : null; this.renderWorkflowStatus(); this.notify(`方案未能冻结或派发：${error.message}${error.status === 409 ? ' 版本发生变化，请刷新并重新审阅。' : ''}`); button.textContent = '重新尝试确认'; button.disabled = !$('#reviewed').checked || !this.readiness?.ready; } }
   }
   async resumeFrozenPacket() {
     if (!this.packet || this.proposal?.status !== 'FROZEN') return;
@@ -641,7 +725,14 @@ export class StudioApp {
     // A frozen packet identifies one dispatch intent. Retrying after an uncertain
     // network outcome must address the same intent, never create a replacement job.
     const idempotencyKey = `packet:${packetId}`;
-    const response = await this.request('/jobs', { method: 'POST', token: true, body: { packetId, idempotencyKey } });
+    this.activity = '已提交制作请求，等待 agent session'; this.renderWorkflowStatus();
+    let response;
+    try { response = await this.request('/jobs', { method: 'POST', token: true, body: { packetId, idempotencyKey } }); }
+    catch (error) {
+      const packetStillSelected = this.packet?.id === packetId || this.packet?.packetId === packetId;
+      if (this.selectionContextMatches(context) && packetStillSelected && (!proposalId || this.proposal?.id === proposalId)) { this.activity = !Number.isInteger(error.status) || error.status >= 500 ? '制作派发状态待核实' : null; this.renderWorkflowStatus(); }
+      throw error;
+    }
     const job = response.job || response;
     if (!job.id) throw new Error('服务没有返回作业编号。');
     if (!this.selectionContextMatches(context) || this.packet?.id !== packet.id && this.packet?.packetId !== packetId || proposalId && this.proposal?.id !== proposalId) return null;
@@ -651,8 +742,8 @@ export class StudioApp {
   }
   async loadJob(id, poll = true) {
     const context = this.captureSelectionContext(), generation = ++this.jobLoadGeneration;
-    try { const response = await this.request(`/jobs/${encodeURIComponent(id)}`); const job = response.job || response; if (!this.selectionContextMatches(context) || generation !== this.jobLoadGeneration || job.id !== id) return; this.job = job; this.renderJob(); if (poll && !TERMINAL.has(this.job.status)) this.beginPolling(); }
-    catch (error) { if (this.selectionContextMatches(context) && generation === this.jobLoadGeneration) this.notify(`无法读取作业状态：${error.message}`); }
+    try { const response = await this.request(`/jobs/${encodeURIComponent(id)}`, { projectId: context.projectId }); const job = response.job || response; if (!this.selectionContextMatches(context) || generation !== this.jobLoadGeneration || job.id !== id || job.projectId !== context.projectId) return; this.activity = null; this.job = job; this.renderJob(); if (poll && !TERMINAL.has(this.job.status)) this.beginPolling(); }
+    catch (error) { if (this.selectionContextMatches(context) && generation === this.jobLoadGeneration) { this.activity = '制作状态未确认'; this.renderWorkflowStatus(); this.notify(`无法读取作业状态：${error.message}`); } }
   }
   renderJob() {
     if (!this.job) return; hide($('#job-panel'), false); setStatus($('#job-status'), this.job.status);
@@ -674,6 +765,7 @@ export class StudioApp {
     }
     if (this.job.projectId && (this.snapshot?.projectId || this.snapshot?.id) !== this.job.projectId) this.ensureWorkbench(this.job.projectId).catch(() => {});
     if (TERMINAL.has(this.job.status)) this.stopPolling();
+    this.renderWorkflowStages(); this.renderWorkflowStatus();
   }
   renderEvidence(verification, root) {
     const card = el('div', 'evidence-card'); card.append(el('h3', '', `运行验证：${verification.status || '状态未知'}`));
@@ -724,12 +816,13 @@ export class StudioApp {
       if (!this.selectionContextMatches(context) || generation !== this.jobMutationGeneration || this.job?.id !== jobId) return;
       this.job = response.job || this.job;
       if (response.snapshot && (response.snapshot.projectId || response.snapshot.id) === (this.snapshot?.projectId || this.snapshot?.id)) this.snapshot = response.snapshot;
+      if (decision === 'reject' && !this.canEnterIteration()) { this.proposal = null; this.packet = null; hide($('#proposal-panel')); }
       this.renderJob();
       if (decision === 'accept' && this.job.projectId && this.selectionContextMatches(context)) await this.loadWorkbench(this.job.projectId);
       this.notify(testing ? `服务已记录${label}；此结果属于测试工作区。` : (decision === 'accept' ? '服务已记录接受决定；请核对返回的发布版本。' : '服务已记录拒绝决定；当前已发布版本保持不变。'));
     } catch (error) { if (this.selectionContextMatches(context) && generation === this.jobMutationGeneration && this.job?.id === jobId) this.notify(`决定未被确认：${error.message}${error.status === 409 ? ' 版本已变化，请刷新并重新审阅。' : ''}`); }
   }
-  reviewSnapshotMatchesJob() { return !!this.job?.projectId && (!$('#project')?.value || $('#project').value === this.job.projectId) && this.snapshotMatchesProject(this.job.projectId); }
+  reviewSnapshotMatchesJob() { return !!this.job?.projectId && this.projectId === this.job.projectId && this.snapshotMatchesProject(this.job.projectId); }
   beginPolling() { this.stopPolling(); if (!this.job?.id) return; this.pollHandle = this.timers.setInterval(() => this.loadJob(this.job.id, false), 2500); }
   stopPolling() { if (this.pollHandle != null) this.timers.clearInterval(this.pollHandle); this.pollHandle = null; }
   async cancelJob() {
@@ -756,18 +849,21 @@ export class StudioApp {
     }
     if (!previous || switchingProject) $('#edit-text').value = '';
     const response = await this.request(`/projects/${encodeURIComponent(projectId)}/workbench`);
-    if (generation !== this.workbenchGeneration) return null;
+    if (generation !== this.workbenchGeneration || this.projectId !== projectId || !this.workspace?.projects?.some(project => project.id === projectId)) return null;
     const loadedSnapshot = response.snapshot || response;
     if ((loadedSnapshot.projectId || loadedSnapshot.id) !== projectId) throw new Error('服务返回的项目版本与所选项目不匹配。');
     const sameProject = previous && (previous.projectId || previous.id) === projectId;
     const publicationChanged = sameProject && previous.publicationRevision !== loadedSnapshot.publicationRevision;
     if (!sameProject || publicationChanged) this.fieldDraftValues = {};
     this.snapshot = loadedSnapshot; this.capabilities = response.capabilities || this.snapshot.capabilities || null; this.workflow = this.snapshot.workflow || response.workflow || this.workspace?.projects?.find(p => p.id === projectId)?.workflow || null; this.candidates = response.candidates || [];
+    if (typeof response.iterationReady === 'boolean') this.workspace.iterationReady = response.iterationReady;
+    if (response.iterationReadyReason) this.workspace.iterationReadyReason = response.iterationReadyReason;
+    if (typeof response.iterationReadyTestOnly === 'boolean') this.workspace.iterationReadyTestOnly = response.iterationReadyTestOnly;
     if (this.pendingRebase && (this.pendingRebase.generation !== generation || this.pendingRebase.nextSnapshot !== loadedSnapshot)) {
       this.pendingRebase = null;
       const dialog = $('#rebase-dialog'); if (dialog?.open) dialog.close();
     }
-    const projectSelect = $('#project'); if (projectSelect) projectSelect.value = projectId;
+    if (this.projectId !== projectId) return null;
     hide($('#workbench-panel'), false); this.renderWorkbench();
     const changed = previous && (previous.projectId || previous.id) === (this.snapshot.projectId || this.snapshot.id) && previous.publicationRevision !== this.snapshot.publicationRevision;
     if (changed) {
@@ -812,16 +908,17 @@ export class StudioApp {
     if (snap.kind === 'CONCEPT') summary.append(el('div', 'notice', '当前处于概念阶段，尚未制作或验证工程；完成策划并确认范围后进入制作。'));
     else if (snap.kind === 'INITIALIZATION') summary.append(el('div', 'notice', '当前版本是已验证的工程准备基线，尚不包含可玩的 MVP。玩法实现需要独立规划和确认。'));
     else if (snap.playable === false) summary.append(el('div', 'notice', '当前版本尚无可玩的 MVP。玩法实现需要独立策划和确认。'));
-    else if (snap.kind === 'MVP' && snap.playable === true) summary.append(el('div', 'success-notice', this.objectsWorkflow()
-      ? '已通过 Godot 技术检查；玩法与视觉体验仍需你实际确认。'
-      : '可运行的 MVP 已通过服务声明的验证。'));
+    else if (snap.kind === 'MVP' && snap.playable === true) summary.append(el('div', 'success-notice', this.workspace?.testData
+      ? '测试数据中的 MVP 样例；不代表生产项目已完成或被用户验收。'
+      : '首个 Demo 已完成服务验证并由用户接受。'));
     if (snap.baseCommit || snap.sourceCommit) summary.append(el('p', 'meta-line', `Git 版本：${snap.baseCommit || snap.sourceCommit}`));
+    if (this.canEnterIteration() && this.stage === 'initial') { const link = el('a', 'button primary iteration-link', '进入迭代工作台 →'); link.href = `?project=${encodeURIComponent(this.projectId)}&stage=iteration`; link.addEventListener('click', event => { event.preventDefault(); this.enterIterationStage(); }); summary.append(link); }
     const objects = this.objectItems(snap);
     if (this.objectsWorkflow()) this.renderObjectCatalog(objects);
     else if (objects.length) { summary.append(el('h3', '', '可编辑内容')); const list = el('div', 'object-list'); for (const object of objects.slice(0, 12)) { const row = el('div', 'object-row'); row.append(el('b', '', object.name || object.label || object.id)); row.append(el('span', 'muted', object.editable === false ? '只读' : '可编辑')); list.append(row); } summary.append(list); }
     const capabilities = this.capabilities?.fields || this.capabilities?.parameters || this.capabilities || {};
     const pendingInitialization = snap.kind === 'INITIALIZATION' || snap.playable === false;
-    if (this.objectsWorkflow()) { this.selectedObjectId = objects.some(o => o.id === this.selectedObjectId) ? this.selectedObjectId : (objects[0]?.id || null); this.renderDynamicFields(objects, capabilities); this.renderObjectCatalog(objects); this.renderObjectDetail(); this.renderFeedback(); this.draftKey = this.makeDraftKey(snap); this.showDraftState(); return; }
+    if (this.objectsWorkflow()) { this.selectedObjectId = objects.some(o => o.id === this.selectedObjectId) ? this.selectedObjectId : (objects[0]?.id || null); this.renderDynamicFields(objects, capabilities); this.renderObjectCatalog(objects); this.renderObjectDetail(); this.renderFeedback(); this.draftKey = this.makeDraftKey(snap); this.showDraftState(); this.renderWorkflowStages(); return; }
     this.renderDynamicFields(objects, capabilities);
     for (const key of TEMPLATE_FIELDS) {
       const input = this.parameterInput(key); if (!input) continue;
@@ -840,6 +937,72 @@ export class StudioApp {
     }
     $('#capability-note').textContent = '灰色项目表示此工程尚未声明支持；提交前会由服务再次校验。';
     this.draftKey = this.makeDraftKey(snap); this.showDraftState();
+    this.renderWorkflowStages();
+  }
+  canEnterIteration() {
+    const snapshot = this.snapshot;
+    return this.workspace?.iterationReady === true && !!snapshot && (snapshot.projectId || snapshot.id) === this.projectId && Number.isInteger(snapshot.publicationRevision) && snapshot.publicationRevision > 0 && snapshot.playable === true;
+  }
+  enterIterationStage() {
+    if (!this.canEnterIteration()) { this.notify('首个 Demo 需要通过后端验证并由用户接受后，才能进入迭代。'); return; }
+    this.stage = 'iteration'; this.updateUrl(); this.renderWorkflowStages(); this.renderWorkflowStatus();
+  }
+  renderWorkflowStages() {
+    const project = !!this.projectId, proposal = this.proposal, accepted = this.canEnterIteration();
+    hide($('#concept-form')?.closest('.panel'), !project || this.stage === 'iteration' || !!proposal || !!this.job && ACTIVE.has(this.job.status) || accepted);
+    const iterationOpen = project && this.stage === 'iteration' && accepted;
+    $('#project-view')?.classList.toggle('iteration-mode', iterationOpen);
+    hide($('#workbench-panel'), !iterationOpen && !accepted);
+    hide($('#object-catalog'), !iterationOpen); hide($('#edit-form'), !iterationOpen); hide($('#draft-state'), !iterationOpen);
+    if (accepted && proposal?.status === 'FROZEN' && this.jobMatchesProposal() && this.job.status === 'PUBLISHED') hide($('#proposal-panel'));
+    if (iterationOpen) { $('#workbench-title').textContent = '迭代工作台'; hide($('#proposal-panel'), !this.isIterationProposal(proposal)); }
+    else if (project && accepted) { hide($('#workbench-panel'), false); $('#workbench-title').textContent = '已完成的首个 Demo'; }
+    const link = $('#snapshot-summary .iteration-link'); if (link) hide(link, this.stage !== 'initial');
+    hide($('#project-manager'), project); hide($('#project-view'), !project);
+  }
+  isIterationProposal(proposal = this.proposal) {
+    if (this.stage !== 'iteration' || !this.canEnterIteration() || !proposal || proposal.projectId !== this.projectId) return false;
+    const boundRevision = proposal.changeRequest?.baseRevision ?? proposal.publicationRevision;
+    if (!Number.isInteger(Number(boundRevision)) || Number(boundRevision) <= 0) return false;
+    if (['PLANNING', 'PLANNING_UNCERTAIN', 'PLANNING_CANCELLING', 'NEEDS_CLARIFICATION', 'READY', 'FAILED', 'BLOCKED', 'CANCELLED'].includes(proposal.status)) return true;
+    if (proposal.status === 'FROZEN') return !!this.packet && (!this.jobMatchesProposal() || ACTIVE.has(this.job.status));
+    return false;
+  }
+  jobMatchesProposal(job = this.job, proposal = this.proposal, packet = this.packet) {
+    if (!job || !proposal) return false;
+    const packetIds = [packet?.id, packet?.packetId, proposal.packetId].filter(Boolean);
+    return job.proposalId === proposal.id || packetIds.includes(job.packetId) || packet?.jobId === job.id || job.id === packet?.jobId;
+  }
+  renderWorkflowStatus() {
+    const status = $('#workflow-status-copy'); if (!status) return;
+    if (!this.projectId) { status.textContent = '请选择或创建一个项目。'; return; }
+    if (this.activity) {
+      const title = this.currentProject()?.title || this.projectId;
+      const revision = Number.isInteger(this.snapshot?.publicationRevision) ? `版本 ${this.snapshot.publicationRevision}` : '尚无发布版本';
+      status.textContent = `${title} · ${revision} · ${this.stage === 'iteration' ? '迭代阶段' : '初始讨论与制作'} · ${this.activity}`; return;
+    }
+    const proposal = this.proposal, job = this.job;
+    const accepted = this.canEnterIteration();
+    let actor = '等待用户输入', action = '描述初始想法';
+    if (job?.status === 'UNCERTAIN' || proposal?.status === 'PLANNING_UNCERTAIN') { actor = '状态待核实'; action = '读取服务记录并对账'; }
+    else if (job?.status === 'READY_FOR_REVIEW') { actor = '等待用户反馈'; action = '预览并审阅制作候选'; }
+    else if (job?.status === 'VERIFYING') { actor = '后端验证'; action = '等待运行验证结果'; }
+    else if (job?.status === 'QUEUED' || job?.status === 'DISPATCHING') { actor = '等待 AI 制作'; action = JOB_LABELS[job.status] || '等待制作 session'; }
+    else if (job?.status === 'RUNNING') { actor = 'AI 正在制作'; action = '等待制作结果'; }
+    else if (job?.status === 'PROJECTING') { actor = '系统整理结果'; action = '等待结果映射与回流'; }
+    else if (job?.status === 'CANCEL_REQUESTED' || job?.status === 'CANCELLING') { actor = '正在停止制作'; action = '等待服务确认停止'; }
+    else if (proposal && PLANNING.has(proposal.status)) { actor = proposal.status.includes('CANCELLING') ? '正在停止策划' : 'AI 策划'; action = proposal.status.includes('CANCELLING') ? '等待停止确认' : '等待策划反馈'; }
+    else if (proposal?.status === 'NEEDS_CLARIFICATION') { actor = '等待用户反馈'; action = '回答 AI 策划问题'; }
+    else if (proposal?.status === 'READY') { actor = '等待用户反馈'; action = '审阅并确认制作范围'; }
+    else if (proposal?.status === 'FROZEN' && !accepted) { actor = '等待 AI 制作'; action = '恢复已冻结的制作表单'; }
+    else if (job?.status === 'BLOCKED') { actor = '当前步骤受阻'; action = '查看阻塞原因与可用恢复操作'; }
+    else if (job?.status === 'REJECTED') { actor = accepted ? '等待用户反馈' : '等待用户输入'; action = accepted ? '候选已拒绝，可继续调整当前版本' : '候选已拒绝，可修改初始想法并重新策划'; }
+    else if (job?.status === 'FAILED' || proposal?.status === 'FAILED') { actor = '流程失败'; action = '查看诊断并决定是否重试'; }
+    else if (this.stage === 'iteration' && accepted) { actor = '迭代工作台'; action = '选择对象并提交调整或反馈'; }
+    else if (accepted) { actor = '等待用户反馈'; action = this.workspace?.iterationReadyTestOnly ? '测试演示已就绪（测试数据）' : '首个 Demo 已完成，可进入迭代'; }
+    const title = this.currentProject()?.title || this.projectId;
+    const revision = Number.isInteger(this.snapshot?.publicationRevision) ? `版本 ${this.snapshot.publicationRevision}` : '尚无发布版本';
+    status.textContent = `${title} · ${revision} · ${this.stage === 'iteration' ? '迭代阶段' : '初始讨论与制作'} · ${actor} · 下一步：${action}`;
   }
   allCapabilities(capabilities = this.capabilities) {
     const source = capabilities?.fields || capabilities?.parameters || capabilities || {};
@@ -987,11 +1150,47 @@ export class StudioApp {
     const feedback = [...(this.feedback || [])]; const targetObjectIds = [...new Set([...(this.selectedObjectId ? [this.selectedObjectId] : []), ...fields.map(field => field.objectId), ...feedback.map(item => item.objectId)])];
     return { baseRevision: this.snapshot.publicationRevision, sourceCommit: this.snapshot.sourceCommit || this.snapshot.baseCommit, targetObjectIds, fields, feedback };
   }
-  makeDraftKey(snap) { return `${this.workspace?.workspaceId || 'workspace'}:${snap.projectId || snap.id}:${snap.publicationRevision ?? 'unknown'}`; }
+  storageId() { return this.workspace?.storeId || this.manager?.storeId || null; }
+  makeDraftKey(snap) { const storeId = this.storageId(); return storeId && snap ? `${storeId}:${snap.projectId || snap.id}:iteration:${snap.publicationRevision ?? 'unknown'}` : null; }
+  conceptDraftKey(projectId) { const storeId = this.storageId(); return storeId && projectId ? `${storeId}:${projectId}:initial:concept:v1` : null; }
+  queueConceptDraftSave() {
+    if (!this.projectId || !this.persistenceOK) return;
+    if (!this.conceptDraftKey(this.projectId)) return;
+    if (this.conceptDraftTimer != null) this.timers.clearTimeout(this.conceptDraftTimer);
+    const projectId = this.projectId, generation = this.selectionGeneration;
+    this.conceptDraftTimer = this.timers.setTimeout(() => { this.conceptDraftTimer = null; if (this.projectId === projectId && this.selectionGeneration === generation) this.saveConceptDraft(projectId); }, 300);
+  }
+  async saveConceptDraft(projectId = this.projectId) {
+    if (!projectId || !this.persistenceOK) return;
+    const key = this.conceptDraftKey(projectId);
+    if (!key) return;
+    const generation = this.selectionGeneration;
+    try {
+      await this.drafts.put({ key, projectId, stage: 'initial', text: $('#concept').value, assets: this.assets.map(asset => ({ id: asset.id, name: asset.name, purpose: asset.purpose, mimeType: asset.mimeType })), updatedAt: new Date().toISOString() });
+    } catch (error) {
+      this.persistenceOK = false;
+      if (this.projectId === projectId && this.selectionGeneration === generation) { $('#persistence-note').textContent = `概念草稿保存失败：${error.message}。当前文字仍留在页面中，请先复制保存。`; $('#persistence-note').className = 'muted danger-text'; }
+    }
+  }
+  async restoreConceptDraft(projectId, generation) {
+    if (!this.persistenceOK) return;
+    const key = this.conceptDraftKey(projectId); if (!key) return;
+    let draft;
+    try { draft = await this.drafts.get(key); }
+    catch (error) {
+      this.persistenceOK = false;
+      if (this.projectId === projectId && this.selectionGeneration === generation) { $('#persistence-note').textContent = `读取概念草稿失败：${error.message}。`; $('#persistence-note').className = 'muted danger-text'; }
+      return;
+    }
+    if (!draft || this.projectId !== projectId || this.selectionGeneration !== generation) return;
+    $('#concept').value = draft.text || ''; this.assets = Array.isArray(draft.assets) ? draft.assets.filter(asset => typeof asset.id === 'string') : []; this.renderAssets();
+  }
+  async deleteConceptDraft(projectId) { const key = this.conceptDraftKey(projectId); if (!key) return; try { await this.drafts.delete(key); } catch {} }
   async restoreDraft(expectedGeneration = this.workbenchGeneration) {
     if (!this.persistenceOK || !this.snapshot) return;
     const targetSnapshot = this.snapshot;
     const key = this.makeDraftKey(targetSnapshot);
+    if (!key) { this.draftKey = null; this.showDraftState('服务未提供存储实例标识，草稿不会从其他工作区恢复或写入。'); return; }
     try {
       const draft = await this.drafts.get(key);
       if (expectedGeneration !== this.workbenchGeneration || this.snapshot !== targetSnapshot || (this.snapshot.projectId || this.snapshot.id) !== (targetSnapshot.projectId || targetSnapshot.id)) return;
@@ -1021,8 +1220,8 @@ export class StudioApp {
       if (this.draftContextMatches(key, generation, targetSnapshot)) { this.showDraftState(`草稿保存失败：${error.message}。请先复制保存文字。`, true); $('#persistence-note').textContent = '草稿存储写入失败。'; $('#persistence-note').className = 'muted danger-text'; }
     }
   }
-  draftContextMatches(key, generation, snapshot) { return generation === this.workbenchGeneration && this.draftKey === key && this.snapshot === snapshot && this.makeDraftKey(snapshot) === key && ($('#project')?.value || '') === (snapshot.projectId || snapshot.id); }
-  showDraftState(text = null, error = false) { const node = $('#draft-state'); if (!node) return; node.textContent = text || (this.draftKey ? '草稿按项目与已发布版本分别保存。' : '等待项目版本信息。'); node.className = `draft-state${error ? ' danger-text' : ''}`; }
+  draftContextMatches(key, generation, snapshot) { return generation === this.workbenchGeneration && this.draftKey === key && this.snapshot === snapshot && this.makeDraftKey(snapshot) === key && this.projectId === (snapshot.projectId || snapshot.id); }
+  showDraftState(text = null, error = false) { const node = $('#draft-state'); if (!node) return; node.textContent = text || (this.draftKey ? '草稿按项目与已发布版本分别保存。' : '等待项目版本及存储实例身份。'); node.className = `draft-state${error ? ' danger-text' : ''}`; }
   handleRebase(oldSnapshot, nextSnapshot, visibleDraft = null) {
     if (!this.draftKey || oldSnapshot.projectId !== nextSnapshot.projectId) return;
     const oldKey = this.unrebasedDraft?.projectId === (oldSnapshot.projectId || oldSnapshot.id) ? this.unrebasedDraft.key : this.makeDraftKey(oldSnapshot), newKey = this.makeDraftKey(nextSnapshot);
@@ -1056,7 +1255,7 @@ export class StudioApp {
     if (!pending.draft.text && !fieldPreview.childNodes.length) preview.append(el('p', 'muted', '当前没有待重关联的修改内容。'));
     preview.append(el('p', 'muted', '此操作只复制草稿并标记待核对，不会发布或覆盖项目。')); content.append(preview);
   }
-  rebaseContextMatches(pending) { return this.pendingRebase === pending && pending.generation === this.workbenchGeneration && this.snapshot === pending.nextSnapshot && this.makeDraftKey(this.snapshot) === pending.newKey && ($('#project')?.value || '') === (pending.nextSnapshot.projectId || pending.nextSnapshot.id); }
+  rebaseContextMatches(pending) { return this.pendingRebase === pending && pending.generation === this.workbenchGeneration && this.snapshot === pending.nextSnapshot && this.makeDraftKey(this.snapshot) === pending.newKey && this.projectId === (pending.nextSnapshot.projectId || pending.nextSnapshot.id); }
   sameReviewedDraft(preview, stored) {
     const canonical = values => JSON.stringify(Object.fromEntries(Object.entries(values || {}).sort(([a], [b]) => a.localeCompare(b))));
     return !!stored && preview.text === stored.text && (preview.draftRevision || 0) === (stored.draftRevision || 0) && canonical(preview.values) === canonical(stored.values) && canonical(preview.fields) === canonical(stored.fields) && canonical(preview.feedback) === canonical(stored.feedback) && (preview.feedbackMessage || '') === (stored.feedbackMessage || '') && (preview.feedbackCategory || 'general') === (stored.feedbackCategory || 'general') && (preview.selectedObjectId || null) === (stored.selectedObjectId || null);
@@ -1086,7 +1285,7 @@ export class StudioApp {
     if (this.pendingRebase) return this.notify('请先确认或取消草稿重关联，再提交迭代。');
     if (!this.readiness?.ready) return this.notify('新工作流尚未通过启动检查，调整不会提交。');
     if (this.selectionBusy) return this.notify('正在读取所选项目版本，请稍后再提交。');
-    const selectedProject = $('#project').value;
+    const selectedProject = this.projectId;
     if (!selectedProject || !this.snapshotMatchesProject(selectedProject)) return this.notify('所选项目的版本尚未读取成功；当前调整没有提交。');
     if (this.proposal?.projectId === selectedProject && ['PLANNING', 'PLANNING_UNCERTAIN', 'NEEDS_CLARIFICATION', 'READY'].includes(this.proposal.status)) return this.notify('当前提案仍在策划或等待确认；请先完成、取消或对账本轮提案。');
     const text = $('#edit-text').value.trim(); const values = {};
@@ -1106,7 +1305,7 @@ export class StudioApp {
     await this.submitConcept([text, details].filter(Boolean).join('\n'), true);
   }
   notify(message) { const box = $('#notice'); if (!box) return; box.textContent = message; hide(box, false); box.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); }
-  destroy() { this.destroyed = true; this.stopPolling(); this.stopProposalPolling(); if (this.draftTimer != null) this.timers.clearTimeout(this.draftTimer); }
+  destroy() { this.destroyed = true; this.stopPolling(); this.stopProposalPolling(); if (this.draftTimer != null) this.timers.clearTimeout(this.draftTimer); if (this.conceptDraftTimer != null) this.timers.clearTimeout(this.conceptDraftTimer); }
 }
 
 if (typeof document !== 'undefined' && document.getElementById('app')) {

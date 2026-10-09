@@ -204,7 +204,12 @@ class GenericWorkflow:
         if expected_publication_revision is not None:
             self._revision(expected_publication_revision)
         with self.transaction():
-            assets = [self._get("asset", aid) for aid in ids]
+            if project_id:
+                assets = [self.require_project_asset(project_id, aid) for aid in ids]
+            elif ids:
+                _failure("PROJECT_REQUIRED", "图片必须属于明确的项目。", 400)
+            else:
+                assets = []
             if project_id:
                 project = self._get("project", project_id)
                 if project.get("workflow") != WORKFLOW:
@@ -290,7 +295,8 @@ class GenericWorkflow:
                 packet["instruction"] += (" This is a field-only iteration: preserve the whole currentDocument exactly "
                     "except the requested field values. Retain requirements, IDs, bindings, descriptions, title and summary. "
                     "Tasks should verify the existing runtime-driven fields without unnecessary game source changes.")
-            references = [self.asset_file(asset["id"])[0] for asset in proposal["assets"]]
+            references = [self.project_asset_file(proposal["projectId"], asset)[0]
+                for asset in proposal.get("assets", [])]
             started = True
             result = driver.run(packet, cancel_event=cancel, reference_images=references,
                 on_process_started=lambda lease: self._planning_update(pid, revision, planningLease=lease))
@@ -451,6 +457,8 @@ class GenericWorkflow:
             p = self._get("proposal", proposal_id)
             if p.get("workflow") != WORKFLOW:
                 _failure("WORKFLOW_MISMATCH", "此操作只适用于通用策划。")
+            if self._get("project", p["projectId"]).get("archived"):
+                _failure("PROJECT_ARCHIVED", "已归档项目为只读状态，请先恢复项目。", 409)
             if p["status"] == "PLANNING":
                 cancel = self._cancels.get("planning:" + proposal_id)
                 if cancel:
@@ -539,6 +547,7 @@ class GenericWorkflow:
                 _failure("REVIEW_MISMATCH", "需要确认当前完整对象计划和精确修订。")
             project = self._get("project", p["projectId"])
             self._available(project["id"])
+            self.validate_project_assets(project["id"], p.get("assets", []))
             if project["publicationRevision"] != expected_publication_revision or p["publicationRevision"] != expected_publication_revision:
                 _failure("STALE_PUBLICATION", "计划基线已变化。")
             folder = self.state_root / "planning" / p["id"] / f"spec-{p['revision']}"
@@ -669,9 +678,11 @@ class GenericWorkflow:
             driver = self.generic_driver_factory(worktree) if self.generic_driver_factory else (
                 self.driver_factory(worktree) if self._custom_driver else CodexDriver(worktree, timeout=900,
                     execution_profile="managed_workspace_write", disabled_mcp_servers=["godot-mcp"]))
+            reference_images = [self.project_asset_file(packet["projectId"], asset)[0]
+                for asset in packet.get("assets", [])]
             started = True
             result = driver.run(production, cancel_event=cancel,
-                reference_images=[self.asset_file(a["id"])[0] for a in packet["assets"]],
+                reference_images=reference_images,
                 on_process_started=lambda lease: self._update(job_id, executionLease=lease))
             (folder / "session.json").write_text(canonical(result) + "\n")
             stopped = result.get("diagnostics", {}).get("childTerminationConfirmed") is True
@@ -810,6 +821,8 @@ class GenericWorkflow:
             "summary": "当前对象工程已通过技术检查并被接受为工作台版本。" + ("这是隔离测试结果。" if self.test_data else "用户已记录体验决定。"),
             "testData": self.test_data, "productionAuthorized": self.production_authorized, "createdAt": now()}
         self._put("snapshot", snapshot)
-        project.update(snapshotId=snapshot["id"], publicationRevision=snapshot["publicationRevision"], title=snapshot["title"])
+        project.update(snapshotId=snapshot["id"], publicationRevision=snapshot["publicationRevision"])
+        if not project.get("titleExplicit"):
+            project["title"] = snapshot["title"]
         self._put("project", project)
         return snapshot

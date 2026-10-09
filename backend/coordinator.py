@@ -185,6 +185,13 @@ class Coordinator(GenericWorkflow):
             self.db.execute(
                 "INSERT OR IGNORE INTO meta VALUES('operator',?)", (self.operator_id,)
             )
+            store_identity = self.db.execute(
+                "SELECT value FROM meta WHERE key='store_id'"
+            ).fetchone()
+            self.store_id = store_identity[0] if store_identity else identifier("store")
+            self.db.execute(
+                "INSERT OR IGNORE INTO meta VALUES('store_id',?)", (self.store_id,)
+            )
             self.db.execute(
                 "INSERT OR IGNORE INTO meta VALUES('test_data',?)",
                 (str(self.test_data),),
@@ -240,6 +247,13 @@ class Coordinator(GenericWorkflow):
             )
         ]
 
+    def _all_project(self, kind, project_id):
+        """Fetch only rows owned by one project without hydrating other projects."""
+        return [json.loads(row[0]) for row in self.db.execute(
+            "SELECT payload FROM entities WHERE kind=? AND json_extract(payload,'$.projectId')=? ORDER BY rowid DESC",
+            (kind, project_id),
+        )]
+
     def _operator(self, operator_id):
         if operator_id != self.operator_id:
             raise WorkflowError(403, "OPERATOR", "工作台会话身份不匹配。")
@@ -250,6 +264,8 @@ class Coordinator(GenericWorkflow):
             raise WorkflowError(400, "REVISION", "版本号必须是非负整数。")
 
     def _available(self, project_id):
+        if self._get("project", project_id).get("archived"):
+            raise WorkflowError(409, "PROJECT_ARCHIVED", "已归档项目不能继续提交策划或制作。")
         for proposal in self._all("proposal"):
             if proposal["projectId"] == project_id and proposal["status"] in {
                 "PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"
@@ -312,6 +328,7 @@ class Coordinator(GenericWorkflow):
             return {
                 "apiVersion": "objects-v1",
                 "workspaceId": "test" if self.test_data else "local",
+                "storeId": self.store_id,
                 "name": "GM 游戏制作工作区",
                 "operatorId": self.operator_id,
                 "testData": self.test_data,
@@ -323,8 +340,159 @@ class Coordinator(GenericWorkflow):
                 "capabilities": self.capabilities(),
             }
 
-    def upload_asset(self, *, operator_id, name, mime_type, data_base64, purpose):
+    def workspace_summary(self):
+        """Small project-manager payload; project contents load on demand."""
+        with self.lock:
+            projects = [{key: project[key] for key in (
+                "id", "title", "workflow", "templateId", "publicationRevision",
+                "snapshotId", "createdAt", "updatedAt", "archived"
+            ) if key in project} for project in self._all("project")]
+            return {
+                "apiVersion": "objects-v1", "workspaceId": "test" if self.test_data else "local",
+                "storeId": self.store_id,
+                "name": "GM 游戏制作工作区", "operatorId": self.operator_id,
+                "testData": self.test_data, "productionAuthorized": self.production_authorized,
+                "projects": projects, "jobs": [], "proposals": [], "packets": [],
+                "capabilities": self.capabilities(),
+            }
+
+    def project_workspace(self, project_id):
+        with self.lock:
+            project = self._get("project", project_id)
+            packets = self._all_project("packet", project_id)
+            packet_lookup = {packet["proposalId"]: packet["id"] for packet in packets if packet.get("proposalId")}
+            proposals = [self._diagnosed_proposal(p) for p in self._all_project("proposal", project_id)]
+            for record in (*proposals, *packets):
+                self.validate_project_assets(project_id, record.get("assets", []))
+            for proposal in proposals:
+                if proposal.get("status") == "FROZEN" and not proposal.get("packetId"):
+                    proposal["packetId"] = packet_lookup.get(proposal["id"])
+            value = {
+                "apiVersion": "objects-v1", "workspaceId": "test" if self.test_data else "local",
+                "storeId": self.store_id,
+                "name": "GM 游戏制作工作区", "operatorId": self.operator_id,
+                "testData": self.test_data, "productionAuthorized": self.production_authorized,
+                "projects": [project], "proposals": proposals, "packets": packets,
+                "jobs": self._all_project("job", project_id), "capabilities": self.capabilities(),
+            }
+            value.update(self.iteration_status(project_id))
+            return value
+
+    def iteration_status(self, project_id):
+        project = self._get("project", project_id)
+        snapshot = (self.require_project_resource(project_id, "snapshot", project["snapshotId"])
+                    if project.get("snapshotId") else None)
+        if not snapshot or not snapshot.get("playable") or snapshot.get("kind") != "MVP":
+            return {"iterationReady": False, "iterationReadyReason": "首个 Demo 尚未发布。"}
+        jobs = {job["id"]: job for job in self._all_project("job", project_id)}
+        job = jobs.get(snapshot.get("jobId"))
+        candidate = (job or {}).get("candidate") or {}
+        verification = candidate.get("verification") or {}
+        event = _ApprovalStore(self.db).get(job.get("decisionEventId")) if job and job.get("decisionEventId") else None
+        accepted = bool(job and job.get("status") == "PUBLISHED" and event and
+            event.get("phase") == "run_acceptance" and event.get("action") == "accept" and
+            event.get("projectId") == project_id and event.get("jobId") == job.get("id") and
+            event.get("candidateId") == snapshot.get("candidateId"))
+        exact = bool(job and candidate.get("id") == snapshot.get("candidateId") and
+            candidate.get("candidateCommit") == snapshot.get("sourceCommit") and
+            job.get("snapshot", {}).get("id") == snapshot.get("id") and
+            snapshot.get("publicationRevision") == project.get("publicationRevision"))
+        ready = accepted and exact and verification.get("status") == "PASS"
+        return {"iterationReady": ready,
+            "iterationReadyReason": "首个 Demo 已验证并接受，可以进入迭代。" if ready else "需要完成验证并接受当前 Demo 后才能进入迭代。",
+            "iterationReadyTestOnly": bool(ready and self.test_data)}
+
+    def create_project(self, *, operator_id, title, workflow="objects-v1"):
         self._operator(operator_id)
+        if workflow not in {"objects-v1", "collect-loop-v1"}:
+            raise WorkflowError(400, "WORKFLOW", "不支持的项目工作流。")
+        if not isinstance(title, str) or not title.strip() or len(title.strip()) > 120:
+            raise WorkflowError(400, "PROJECT_TITLE", "项目名称必须为 1 至 120 个字符。")
+        project = {"id": identifier("project"), "title": title.strip(), "titleExplicit": True,
+            "workflow": workflow, "templateId": "general-2d-v1" if workflow == "objects-v1" else "collect-loop-v1",
+            "publicationRevision": 0, "snapshotId": None, "createdAt": now(), "archived": False}
+        with self.transaction():
+            self._put("project", project)
+        return project
+
+    def update_project_settings(self, *, operator_id, project_id, title=None, archived=None):
+        self._operator(operator_id)
+        with self.transaction():
+            project = self._get("project", project_id)
+            if title is not None:
+                if not isinstance(title, str) or not title.strip() or len(title.strip()) > 120:
+                    raise WorkflowError(400, "PROJECT_TITLE", "项目名称必须为 1 至 120 个字符。")
+                project["title"] = title.strip()
+                project["titleExplicit"] = True
+            if archived is not None:
+                if type(archived) is not bool:
+                    raise WorkflowError(400, "PROJECT_ARCHIVE", "archived 必须为布尔值。")
+                if archived and not project.get("archived"):
+                    self._assert_project_idle(project_id)
+                project["archived"] = archived
+            project["updatedAt"] = now()
+            self._put("project", project)
+            return project
+
+    def _assert_project_idle(self, project_id):
+        if any(p.get("projectId") == project_id and p.get("status") in {"PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"} for p in self._all("proposal")):
+            raise WorkflowError(409, "PROJECT_BUSY", "项目存在正在执行或状态待核实的策划，不能归档。")
+        if any(j.get("projectId") == project_id and j.get("status") in ACTIVE for j in self._all("job")):
+            raise WorkflowError(409, "PROJECT_BUSY", "项目存在正在执行或状态待核实的作业，不能归档。")
+
+    def asset_owner(self, asset_id):
+        """Resolve new ownership directly and legacy ownership only from references."""
+        with self.lock:
+            asset = self._get("asset", asset_id)
+            if asset.get("projectId"):
+                return asset["projectId"]
+            owners = set()
+            for kind in ("proposal", "packet"):
+                for item in self._all(kind):
+                    if any((ref == asset_id) or (isinstance(ref, dict) and ref.get("id") == asset_id)
+                           for ref in item.get("assets", [])):
+                        owners.add(item.get("projectId"))
+            owners.discard(None)
+            return next(iter(owners)) if len(owners) == 1 else None
+
+    def require_project_asset(self, project_id, asset_id):
+        self._get("project", project_id)
+        if self.asset_owner(asset_id) != project_id:
+            raise WorkflowError(404, "NOT_FOUND", "项目中的图片不存在。")
+        return self._get("asset", asset_id)
+
+    def validate_project_assets(self, project_id, asset_refs):
+        if not isinstance(asset_refs, list):
+            raise WorkflowError(409, "ASSET_OWNERSHIP", "项目附件引用无效，已阻止读取或制作。")
+        validated = []
+        for ref in asset_refs:
+            asset_id = ref if isinstance(ref, str) else ref.get("id") if isinstance(ref, dict) else None
+            if not isinstance(asset_id, str) or not asset_id:
+                raise WorkflowError(409, "ASSET_OWNERSHIP", "项目附件缺少稳定身份，已阻止读取或制作。")
+            asset = self.require_project_asset(project_id, asset_id)
+            validated.append(asset)
+        return validated
+
+    def project_asset_file(self, project_id, asset_ref):
+        asset_id = asset_ref if isinstance(asset_ref, str) else asset_ref.get("id") if isinstance(asset_ref, dict) else None
+        if not isinstance(asset_id, str) or not asset_id:
+            raise WorkflowError(409, "ASSET_OWNERSHIP", "项目附件缺少稳定身份，已阻止读取或制作。")
+        self.require_project_asset(project_id, asset_id)
+        return self.asset_file(asset_id)
+
+    def require_project_resource(self, project_id, kind, entity_id):
+        self._get("project", project_id)
+        value = self._get(kind, entity_id)
+        if value.get("projectId") != project_id:
+            raise WorkflowError(404, "NOT_FOUND", "项目中的记录不存在。")
+        return value
+
+    def upload_asset(self, *, operator_id, name, mime_type, data_base64, purpose, project_id=None):
+        self._operator(operator_id)
+        if project_id is None:
+            raise WorkflowError(400, "PROJECT_REQUIRED", "上传图片必须指定所属项目。")
+        if self._get("project", project_id).get("archived"):
+            raise WorkflowError(409, "PROJECT_ARCHIVED", "已归档项目不能添加图片。")
         if purpose not in {"reference", "style", "layout", "asset"}:
             raise WorkflowError(400, "ASSET_PURPOSE", "请指定参考图片的用途。")
         if (
@@ -371,6 +539,7 @@ class Coordinator(GenericWorkflow):
         stored.chmod(0o600)
         asset = {
             "id": asset_id,
+            "projectId": project_id,
             "name": str(name)[:100],
             "mimeType": actual,
             "purpose": purpose,
@@ -425,7 +594,7 @@ class Coordinator(GenericWorkflow):
         if not isinstance(asset_ids or [], list) or len(asset_ids or []) > 6:
             raise WorkflowError(400, "ASSETS", "每个提案最多六张参考图片。")
         with self.transaction():
-            assets = [self._get("asset", aid) for aid in (asset_ids or [])]
+            assets = [self.require_project_asset(project_id, aid) for aid in (asset_ids or [])] if project_id else []
             if project_id:
                 project = self._get("project", project_id)
                 self._available(project_id)
@@ -775,6 +944,7 @@ class Coordinator(GenericWorkflow):
                 )
             project = self._get("project", proposal["projectId"])
             self._available(project["id"])
+            self.validate_project_assets(project["id"], proposal.get("assets", []))
             if (
                 expected_publication_revision != project["publicationRevision"]
                 or proposal["publicationRevision"] != expected_publication_revision
@@ -873,6 +1043,7 @@ class Coordinator(GenericWorkflow):
                         409, "IDEMPOTENCY_CONFLICT", "意图编号已经绑定其他表单。"
                     )
             self._available(packet["projectId"])
+            self.validate_project_assets(packet["projectId"], packet.get("assets", []))
             project = self._get("project", packet["projectId"])
             if project["publicationRevision"] != packet["publicationRevision"]:
                 raise WorkflowError(
@@ -1064,7 +1235,8 @@ class Coordinator(GenericWorkflow):
                 message="已派发新的受控制作 session。",
             )
             driver = self.driver_factory(worktree)
-            references = [self.asset_file(asset["id"])[0] for asset in packet["assets"]]
+            references = [self.project_asset_file(packet["projectId"], asset)[0]
+                for asset in packet.get("assets", [])]
             producer_started = True
             result = driver.run(
                 production_packet,
@@ -1505,7 +1677,7 @@ class Coordinator(GenericWorkflow):
         with self.lock:
             project = self._get("project", project_id)
             snapshot = (
-                self._get("snapshot", project["snapshotId"])
+                self.require_project_resource(project_id, "snapshot", project["snapshotId"])
                 if project["snapshotId"]
                 else {
                     "projectId": project_id,
@@ -1521,16 +1693,18 @@ class Coordinator(GenericWorkflow):
             fields = snapshot.get("catalog", {}).get("capabilities", [])
             candidates = [
                 dict(job["candidate"], status=job["status"])
-                for job in self._all("job")
+                for job in self._all_project("job", project_id)
                 if job["projectId"] == project_id
                 and job["status"] == "READY_FOR_REVIEW"
             ]
-            return {
+            result = {
                 "workflow": project.get("workflow", "collect-loop-v1"),
                 "snapshot": snapshot,
                 "capabilities": {"fields": fields},
                 "candidates": candidates,
             }
+            result.update(self.iteration_status(project_id))
+            return result
 
     def cancel_job(self, *, operator_id, job_id):
         self._operator(operator_id)
@@ -1609,6 +1783,8 @@ class Coordinator(GenericWorkflow):
         self._operator(operator_id)
         with self.lock:
             job = self._get("job", job_id)
+            if self._get("project", job["projectId"]).get("archived"):
+                raise WorkflowError(409, "PROJECT_ARCHIVED", "已归档项目不能启动预览。")
             candidate = job.get("candidate", {})
             if (
                 job["status"] not in {"READY_FOR_REVIEW", "PUBLISHED"}
@@ -1618,7 +1794,7 @@ class Coordinator(GenericWorkflow):
                 raise WorkflowError(
                     409, "PREVIEW_UNVERIFIED", "只有通过独立验证的玩法候选可以预览。"
                 )
-            if any(p.poll() is None for p in self._previews):
+            if any(pid == job["projectId"] and proc.poll() is None for pid, proc in self._previews):
                 raise WorkflowError(
                     409, "PREVIEW_RUNNING", "已有本机预览窗口，请先关闭。"
                 )
@@ -1657,7 +1833,7 @@ class Coordinator(GenericWorkflow):
                     stdout=log,
                     stderr=subprocess.STDOUT,
                 )
-            self._previews.append(proc)
+            self._previews.append((job["projectId"], proc))
 
             def expire_preview():
                 if proc.poll() is None:
@@ -1691,7 +1867,7 @@ class Coordinator(GenericWorkflow):
             cancel.set()
         for thread in self._threads.values():
             thread.join(10)
-        for proc in self._previews:
+        for _project_id, proc in self._previews:
             if proc.poll() is None:
                 proc.terminate()
                 try:

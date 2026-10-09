@@ -49,6 +49,30 @@ class FakeCoordinator:
             "testData": True,
         }
 
+    def project_workspace(self, project_id):
+        return {"projects": [{"id": project_id}], "jobs": [], "proposals": [], "packets": [], "capabilities": self.capabilities()}
+
+    def create_project(self, **kwargs):
+        self.calls.append(("create_project", kwargs))
+        return {"id": "project-1", "title": kwargs["title"], "workflow": kwargs["workflow"]}
+
+    def update_project_settings(self, **kwargs):
+        self.calls.append(("update_project_settings", kwargs))
+        return {"id": kwargs["project_id"], "title": kwargs.get("title") or "Demo"}
+
+    def require_project_resource(self, project_id, kind, entity_id):
+        allowed = {"project-1", "proposal-1", "packet-1", "job-1"}
+        if project_id != "project-1" or entity_id not in allowed:
+            raise WorkflowError(404, "NOT_FOUND", "not found")
+        return {"id": entity_id, "projectId": project_id}
+
+    def require_project_asset(self, project_id, asset_id):
+        if project_id != "project-1" or asset_id != "asset-test-1":
+            raise WorkflowError(404, "NOT_FOUND", "not found")
+
+    def asset_owner(self, asset_id):
+        return "project-1" if asset_id == "asset-test-1" else None
+
     def create_concept(self, **kwargs):
         self.calls.append(("create_concept", kwargs))
         if self.fail_conflict:
@@ -61,7 +85,7 @@ class FakeCoordinator:
             }
         }
 
-    def upload_asset(self, *, operator_id, name, mime_type, data_base64, purpose):
+    def upload_asset(self, *, operator_id, name, mime_type, data_base64, purpose, project_id=None):
         payload = base64.b64decode(data_base64)
         path = self.root / "stored-image.png"
         path.write_bytes(payload)
@@ -74,6 +98,7 @@ class FakeCoordinator:
         )
         return {
             "id": "asset-test-1",
+            "projectId": project_id,
             "name": name,
             "mimeType": mime_type,
             "purpose": purpose,
@@ -220,11 +245,21 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual(status, 404)
         self.assertIn("read-only", payload["error"])
 
+    def test_project_stage_links_load_while_api_queries_remain_rejected(self):
+        path = "/studio/?project=project-1&stage=iteration"
+        status, headers, body = self.request(path)
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["Content-Type"])
+        self.assertIn(b"studio fixture", body)
+        self.assertEqual(self.request(path, method="HEAD")[0], 200)
+        self.assertEqual(self.request("/api/workspace?project=project-1")[0], 400)
+        self.assertEqual(self.request("/api/projects/project-1/workbench?stage=iteration")[0], 400)
+
     def test_origin_host_and_token_gate_every_mutation(self):
         body = {"text": "collect stars", "assetIds": []}
         self.assertEqual(
             self.request(
-                "/api/concepts",
+                "/api/projects/project-1/concepts",
                 method="POST",
                 body=body,
                 token=self.token,
@@ -234,7 +269,7 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(
             self.request(
-                "/api/concepts",
+                "/api/projects/project-1/concepts",
                 method="POST",
                 body=body,
                 token=self.token,
@@ -243,12 +278,12 @@ class StudioServerTests(unittest.TestCase):
             403,
         )
         self.assertEqual(
-            self.request("/api/concepts", method="POST", body=body, token="wrong")[0],
+            self.request("/api/projects/project-1/concepts", method="POST", body=body, token="wrong")[0],
             403,
         )
         self.assertEqual(
             self.request(
-                "/api/concepts",
+                "/api/projects/project-1/concepts",
                 method="POST",
                 body=body,
                 token=self.token,
@@ -260,7 +295,7 @@ class StudioServerTests(unittest.TestCase):
 
     def test_concept_api_passes_server_operator_and_revision_only(self):
         status, _headers, payload = self.post_json(
-            "/api/concepts",
+            "/api/projects/project-1/concepts",
             {
                 "text": "collect stars",
                 "projectId": "project-1",
@@ -274,30 +309,30 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual(call["operator_id"], self.coordinator.operator_id)
         self.assertEqual(call["expected_publication_revision"], 7)
         self.assertEqual(
-            self.post_json("/api/concepts", {"text": "x", "cwd": "/tmp"})[0], 400
+            self.post_json("/api/projects/project-1/concepts", {"text": "x", "cwd": "/tmp"})[0], 400
         )
         self.assertEqual(
-            self.post_json("/api/concepts", {"text": "x", "operatorId": "forged"})[0],
+            self.post_json("/api/projects/project-1/concepts", {"text": "x", "operatorId": "forged"})[0],
             400,
         )
 
     def test_json_rejects_duplicate_keys_and_non_finite_constants(self):
         status, _, _ = self.request(
-            "/api/concepts",
+            "/api/projects/project-1/concepts",
             method="POST",
             body=b'{"text":"first","text":"second"}',
             token=self.token,
         )
         self.assertEqual(status, 400)
         status, _, _ = self.request(
-            "/api/concepts",
+            "/api/projects/project-1/concepts",
             method="POST",
             body=b'{"text":"safe","expectedPublicationRevision":NaN}',
             token=self.token,
         )
         self.assertEqual(status, 400)
         status, _, _ = self.request(
-            "/api/proposals/proposal-1/answers",
+            "/api/projects/project-1/proposals/proposal-1/answers",
             method="POST",
             body=b'{"expectedRevision":1,"answers":{"goalCount":1e999}}',
             token=self.token,
@@ -307,12 +342,12 @@ class StudioServerTests(unittest.TestCase):
 
     def test_proposal_job_and_decision_routes_bind_exact_fields(self):
         status, _, _ = self.post_json(
-            "/api/proposals/proposal-1/answers",
+            "/api/projects/project-1/proposals/proposal-1/answers",
             {"expectedRevision": 1, "answers": {"goalCount": "5"}},
         )
         self.assertEqual(status, 200)
         status, _, _ = self.post_json(
-            "/api/proposals/proposal-1/freeze",
+            "/api/projects/project-1/proposals/proposal-1/freeze",
             {
                 "expectedRevision": 2,
                 "expectedPublicationRevision": 3,
@@ -321,15 +356,15 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(status, 201)
         status, _, _ = self.post_json(
-            "/api/jobs", {"packetId": "packet-1", "idempotencyKey": "packet:packet-1"}
+            "/api/projects/project-1/jobs", {"packetId": "packet-1", "idempotencyKey": "packet:packet-1"}
         )
         self.assertEqual(status, 202)
-        self.assertEqual(self.get_json("/api/jobs/job-1")[0], 200)
-        self.assertEqual(self.post_json("/api/jobs/job-1/preview", {})[0], 202)
-        self.assertEqual(self.post_json("/api/jobs/job-1/reconcile", {})[0], 200)
-        self.assertEqual(self.post_json("/api/jobs/job-1/cancel", {})[0], 200)
+        self.assertEqual(self.get_json("/api/projects/project-1/jobs/job-1")[0], 200)
+        self.assertEqual(self.post_json("/api/projects/project-1/jobs/job-1/preview", {})[0], 202)
+        self.assertEqual(self.post_json("/api/projects/project-1/jobs/job-1/reconcile", {})[0], 200)
+        self.assertEqual(self.post_json("/api/projects/project-1/jobs/job-1/cancel", {})[0], 200)
         status, _, payload = self.post_json(
-            "/api/jobs/job-1/decision",
+            "/api/projects/project-1/jobs/job-1/decision",
             {
                 "decision": "accept",
                 "candidateCommit": "cafe1234",
@@ -345,7 +380,7 @@ class StudioServerTests(unittest.TestCase):
 
     def test_stale_workflow_error_keeps_status_and_code(self):
         self.coordinator.fail_conflict = True
-        status, _, payload = self.post_json("/api/concepts", {"text": "collect stars"})
+        status, _, payload = self.post_json("/api/projects/project-1/concepts", {"text": "collect stars"})
         self.assertEqual(status, 409)
         self.assertEqual(payload["code"], "stale_revision")
         self.assertEqual(payload["message"], "Publication revision changed.")
@@ -354,7 +389,7 @@ class StudioServerTests(unittest.TestCase):
         image = (REPO_ROOT / "frontend" / "dist" / "assets" / "arch.png").read_bytes()
         encoded = base64.b64encode(image).decode("ascii")
         status, _, response = self.post_json(
-            "/api/assets",
+            "/api/projects/project-1/assets",
             {
                 "name": "arch.png",
                 "mimeType": "image/png",
@@ -364,13 +399,13 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(status, 201)
         asset_id = response["asset"]["id"]
-        status, headers, body = self.request(f"/api/assets/{asset_id}")
+        status, headers, body = self.request(f"/api/projects/project-1/assets/{asset_id}")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "image/png")
         self.assertEqual(body, image)
         self.assertEqual(
             self.post_json(
-                "/api/assets",
+                "/api/projects/project-1/assets",
                 {
                     "name": "fake.png",
                     "mimeType": "image/png",
@@ -382,7 +417,7 @@ class StudioServerTests(unittest.TestCase):
         )
         self.assertEqual(
             self.post_json(
-                "/api/assets",
+                "/api/projects/project-1/assets",
                 {
                     "name": "x.png",
                     "mimeType": "image/png",

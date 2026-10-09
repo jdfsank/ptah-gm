@@ -14,7 +14,7 @@
     <div class="top-actions"><span id="connection" class="connection pending" role="status">正在连接本机服务…</span><a class="legacy-link" href="/legacy/">旧版工作台</a></div>
   </header>
   <main id="app" class="shell" aria-live="polite">
-    <section class="hero">
+    <section id="home-hero" class="hero">
       <div><p class="eyebrow">从想法到可运行的作品</p><h1>把一个想法，变成可继续调整的 Demo。</h1><p class="intro">先说说你想做什么。我们会一起明确本轮目标，制作并验证后，再把可编辑的结果带回这里。</p><p class="scope-note">工作台以项目对象、属性和关系为单位整理制作范围。图片是概念、风格或布局参考，是否纳入制作计划会在提案中单独说明。</p></div>
       <div class="hero-badge"><span class="spark" aria-hidden="true">造</span><span>你的工作台<br><b>始终在这里</b></span></div>
     </section>
@@ -26,15 +26,21 @@
     </section>
     <section id="workspace" class="hidden">
       <div id="test-banner" class="test-banner hidden" role="status">测试工作区：此处的确认和发布只用于验证，不构成生产授权或真实用户验收。</div>
-      <div class="workspace-heading"><div><p class="eyebrow">工作区</p><h2 id="workspace-name">正在读取工作区…</h2></div><button id="refresh" class="button quiet" type="button">刷新状态</button></div>
+      <section id="project-manager" class="panel hidden" aria-labelledby="manager-title">
+        <div class="panel-heading"><div><p class="eyebrow">项目管理</p><h2 id="manager-title">选择一个项目</h2></div><span class="status-pill">项目彼此独立</span></div>
+        <form id="new-project-form" class="new-project-form"><label class="field-label" for="new-project-title">新项目名称</label><div class="inline-form"><input id="new-project-title" name="title" maxlength="100" required placeholder="例如：我的游戏点子"><button class="button primary" type="submit">创建项目</button></div></form>
+        <div id="project-list" class="project-list"><p class="muted">等待服务连接</p></div>
+      </section>
+      <section id="project-view" class="hidden">
+      <div class="workspace-heading"><div><p class="eyebrow">当前项目</p><h2 id="workspace-name">正在读取项目…</h2></div><div class="heading-actions"><button id="rename-project" class="button quiet" type="button">重命名</button><button id="archive-project" class="button quiet" type="button">归档</button><button id="back-projects" class="button quiet" type="button">所有项目</button><button id="refresh" class="button quiet" type="button">刷新状态</button></div></div>
+      <div class="workflow-status" role="status"><span class="status-dot"></span><span id="workflow-status-copy">正在读取项目阶段…</span></div>
       <div class="grid">
         <div class="main-column">
           <section class="panel" aria-labelledby="concept-title">
             <div class="panel-heading"><div><p class="eyebrow">第一步 · 说出想法</p><h2 id="concept-title">你想做怎样的游戏？</h2></div><span class="step-number">01</span></div>
             <form id="concept-form">
-              <label class="field-label" for="project">制作目标</label>
-              <select id="project" name="projectId"><option value="">创建一个新 Demo</option></select>
-              <label class="field-label" for="concept">用自己的话描述</label>
+              <p class="muted">项目：<b id="concept-project-label"></b></p>
+              <label class="field-label" for="concept">用户原始想法</label>
               <textarea id="concept" name="text" rows="4" maxlength="5000" placeholder="描述你想做的 2D 游戏、核心体验和最想先验证的部分。" required></textarea>
               <div class="upload-row"><label class="button secondary upload-button" for="images">添加图片</label><input id="images" type="file" accept="image/png,image/jpeg,image/webp" multiple><select id="asset-purpose" aria-label="图片用途"><option value="reference">概念参考</option><option value="style">风格参考</option><option value="layout">布局参考</option><option value="asset">素材输入</option></select><span id="asset-help" class="muted">PNG、JPEG、WebP，单张不超过 5 MB</span></div>
               <div id="image-list" class="image-list" aria-live="polite"></div>
@@ -45,7 +51,7 @@
             <div class="panel-heading"><div><p class="eyebrow">一起明确本轮范围</p><h2 id="proposal-title">初步方案</h2></div><span id="proposal-status" class="status-pill">待确认</span></div>
             <div id="proposal-content"></div>
             <div id="planning-status" class="notice hidden" role="status"></div>
-            <form id="answers-form" class="hidden"><div id="questions"></div><button class="button primary" type="submit">提交回答</button></form>
+            <form id="answers-form" class="hidden"><h3>AI 策划的问题 · 请补充你的决定</h3><div id="questions"></div><button class="button primary" type="submit">提交回答</button></form>
             <div id="freeze-area" class="hidden">
               <div class="review-card"><h3>制作前请核对</h3><p>确认后将冻结本轮方案並发送给制作 session。你可以先返回修改想法。</p><label class="check-row"><input id="reviewed" type="checkbox"><span id="review-label">我已阅读并确认上面的方案和制作范围</span></label></div>
               <button id="freeze" class="button primary" type="button" disabled>确认方案并继续</button>
@@ -54,7 +60,7 @@
             </div>
           </section>
           <section id="job-panel" class="panel hidden" aria-labelledby="job-title">
-            <div class="panel-heading"><div><p class="eyebrow">制作与验证</p><h2 id="job-title">本轮进度</h2></div><span id="job-status" class="status-pill">排队中</span></div>
+            <div class="panel-heading"><div><p class="eyebrow">AI 制作与后端验证</p><h2 id="job-title">本轮进度</h2></div><span id="job-status" class="status-pill">排队中</span></div>
             <p id="job-message" class="muted"></p><div id="job-evidence"></div>
             <div id="cancel-area" class="hidden"><button id="cancel" class="button danger" type="button">请求取消</button><span class="muted">服务确认停止前，项目仍处于制作中。</span></div>
             <div id="reconcile-area" class="hidden"><button id="reconcile" class="button secondary" type="button">向服务对账此作业</button><span class="muted">不会自动重新派发；仅读取本机服务记录和执行状态。</span></div>
@@ -73,11 +79,12 @@
           </section>
         </div>
         <aside class="side-column">
-          <section class="panel compact"><p class="eyebrow">项目</p><div id="project-list" class="project-list"><p class="muted">等待服务连接</p></div></section>
+          <section class="panel compact"><p class="eyebrow">当前项目</p><p id="sidebar-project-name" class="muted">尚未选择项目</p></section>
           <section class="panel compact"><p class="eyebrow">最近制作</p><div id="job-list" class="job-list"><p class="muted">还没有制作记录</p></div></section>
           <section class="panel compact note-panel"><p class="eyebrow">版本与保存</p><p>草稿保存在此浏览器，并按项目和版本区分。制作结果会先作为候选显示；只有服务返回确认后，当前版本才会更新。</p><p id="persistence-note" class="muted">正在检查本机草稿存储…</p></section>
         </aside>
       </div>
+      </section>
     </section>
     <footer class="page-footer">本机工作台 · 制作和运行由本机服务管理 <span id="api-version"></span></footer>
   </main>
