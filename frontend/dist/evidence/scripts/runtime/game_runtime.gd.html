@@ -1,0 +1,379 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/runtime/game_runtime.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/runtime/game_runtime.gd</h1><p>只读源快照 · SHA-256 34b67833fb8c3d93b6c9039c5655782ef50856c177ea59b07d15530758e99941</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name GameRuntime extends Node2D</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> signal runtime_ready</span>
+<span class="line" id="L4"><a href="#L4">   4</a> signal runtime_failed(message: String)</span>
+<span class="line" id="L5"><a href="#L5">   5</a> </span>
+<span class="line" id="L6"><a href="#L6">   6</a> const ACTIONS: Array[String] = [&quot;move_left&quot;, &quot;move_right&quot;, &quot;jump&quot;, &quot;sword&quot;, &quot;card&quot;, &quot;dodge&quot;, &quot;interact&quot;, &quot;map&quot;, &quot;pause&quot;, &quot;ui_accept&quot;, &quot;ui_cancel&quot;, &quot;ui_left&quot;, &quot;ui_right&quot;, &quot;ui_up&quot;, &quot;ui_down&quot;]</span>
+<span class="line" id="L7"><a href="#L7">   7</a> @export_enum(&quot;title&quot;, &quot;gameplay&quot;) var entry_mode: String = &quot;gameplay&quot;</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var ui_root: Node = null</span>
+<span class="line" id="L9"><a href="#L9">   9</a> var world: World</span>
+<span class="line" id="L10"><a href="#L10">  10</a> var progression: C_Progression</span>
+<span class="line" id="L11"><a href="#L11">  11</a> var checkpoint: C_Checkpoint</span>
+<span class="line" id="L12"><a href="#L12">  12</a> var save_repository := SaveRepository.new()</span>
+<span class="line" id="L13"><a href="#L13">  13</a> var room_epoch: int = 0</span>
+<span class="line" id="L14"><a href="#L14">  14</a> var _session_actions: Array[String] = []</span>
+<span class="line" id="L15"><a href="#L15">  15</a> var session: C_Session</span>
+<span class="line" id="L16"><a href="#L16">  16</a> var player: GameEntity</span>
+<span class="line" id="L17"><a href="#L17">  17</a> var camera: Camera2D</span>
+<span class="line" id="L18"><a href="#L18">  18</a> var resources := ResourceCatalog.new()</span>
+<span class="line" id="L19"><a href="#L19">  19</a> var rooms := RoomCatalog.new()</span>
+<span class="line" id="L20"><a href="#L20">  20</a> var factory: EntityFactory</span>
+<span class="line" id="L21"><a href="#L21">  21</a> var room_data: Dictionary = {}</span>
+<span class="line" id="L22"><a href="#L22">  22</a> var room_bounds := Rect2(0, 0, 2400, 720)</span>
+<span class="line" id="L23"><a href="#L23">  23</a> var tick_index: int = 0</span>
+<span class="line" id="L24"><a href="#L24">  24</a> var landing_count: int = 0</span>
+<span class="line" id="L25"><a href="#L25">  25</a> var in_safe_flush: bool = false</span>
+<span class="line" id="L26"><a href="#L26">  26</a> var executed_groups: Array[String] = []</span>
+<span class="line" id="L27"><a href="#L27">  27</a> var _actions: Array[Dictionary] = []</span>
+<span class="line" id="L28"><a href="#L28">  28</a> var _placements: Dictionary = {}</span>
+<span class="line" id="L29"><a href="#L29">  29</a> var _pending_placements: Dictionary = {}</span>
+<span class="line" id="L30"><a href="#L30">  30</a> var _removals: Array[String] = []</span>
+<span class="line" id="L31"><a href="#L31">  31</a> var _spawns: Array[Dictionary] = []</span>
+<span class="line" id="L32"><a href="#L32">  32</a> var _spawn_serial: int = 0</span>
+<span class="line" id="L33"><a href="#L33">  33</a> var _projectile_contacts: Dictionary = {}</span>
+<span class="line" id="L34"><a href="#L34">  34</a> var _flush_scheduled: bool = false</span>
+<span class="line" id="L35"><a href="#L35">  35</a> var _last_delta: float = 0.0</span>
+<span class="line" id="L36"><a href="#L36">  36</a> var _ready_emitted: bool = false</span>
+<span class="line" id="L37"><a href="#L37">  37</a> </span>
+<span class="line" id="L38"><a href="#L38">  38</a> func _ready() -&gt; void:</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	world = World.new()</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 	world.name = &quot;GameECS&quot;</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 	world.entity_nodes_root = NodePath(&quot;.&quot;)</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 	world.system_nodes_root = NodePath(&quot;.&quot;)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 	add_child(world)</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 	ECS.set(&quot;world&quot;, world)</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	assert(ECS.world == world)</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	for entry in [[InputSystem.new(), &quot;input&quot;], [EnemyAISystem.new(), &quot;ai&quot;], [BossSystem.new(), &quot;boss&quot;], [CombatSystem.new(), &quot;combat&quot;], [MovementSystem.new(), &quot;movement&quot;], [DamageSystem.new(), &quot;damage&quot;], [InteractionSystem.new(), &quot;interaction&quot;], [ProgressionSystem.new(), &quot;progression&quot;], [SaveSystem.new(), &quot;save&quot;], [EffectSystem.new(), &quot;effects&quot;], [MaterializationSystem.new(), &quot;materialize&quot;], [AnimationSystem.new(), &quot;animation&quot;], [CameraSystem.new(), &quot;camera&quot;], [UISystem.new(), &quot;ui&quot;]]:</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		var system: System = entry[0]</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 		system.name = system.get_script().get_global_name()</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 		system.set(&quot;runtime&quot;, self)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 		system.group = entry[1]</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 		system.command_buffer_flush_mode = &quot;MANUAL&quot;</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 		world.add_system(system)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 	world.finalize_system_setup()</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 	factory = EntityFactory.new(self)</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 	var session_entity := factory.create_session()</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 	session_entity.add_component(C_UIState.new())</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 	session = session_entity.get_component(C_Session)</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 	progression = session_entity.get_component(C_Progression)</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 	checkpoint = session_entity.get_component(C_Checkpoint)</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 	checkpoint.payload = {&quot;version&quot;: 1, &quot;checkpoint_id&quot;: &quot;start&quot;, &quot;room_id&quot;: &quot;grand_lobby&quot;, &quot;spawn_id&quot;: &quot;start&quot;, &quot;moonstep&quot;: false, &quot;visited_rooms&quot;: [&quot;grand_lobby&quot;], &quot;boss_defeated&quot;: false, &quot;ending_seen&quot;: false}</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 	if not rooms.validate_graph(resources):</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 		fail(rooms.last_error)</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 		return</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 	session.transition = {&quot;applied&quot;: true}</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 	room_data = rooms.load_room(&quot;grand_lobby&quot;, resources)</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 	if room_data.is_empty():</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 		fail(rooms.last_error)</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		return</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 	var bounds: Array = room_data.bounds</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 	room_bounds = Rect2(bounds[0], bounds[1], bounds[2], bounds[3])</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 	factory.create_room(room_data)</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 	var start: Array = room_data.spawns.start</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 	player = factory.create_player(Vector2(start[0], start[1]))</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 	if entry_mode == &quot;title&quot;:</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 		session.mode = &quot;title&quot;</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 		session.loading = false</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 		session.transition.clear()</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 	schedule_flush()</span>
+<span class="line" id="L79"><a href="#L79">  79</a> </span>
+<span class="line" id="L80"><a href="#L80">  80</a> func _unhandled_input(event: InputEvent) -&gt; void:</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 	if event.is_echo():</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 		return</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 	for action in ACTIONS:</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 		# Godot GUI handles menu focus and Enter. Escape has one runtime action.</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 		if action.begins_with(&quot;ui_&quot;):</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 			continue</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 		if event.is_action_pressed(action):</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 			simulate_action(action, true)</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 		elif event.is_action_released(action):</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 			simulate_action(action, false)</span>
+<span class="line" id="L91"><a href="#L91">  91</a> </span>
+<span class="line" id="L92"><a href="#L92">  92</a> func simulate_action(action: String, pressed: bool) -&gt; bool:</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 	if not action in ACTIONS:</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 		return false</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 	_actions.append({&quot;action&quot;: action, &quot;pressed&quot;: pressed})</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 	return true</span>
+<span class="line" id="L97"><a href="#L97">  97</a> </span>
+<span class="line" id="L98"><a href="#L98">  98</a> func take_actions() -&gt; Array[Dictionary]:</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 	var result: Array[Dictionary] = _actions</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 	_actions = []</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 	return result</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> </span>
+<span class="line" id="L103"><a href="#L103"> 103</a> func request_placement(entity_id: String, position: Vector2, rotation: float = 0.0, scale: Vector2 = Vector2.ONE) -&gt; void:</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 	_placements[entity_id] = {&quot;entity_id&quot;: entity_id, &quot;position&quot;: position, &quot;rotation&quot;: rotation, &quot;scale&quot;: scale}</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 	_pending_placements[entity_id] = true</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> </span>
+<span class="line" id="L107"><a href="#L107"> 107</a> func take_placements() -&gt; Dictionary:</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 	var result: Dictionary = _placements</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 	_placements = {}</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 	return result</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> </span>
+<span class="line" id="L112"><a href="#L112"> 112</a> func placement_completed(entity_id: String) -&gt; void:</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 	_pending_placements.erase(entity_id)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> </span>
+<span class="line" id="L115"><a href="#L115"> 115</a> func request_removal(entity_id: String) -&gt; void:</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 	if not entity_id in _removals:</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> 		_removals.append(entity_id)</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 	schedule_flush()</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> </span>
+<span class="line" id="L120"><a href="#L120"> 120</a> func _physics_process(delta: float) -&gt; void:</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 	if session == null:</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 		return</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 	tick_index += 1</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 	_last_delta = delta</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 	executed_groups.clear()</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 	_run_group(&quot;input&quot;, delta)</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 	var modal_pending: bool = false</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 	var ui: C_Input = world.entity_id_registry[&quot;session&quot;].get_component(C_Input)</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 	for action in ui.ui_actions + _session_actions:</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 		if action in [&quot;pause&quot;, &quot;map&quot;, &quot;title&quot;, &quot;new_run&quot;, &quot;continue_run&quot;, &quot;retry&quot;]:</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> 			modal_pending = true</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 	if session.mode == &quot;playing&quot; and not modal_pending:</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 		for group_name in [&quot;ai&quot;, &quot;boss&quot;, &quot;combat&quot;, &quot;movement&quot;, &quot;damage&quot;, &quot;interaction&quot;]:</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 			_run_group(group_name, delta)</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 	elif session.loading and session.mode == &quot;transition&quot;:</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 		_run_group(&quot;movement&quot;, 0.0)</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 		_run_group(&quot;damage&quot;, 0.0)</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 	_run_group(&quot;progression&quot;, delta if session.mode == &quot;playing&quot; else 0.0)</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> 	_run_group(&quot;save&quot;, 0.0)</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> 	if session.mode == &quot;playing&quot; and not modal_pending:</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 		_run_group(&quot;effects&quot;, delta)</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> 	schedule_flush()</span>
+<span class="line" id="L143"><a href="#L143"> 143</a> </span>
+<span class="line" id="L144"><a href="#L144"> 144</a> func _run_group(group_name: String, delta: float) -&gt; void:</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> 	executed_groups.append(group_name)</span>
+<span class="line" id="L146"><a href="#L146"> 146</a> 	ECS.process(delta, group_name)</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> </span>
+<span class="line" id="L148"><a href="#L148"> 148</a> func schedule_flush() -&gt; void:</span>
+<span class="line" id="L149"><a href="#L149"> 149</a> 	if not _flush_scheduled:</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> 		_flush_scheduled = true</span>
+<span class="line" id="L151"><a href="#L151"> 151</a> 		_deferred_flush.call_deferred()</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> </span>
+<span class="line" id="L153"><a href="#L153"> 153</a> func _deferred_flush() -&gt; void:</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> 	_flush_scheduled = false</span>
+<span class="line" id="L155"><a href="#L155"> 155</a> 	if not is_inside_tree() or not is_instance_valid(world):</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> 		return</span>
+<span class="line" id="L157"><a href="#L157"> 157</a> 	in_safe_flush = true</span>
+<span class="line" id="L158"><a href="#L158"> 158</a> 	world.flush_command_buffers()</span>
+<span class="line" id="L159"><a href="#L159"> 159</a> 	for entity_id in _removals:</span>
+<span class="line" id="L160"><a href="#L160"> 160</a> 		var entity: Entity = world.entity_id_registry.get(entity_id)</span>
+<span class="line" id="L161"><a href="#L161"> 161</a> 		if is_instance_valid(entity):</span>
+<span class="line" id="L162"><a href="#L162"> 162</a> 			world.remove_entity(entity)</span>
+<span class="line" id="L163"><a href="#L163"> 163</a> 		_pending_placements.erase(entity_id)</span>
+<span class="line" id="L164"><a href="#L164"> 164</a> 		_placements.erase(entity_id)</span>
+<span class="line" id="L165"><a href="#L165"> 165</a> 	_removals.clear()</span>
+<span class="line" id="L166"><a href="#L166"> 166</a> 	_apply_room_transition()</span>
+<span class="line" id="L167"><a href="#L167"> 167</a> 	var spawns: Array[Dictionary] = _spawns</span>
+<span class="line" id="L168"><a href="#L168"> 168</a> 	_spawns = []</span>
+<span class="line" id="L169"><a href="#L169"> 169</a> 	for request in spawns:</span>
+<span class="line" id="L170"><a href="#L170"> 170</a> 		if request.room_id == session.room_id and request.epoch == room_epoch and session.mode == &quot;playing&quot;:</span>
+<span class="line" id="L171"><a href="#L171"> 171</a> 			factory.create_transient(request.archetype, request.room_id, request.fields)</span>
+<span class="line" id="L172"><a href="#L172"> 172</a> 	_run_group(&quot;materialize&quot;, _last_delta)</span>
+<span class="line" id="L173"><a href="#L173"> 173</a> 	_run_group(&quot;animation&quot;, _last_delta if session.mode == &quot;playing&quot; else 0.0)</span>
+<span class="line" id="L174"><a href="#L174"> 174</a> 	_run_group(&quot;camera&quot;, _last_delta)</span>
+<span class="line" id="L175"><a href="#L175"> 175</a> 	_run_group(&quot;ui&quot;, _last_delta)</span>
+<span class="line" id="L176"><a href="#L176"> 176</a> 	in_safe_flush = false</span>
+<span class="line" id="L177"><a href="#L177"> 177</a> 	if entry_mode == &quot;title&quot; and placements_complete():</span>
+<span class="line" id="L178"><a href="#L178"> 178</a> 		announce_ready()</span>
+<span class="line" id="L179"><a href="#L179"> 179</a> </span>
+<span class="line" id="L180"><a href="#L180"> 180</a> func fail(message: String) -&gt; void:</span>
+<span class="line" id="L181"><a href="#L181"> 181</a> 	if session != null:</span>
+<span class="line" id="L182"><a href="#L182"> 182</a> 		session.mode = &quot;error&quot;</span>
+<span class="line" id="L183"><a href="#L183"> 183</a> 		session.loading = false</span>
+<span class="line" id="L184"><a href="#L184"> 184</a> 		session.message = message</span>
+<span class="line" id="L185"><a href="#L185"> 185</a> 	push_error(message)</span>
+<span class="line" id="L186"><a href="#L186"> 186</a> 	runtime_failed.emit(message)</span>
+<span class="line" id="L187"><a href="#L187"> 187</a> </span>
+<span class="line" id="L188"><a href="#L188"> 188</a> func request_spawn(archetype: String, room_id: String, fields: Dictionary) -&gt; String:</span>
+<span class="line" id="L189"><a href="#L189"> 189</a> 	_spawn_serial += 1</span>
+<span class="line" id="L190"><a href="#L190"> 190</a> 	var entity_id: String = &quot;%s:%s:%d&quot; % [room_id, archetype, _spawn_serial]</span>
+<span class="line" id="L191"><a href="#L191"> 191</a> 	var payload: Dictionary = fields.duplicate(true)</span>
+<span class="line" id="L192"><a href="#L192"> 192</a> 	payload[&quot;id&quot;] = entity_id</span>
+<span class="line" id="L193"><a href="#L193"> 193</a> 	_spawns.append({&quot;archetype&quot;: archetype, &quot;room_id&quot;: room_id, &quot;fields&quot;: payload, &quot;epoch&quot;: room_epoch})</span>
+<span class="line" id="L194"><a href="#L194"> 194</a> 	schedule_flush()</span>
+<span class="line" id="L195"><a href="#L195"> 195</a> 	return entity_id</span>
+<span class="line" id="L196"><a href="#L196"> 196</a> </span>
+<span class="line" id="L197"><a href="#L197"> 197</a> func record_projectile_contact(entity_id: String, target_id: String = &quot;&quot;) -&gt; void:</span>
+<span class="line" id="L198"><a href="#L198"> 198</a> 	_projectile_contacts[entity_id] = target_id</span>
+<span class="line" id="L199"><a href="#L199"> 199</a> </span>
+<span class="line" id="L200"><a href="#L200"> 200</a> func take_projectile_contacts() -&gt; Dictionary:</span>
+<span class="line" id="L201"><a href="#L201"> 201</a> 	var result: Dictionary = _projectile_contacts</span>
+<span class="line" id="L202"><a href="#L202"> 202</a> 	_projectile_contacts = {}</span>
+<span class="line" id="L203"><a href="#L203"> 203</a> 	return result</span>
+<span class="line" id="L204"><a href="#L204"> 204</a> </span>
+<span class="line" id="L205"><a href="#L205"> 205</a> func get_entity_snapshot(entity_id: String) -&gt; Dictionary:</span>
+<span class="line" id="L206"><a href="#L206"> 206</a> 	var entity: Entity = world.entity_id_registry.get(entity_id)</span>
+<span class="line" id="L207"><a href="#L207"> 207</a> 	if not is_instance_valid(entity):</span>
+<span class="line" id="L208"><a href="#L208"> 208</a> 		return {}</span>
+<span class="line" id="L209"><a href="#L209"> 209</a> 	var result: Dictionary = {&quot;id&quot;: entity.id, &quot;enabled&quot;: entity.enabled}</span>
+<span class="line" id="L210"><a href="#L210"> 210</a> 	var transform: C_Transform = entity.get_component(C_Transform)</span>
+<span class="line" id="L211"><a href="#L211"> 211</a> 	if transform != null:</span>
+<span class="line" id="L212"><a href="#L212"> 212</a> 		result.position = transform.position</span>
+<span class="line" id="L213"><a href="#L213"> 213</a> 	var health: C_Health = entity.get_component(C_Health)</span>
+<span class="line" id="L214"><a href="#L214"> 214</a> 	if health != null:</span>
+<span class="line" id="L215"><a href="#L215"> 215</a> 		result.merge({&quot;health&quot;: health.current, &quot;max_health&quot;: health.maximum, &quot;dead&quot;: health.dead, &quot;hurt_left&quot;: health.hurt_left, &quot;invulnerable_left&quot;: health.invulnerable_left, &quot;team&quot;: health.team})</span>
+<span class="line" id="L216"><a href="#L216"> 216</a> 	var combat: C_Combat = entity.get_component(C_Combat)</span>
+<span class="line" id="L217"><a href="#L217"> 217</a> 	if combat != null:</span>
+<span class="line" id="L218"><a href="#L218"> 218</a> 		result.merge({&quot;energy&quot;: combat.energy, &quot;max_energy&quot;: combat.max_energy, &quot;attack_state&quot;: combat.state, &quot;attack_serial&quot;: combat.attack_serial, &quot;sword_cooldown&quot;: combat.sword_cooldown, &quot;card_cooldown&quot;: combat.card_cooldown, &quot;dodge_cooldown&quot;: combat.dodge_cooldown, &quot;dodge_invulnerable&quot;: combat.dodge_invulnerable})</span>
+<span class="line" id="L219"><a href="#L219"> 219</a> 	var boss: C_Boss = entity.get_component(C_Boss)</span>
+<span class="line" id="L220"><a href="#L220"> 220</a> 	if boss != null:</span>
+<span class="line" id="L221"><a href="#L221"> 221</a> 		result.merge({&quot;phase&quot;: boss.phase, &quot;boss_state&quot;: boss.state, &quot;boss_time_left&quot;: boss.time_left, &quot;phase_changed&quot;: boss.phase_changed, &quot;attack_index&quot;: boss.attack_index, &quot;arena_active&quot;: boss.arena_active, &quot;slam_center&quot;: boss.slam_center})</span>
+<span class="line" id="L222"><a href="#L222"> 222</a> 	var effect: C_Effect = entity.get_component(C_Effect)</span>
+<span class="line" id="L223"><a href="#L223"> 223</a> 	if effect != null:</span>
+<span class="line" id="L224"><a href="#L224"> 224</a> 		result.merge({&quot;effect_kind&quot;: effect.kind, &quot;remaining&quot;: effect.remaining, &quot;duration&quot;: effect.duration, &quot;effect_size&quot;: effect.size})</span>
+<span class="line" id="L225"><a href="#L225"> 225</a> 	var interaction: C_Interaction = entity.get_component(C_Interaction)</span>
+<span class="line" id="L226"><a href="#L226"> 226</a> 	if interaction != null:</span>
+<span class="line" id="L227"><a href="#L227"> 227</a> 		result.merge({&quot;interaction_kind&quot;: interaction.kind, &quot;prompt&quot;: interaction.prompt, &quot;selected&quot;: interaction.selected, &quot;available&quot;: interaction.available, &quot;target_room&quot;: interaction.target_room, &quot;target_spawn&quot;: interaction.target_spawn})</span>
+<span class="line" id="L228"><a href="#L228"> 228</a> 	var ai: C_EnemyAI = entity.get_component(C_EnemyAI)</span>
+<span class="line" id="L229"><a href="#L229"> 229</a> 	if ai != null:</span>
+<span class="line" id="L230"><a href="#L230"> 230</a> 		result.merge({&quot;enemy_kind&quot;: ai.kind, &quot;ai_state&quot;: ai.state, &quot;ai_time_left&quot;: ai.time_left})</span>
+<span class="line" id="L231"><a href="#L231"> 231</a> 	var projectile: C_Projectile = entity.get_component(C_Projectile)</span>
+<span class="line" id="L232"><a href="#L232"> 232</a> 	if projectile != null:</span>
+<span class="line" id="L233"><a href="#L233"> 233</a> 		result.merge({&quot;owner_id&quot;: projectile.owner_id, &quot;remaining&quot;: projectile.remaining, &quot;consumed&quot;: projectile.consumed, &quot;previous_position&quot;: projectile.previous_position, &quot;direction&quot;: projectile.direction})</span>
+<span class="line" id="L234"><a href="#L234"> 234</a> 	var visual: C_Visual = entity.get_component(C_Visual)</span>
+<span class="line" id="L235"><a href="#L235"> 235</a> 	if visual != null:</span>
+<span class="line" id="L236"><a href="#L236"> 236</a> 		result.merge({&quot;animation&quot;: visual.animation, &quot;visual_kind&quot;: visual.kind, &quot;tint&quot;: visual.tint, &quot;visual_offset&quot;: visual.offset})</span>
+<span class="line" id="L237"><a href="#L237"> 237</a> 		if visual.node is AnimatedSprite2D:</span>
+<span class="line" id="L238"><a href="#L238"> 238</a> 			result.frame = visual.node.frame</span>
+<span class="line" id="L239"><a href="#L239"> 239</a> 	return result</span>
+<span class="line" id="L240"><a href="#L240"> 240</a> </span>
+<span class="line" id="L241"><a href="#L241"> 241</a> func get_player_snapshot() -&gt; Dictionary:</span>
+<span class="line" id="L242"><a href="#L242"> 242</a> 	if not is_instance_valid(player):</span>
+<span class="line" id="L243"><a href="#L243"> 243</a> 		return {}</span>
+<span class="line" id="L244"><a href="#L244"> 244</a> 	var transform: C_Transform = player.get_component(C_Transform)</span>
+<span class="line" id="L245"><a href="#L245"> 245</a> 	var motion: C_Motion = player.get_component(C_Motion)</span>
+<span class="line" id="L246"><a href="#L246"> 246</a> 	var body: C_Body = player.get_component(C_Body)</span>
+<span class="line" id="L247"><a href="#L247"> 247</a> 	var visual: C_Visual = player.get_component(C_Visual)</span>
+<span class="line" id="L248"><a href="#L248"> 248</a> 	var sprite: AnimatedSprite2D = visual.node as AnimatedSprite2D</span>
+<span class="line" id="L249"><a href="#L249"> 249</a> 	var result: Dictionary = {&quot;id&quot;: player.id, &quot;position&quot;: transform.position, &quot;velocity&quot;: motion.velocity, &quot;grounded&quot;: motion.grounded, &quot;facing&quot;: motion.facing, &quot;jumps_used&quot;: motion.jumps_used, &quot;coyote_left&quot;: motion.coyote_left, &quot;buffer_left&quot;: motion.buffer_left, &quot;body_ready&quot;: body.ready, &quot;placement_pending&quot;: motion.placement_pending, &quot;animation&quot;: visual.animation, &quot;frame&quot;: sprite.frame if sprite != null else -1, &quot;frame_progress&quot;: sprite.frame_progress if sprite != null else 0.0, &quot;flipped&quot;: sprite.flip_h if sprite != null else false, &quot;body_type&quot;: body.root.get_class() if is_instance_valid(body.root) else &quot;&quot;, &quot;body_size&quot;: body.size, &quot;body_offset&quot;: body.offset}</span>
+<span class="line" id="L250"><a href="#L250"> 250</a> </span>
+<span class="line" id="L251"><a href="#L251"> 251</a> 	result.merge(get_entity_snapshot(player.id), true)</span>
+<span class="line" id="L252"><a href="#L252"> 252</a> 	return result</span>
+<span class="line" id="L253"><a href="#L253"> 253</a> </span>
+<span class="line" id="L254"><a href="#L254"> 254</a> func get_run_snapshot() -&gt; Dictionary:</span>
+<span class="line" id="L255"><a href="#L255"> 255</a> 	var enemies: Array[Dictionary] = []</span>
+<span class="line" id="L256"><a href="#L256"> 256</a> 	var projectiles: Array[Dictionary] = []</span>
+<span class="line" id="L257"><a href="#L257"> 257</a> 	var bosses: Array[Dictionary] = []</span>
+<span class="line" id="L258"><a href="#L258"> 258</a> 	var interactions: Array[Dictionary] = []</span>
+<span class="line" id="L259"><a href="#L259"> 259</a> 	var effects: Array[Dictionary] = []</span>
+<span class="line" id="L260"><a href="#L260"> 260</a> 	if is_instance_valid(world):</span>
+<span class="line" id="L261"><a href="#L261"> 261</a> 		for entity in world.query.with_all([C_EnemyAI]).enabled().execute():</span>
+<span class="line" id="L262"><a href="#L262"> 262</a> 			if entity.enabled:</span>
+<span class="line" id="L263"><a href="#L263"> 263</a> 				enemies.append(get_entity_snapshot(entity.id))</span>
+<span class="line" id="L264"><a href="#L264"> 264</a> 		for entity in world.query.with_all([C_Projectile]).enabled().execute():</span>
+<span class="line" id="L265"><a href="#L265"> 265</a> 			if entity.enabled:</span>
+<span class="line" id="L266"><a href="#L266"> 266</a> 				projectiles.append(get_entity_snapshot(entity.id))</span>
+<span class="line" id="L267"><a href="#L267"> 267</a> 		for entity in world.query.with_all([C_Boss]).enabled().execute():</span>
+<span class="line" id="L268"><a href="#L268"> 268</a> 			if entity.enabled:</span>
+<span class="line" id="L269"><a href="#L269"> 269</a> 				bosses.append(get_entity_snapshot(entity.id))</span>
+<span class="line" id="L270"><a href="#L270"> 270</a> 		for entity in world.query.with_all([C_Interaction]).enabled().execute():</span>
+<span class="line" id="L271"><a href="#L271"> 271</a> 			if entity.enabled:</span>
+<span class="line" id="L272"><a href="#L272"> 272</a> 				interactions.append(get_entity_snapshot(entity.id))</span>
+<span class="line" id="L273"><a href="#L273"> 273</a> 		for entity in world.query.with_all([C_Effect]).enabled().execute():</span>
+<span class="line" id="L274"><a href="#L274"> 274</a> 			if entity.enabled:</span>
+<span class="line" id="L275"><a href="#L275"> 275</a> 				effects.append(get_entity_snapshot(entity.id))</span>
+<span class="line" id="L276"><a href="#L276"> 276</a> 	var light: Color = Color.WHITE</span>
+<span class="line" id="L277"><a href="#L277"> 277</a> 	for entity in world.query.with_all([C_Visual, C_RoomMember]).enabled().execute():</span>
+<span class="line" id="L278"><a href="#L278"> 278</a> 		if entity.enabled and entity.get_component(C_Visual).asset_id == room_data.get(&quot;background&quot;, &quot;&quot;):</span>
+<span class="line" id="L279"><a href="#L279"> 279</a> 			light = entity.get_component(C_Visual).tint</span>
+<span class="line" id="L280"><a href="#L280"> 280</a> 			break</span>
+<span class="line" id="L281"><a href="#L281"> 281</a> 	var scene_state: Dictionary = {&quot;background&quot;: room_data.get(&quot;background&quot;, &quot;&quot;), &quot;light&quot;: light, &quot;platforms&quot;: room_data.get(&quot;platforms&quot;, []).duplicate(true), &quot;door_count&quot;: room_data.get(&quot;doors&quot;, []).size(), &quot;transition_pending&quot;: session.loading if session != null else true}</span>
+<span class="line" id="L282"><a href="#L282"> 282</a> 	return {&quot;scene_state&quot;: scene_state, &quot;moonstep&quot;: progression.moonstep if progression != null else false, &quot;visited_rooms&quot;: progression.visited_rooms.duplicate() if progression != null else [], &quot;boss_defeated&quot;: progression.boss_defeated if progression != null else false, &quot;ending_seen&quot;: progression.ending_seen if progression != null else false, &quot;checkpoint&quot;: {&quot;id&quot;: checkpoint.checkpoint_id, &quot;room_id&quot;: checkpoint.room_id, &quot;spawn_id&quot;: checkpoint.spawn_id, &quot;valid&quot;: checkpoint.valid} if checkpoint != null else {}, &quot;save_status&quot;: session.save_status if session != null else &quot;none&quot;, &quot;objective&quot;: session.objective if session != null else &quot;&quot;, &quot;room_epoch&quot;: room_epoch, &quot;bosses&quot;: bosses, &quot;interactions&quot;: interactions, &quot;effects&quot;: effects, &quot;mode&quot;: session.mode if session != null else &quot;loading&quot;, &quot;room_id&quot;: session.room_id if session != null else &quot;&quot;, &quot;room_name&quot;: room_data.get(&quot;name&quot;, &quot;&quot;), &quot;loading&quot;: session.loading if session != null else true, &quot;message&quot;: session.message if session != null else &quot;&quot;, &quot;tick&quot;: tick_index, &quot;entity_count&quot;: world.entities.size() if is_instance_valid(world) else 0, &quot;system_count&quot;: world.systems.size() if is_instance_valid(world) else 0, &quot;groups&quot;: executed_groups.duplicate(), &quot;pending_placements&quot;: _pending_placements.size(), &quot;landing_count&quot;: landing_count, &quot;camera_position&quot;: camera.position if is_instance_valid(camera) else Vector2.ZERO, &quot;room_bounds&quot;: room_bounds, &quot;player&quot;: get_player_snapshot(), &quot;enemies&quot;: enemies, &quot;projectiles&quot;: projectiles}</span>
+<span class="line" id="L283"><a href="#L283"> 283</a> </span>
+<span class="line" id="L284"><a href="#L284"> 284</a> func placements_complete() -&gt; bool:</span>
+<span class="line" id="L285"><a href="#L285"> 285</a> 	return _pending_placements.is_empty()</span>
+<span class="line" id="L286"><a href="#L286"> 286</a> </span>
+<span class="line" id="L287"><a href="#L287"> 287</a> func announce_ready() -&gt; void:</span>
+<span class="line" id="L288"><a href="#L288"> 288</a> 	if not _ready_emitted:</span>
+<span class="line" id="L289"><a href="#L289"> 289</a> 		_ready_emitted = true</span>
+<span class="line" id="L290"><a href="#L290"> 290</a> 		runtime_ready.emit()</span>
+<span class="line" id="L291"><a href="#L291"> 291</a> </span>
+<span class="line" id="L292"><a href="#L292"> 292</a> # Bounded ordinary menu requests. These share the session queue used by UI controls.</span>
+<span class="line" id="L293"><a href="#L293"> 293</a> func request_session_action(action: String) -&gt; bool:</span>
+<span class="line" id="L294"><a href="#L294"> 294</a> 	if not action in [&quot;new_run&quot;, &quot;continue_run&quot;, &quot;retry&quot;, &quot;resume&quot;, &quot;title&quot;, &quot;pause&quot;, &quot;map&quot;]:</span>
+<span class="line" id="L295"><a href="#L295"> 295</a> 		return false</span>
+<span class="line" id="L296"><a href="#L296"> 296</a> 	_session_actions.append(action)</span>
+<span class="line" id="L297"><a href="#L297"> 297</a> 	return true</span>
+<span class="line" id="L298"><a href="#L298"> 298</a> </span>
+<span class="line" id="L299"><a href="#L299"> 299</a> func start_new_run() -&gt; bool:</span>
+<span class="line" id="L300"><a href="#L300"> 300</a> 	return request_session_action(&quot;new_run&quot;)</span>
+<span class="line" id="L301"><a href="#L301"> 301</a> </span>
+<span class="line" id="L302"><a href="#L302"> 302</a> func continue_run() -&gt; bool:</span>
+<span class="line" id="L303"><a href="#L303"> 303</a> 	return request_session_action(&quot;continue_run&quot;)</span>
+<span class="line" id="L304"><a href="#L304"> 304</a> </span>
+<span class="line" id="L305"><a href="#L305"> 305</a> func retry() -&gt; bool:</span>
+<span class="line" id="L306"><a href="#L306"> 306</a> 	return request_session_action(&quot;retry&quot;)</span>
+<span class="line" id="L307"><a href="#L307"> 307</a> </span>
+<span class="line" id="L308"><a href="#L308"> 308</a> func take_session_actions() -&gt; Array[String]:</span>
+<span class="line" id="L309"><a href="#L309"> 309</a> 	var actions: Array[String] = _session_actions</span>
+<span class="line" id="L310"><a href="#L310"> 310</a> 	_session_actions = []</span>
+<span class="line" id="L311"><a href="#L311"> 311</a> 	return actions</span>
+<span class="line" id="L312"><a href="#L312"> 312</a> </span>
+<span class="line" id="L313"><a href="#L313"> 313</a> func clear_gameplay_input() -&gt; void:</span>
+<span class="line" id="L314"><a href="#L314"> 314</a> 	_actions.clear()</span>
+<span class="line" id="L315"><a href="#L315"> 315</a> 	for system in world.systems:</span>
+<span class="line" id="L316"><a href="#L316"> 316</a> 		if system is InputSystem:</span>
+<span class="line" id="L317"><a href="#L317"> 317</a> 			system.clear_actions()</span>
+<span class="line" id="L318"><a href="#L318"> 318</a> 	for entity in world.query.with_all([C_Input]).enabled().execute():</span>
+<span class="line" id="L319"><a href="#L319"> 319</a> 		if not entity.enabled:</span>
+<span class="line" id="L320"><a href="#L320"> 320</a> 			continue</span>
+<span class="line" id="L321"><a href="#L321"> 321</a> 		var input: C_Input = entity.get_component(C_Input)</span>
+<span class="line" id="L322"><a href="#L322"> 322</a> 		input.axis = 0.0</span>
+<span class="line" id="L323"><a href="#L323"> 323</a> 		input.jump_pressed = false</span>
+<span class="line" id="L324"><a href="#L324"> 324</a> 		input.jump_held = false</span>
+<span class="line" id="L325"><a href="#L325"> 325</a> 		input.sword_pressed = false</span>
+<span class="line" id="L326"><a href="#L326"> 326</a> 		input.card_pressed = false</span>
+<span class="line" id="L327"><a href="#L327"> 327</a> 		input.dodge_pressed = false</span>
+<span class="line" id="L328"><a href="#L328"> 328</a> 		input.interact_pressed = false</span>
+<span class="line" id="L329"><a href="#L329"> 329</a> 		input.ui_actions.clear()</span>
+<span class="line" id="L330"><a href="#L330"> 330</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L331"><a href="#L331"> 331</a> 		if motion != null:</span>
+<span class="line" id="L332"><a href="#L332"> 332</a> 			motion.buffer_left = 0.0</span>
+<span class="line" id="L333"><a href="#L333"> 333</a> 	for entity in world.query.with_all([C_Interaction]).enabled().execute():</span>
+<span class="line" id="L334"><a href="#L334"> 334</a> 		if not entity.enabled:</span>
+<span class="line" id="L335"><a href="#L335"> 335</a> 			continue</span>
+<span class="line" id="L336"><a href="#L336"> 336</a> 		entity.get_component(C_Interaction).selected = false</span>
+<span class="line" id="L337"><a href="#L337"> 337</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L338"><a href="#L338"> 338</a> 		if body != null and is_instance_valid(body.root):</span>
+<span class="line" id="L339"><a href="#L339"> 339</a> 			var prompt: Label = body.root.get_node_or_null(&quot;InteractionPrompt&quot;)</span>
+<span class="line" id="L340"><a href="#L340"> 340</a> 			if prompt != null:</span>
+<span class="line" id="L341"><a href="#L341"> 341</a> 				prompt.visible = false</span>
+<span class="line" id="L342"><a href="#L342"> 342</a> </span>
+<span class="line" id="L343"><a href="#L343"> 343</a> func discard_transients() -&gt; void:</span>
+<span class="line" id="L344"><a href="#L344"> 344</a> 	_spawns.clear()</span>
+<span class="line" id="L345"><a href="#L345"> 345</a> 	_projectile_contacts.clear()</span>
+<span class="line" id="L346"><a href="#L346"> 346</a> 	for entity in world.query.with_any([C_Projectile, C_Hitbox, C_Effect]).execute():</span>
+<span class="line" id="L347"><a href="#L347"> 347</a> 		request_removal(entity.id)</span>
+<span class="line" id="L348"><a href="#L348"> 348</a> </span>
+<span class="line" id="L349"><a href="#L349"> 349</a> func _apply_room_transition() -&gt; void:</span>
+<span class="line" id="L350"><a href="#L350"> 350</a> 	if session.mode != &quot;transition&quot; or session.transition.is_empty() or session.transition.get(&quot;applied&quot;, false):</span>
+<span class="line" id="L351"><a href="#L351"> 351</a> 		return</span>
+<span class="line" id="L352"><a href="#L352"> 352</a> 	var request: Dictionary = session.transition</span>
+<span class="line" id="L353"><a href="#L353"> 353</a> 	var next: Dictionary = rooms.load_room(request.room_id, resources)</span>
+<span class="line" id="L354"><a href="#L354"> 354</a> 	if next.is_empty() or not next.spawns.has(request.spawn_id):</span>
+<span class="line" id="L355"><a href="#L355"> 355</a> 		fail(&quot;Invalid room transition&quot;)</span>
+<span class="line" id="L356"><a href="#L356"> 356</a> 		return</span>
+<span class="line" id="L357"><a href="#L357"> 357</a> 	room_epoch += 1</span>
+<span class="line" id="L358"><a href="#L358"> 358</a> 	_spawns.clear()</span>
+<span class="line" id="L359"><a href="#L359"> 359</a> 	_removals.clear()</span>
+<span class="line" id="L360"><a href="#L360"> 360</a> 	_placements.clear()</span>
+<span class="line" id="L361"><a href="#L361"> 361</a> 	_pending_placements.clear()</span>
+<span class="line" id="L362"><a href="#L362"> 362</a> 	_projectile_contacts.clear()</span>
+<span class="line" id="L363"><a href="#L363"> 363</a> 	for entity in world.query.with_all([C_RoomMember]).execute():</span>
+<span class="line" id="L364"><a href="#L364"> 364</a> 		if not entity.get_component(C_RoomMember).persistent:</span>
+<span class="line" id="L365"><a href="#L365"> 365</a> 			world.remove_entity(entity)</span>
+<span class="line" id="L366"><a href="#L366"> 366</a> 	room_data = next</span>
+<span class="line" id="L367"><a href="#L367"> 367</a> 	var bounds: Array = next.bounds</span>
+<span class="line" id="L368"><a href="#L368"> 368</a> 	room_bounds = Rect2(bounds[0], bounds[1], bounds[2], bounds[3])</span>
+<span class="line" id="L369"><a href="#L369"> 369</a> 	session.room_id = next.id</span>
+<span class="line" id="L370"><a href="#L370"> 370</a> 	player.get_component(C_RoomMember).room_id = next.id</span>
+<span class="line" id="L371"><a href="#L371"> 371</a> 	factory.create_room(next)</span>
+<span class="line" id="L372"><a href="#L372"> 372</a> 	var spawn: Array = next.spawns[request.spawn_id]</span>
+<span class="line" id="L373"><a href="#L373"> 373</a> 	request_placement(player.id, Vector2(spawn[0], spawn[1]))</span>
+<span class="line" id="L374"><a href="#L374"> 374</a> 	player.get_component(C_Motion).placement_pending = true</span>
+<span class="line" id="L375"><a href="#L375"> 375</a> 	session.transition.applied = true</span>
+<span class="line" id="L376"><a href="#L376"> 376</a> </span>
+<span class="line" id="L377"><a href="#L377"> 377</a> func can_continue() -&gt; bool:</span>
+<span class="line" id="L378"><a href="#L378"> 378</a> 	return not save_repository.read_save(rooms, resources).is_empty()</span>
+</pre>

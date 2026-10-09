@@ -1,0 +1,127 @@
+"""Regression tests for gdUnit4 addon path casing.
+
+After 2026-05-10 we standardised on capital-U `addons/gdUnit4/` to
+match the upstream MikeSchulze/gdUnit4 repo layout. Earlier the
+`config/addon_versions.json` install_path was lowercase
+`addons/gdunit4/`, which created a class-registry double-registration
+trap on Windows: the verify command used capital-U while the
+on-disk directory was lowercase, so Godot's class registry registered
+each gdUnit4 class twice (once per literal path string) and emitted
+`Class "..." hides a global script class` parse errors.
+
+At the same time we deleted references to `gdunit4_run.gd` -- a
+fabricated v6+ runner that never existed in any pinned tag (v5.1.1,
+v6.1.0). The actual runner is `bin/GdUnitCmdTool.gd` for every
+supported gdUnit4 release.
+
+These tests scan production assets (skills, agents, tools, config,
+migrations) for any reintroduction of those bad shapes. Frozen
+historical artefacts under `docs/` (CHANGELOG, release notes, wiki)
+are intentionally NOT scanned -- they describe past behaviour
+truthfully.
+"""
+import re
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Files where lowercase mentions are intentional (documenting / detecting
+# the past mistake). Paths are repo-root-relative POSIX.
+LOWERCASE_PATH_ALLOWLIST = {
+    # The migration itself describes both casings to find and rewrite.
+    "migrations/20260510163525_addons_gdunit4_capital_u.py",
+    "tests/tools/test_migration_addons_gdunit4_capital_u.py",
+    # gdunit-driver SKILL has a "Cannot load script" diagnostic note
+    # that intentionally calls out the old lowercase path as a trap
+    # users may still hit on legacy installs.
+    "skills/core/gdunit-driver/SKILL.md",
+    # This test file itself names the bad shape to forbid it.
+    "tests/test_addon_path_casing.py",
+}
+
+# Word-boundary anchored on the right so `addons/gdunit4_run.gd` (handled
+# by the dedicated FAB_RUNNER check) does NOT also match this rule.
+LOWERCASE_PATH_RE = re.compile(r"addons/gdunit4(?![a-zA-Z0-9_])")
+FAB_RUNNER_RE = re.compile(r"gdunit4_run\.gd")
+
+# Scan extensions covering every file shape that can carry path strings:
+# Markdown (SKILLs, agents, docs in repo root), Python (tools/migrations),
+# JSON/YAML (config), GDScript (.gd source), and `.tmpl` (project-scaffold
+# templates that publish.py copies into every target project's claude.md
+# -- the 2026-05-10 review caught a `gdunit4_run.gd` mention there that
+# the previous SCAN_GLOBS missed because it only listed code/doc shapes).
+SCAN_GLOBS = (
+    "**/*.md", "**/*.py", "**/*.json", "**/*.gd",
+    "**/*.yaml", "**/*.yml", "**/*.tmpl",
+)
+
+# Path prefixes (POSIX, repo-root-relative) we never scan. Frozen
+# historical artefacts and machine-managed trees go here -- they
+# truthfully describe past behaviour or are out of our control.
+EXCLUDE_PREFIXES = (
+    ".git/",
+    "__pycache__/",
+    ".pytest_cache/",
+    "docs/",  # CHANGELOG-style release notes, wiki, frozen update archives.
+    "CHANGELOG.md",
+)
+
+
+def _iter_scanned() -> list[Path]:
+    files: list[Path] = []
+    for glob in SCAN_GLOBS:
+        files.extend(REPO_ROOT.glob(glob))
+    out: list[Path] = []
+    for f in files:
+        if not f.is_file():
+            continue
+        if "__pycache__" in f.parts:
+            continue
+        rel = f.relative_to(REPO_ROOT).as_posix()
+        if any(rel == p.rstrip("/") or rel.startswith(p) for p in EXCLUDE_PREFIXES):
+            continue
+        out.append(f)
+    return sorted(out)
+
+
+def _format_offenders(matches: list[tuple[str, int, str]]) -> str:
+    return "\n  ".join(f"{rel}:{ln}: {snippet}" for rel, ln, snippet in matches)
+
+
+def test_no_lowercase_addons_gdunit4_path():
+    offenders: list[tuple[str, int, str]] = []
+    for f in _iter_scanned():
+        rel = f.relative_to(REPO_ROOT).as_posix()
+        if rel in LOWERCASE_PATH_ALLOWLIST:
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for m in LOWERCASE_PATH_RE.finditer(text):
+            line_no = text.count("\n", 0, m.start()) + 1
+            line = text.splitlines()[line_no - 1].strip()[:120]
+            offenders.append((rel, line_no, line))
+    assert not offenders, (
+        "Lowercase `addons/gdunit4/` path found in production assets. "
+        "Canonical casing is `addons/gdUnit4/` (matches upstream "
+        "MikeSchulze/gdUnit4 layout). If the mention is intentional, "
+        "allowlist the file in LOWERCASE_PATH_ALLOWLIST in this test.\n"
+        "Offenders:\n  " + _format_offenders(offenders)
+    )
+
+
+def test_no_fabricated_gdunit4_run_runner():
+    offenders: list[tuple[str, int, str]] = []
+    for f in _iter_scanned():
+        rel = f.relative_to(REPO_ROOT).as_posix()
+        if rel == "tests/test_addon_path_casing.py":
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for m in FAB_RUNNER_RE.finditer(text):
+            line_no = text.count("\n", 0, m.start()) + 1
+            line = text.splitlines()[line_no - 1].strip()[:120]
+            offenders.append((rel, line_no, line))
+    assert not offenders, (
+        "Reference to `gdunit4_run.gd` found. This runner does NOT exist "
+        "in any pinned MikeSchulze/gdUnit4 tag -- the actual runner is "
+        "`addons/gdUnit4/bin/GdUnitCmdTool.gd` for v4.x / v5.x / v6.x.\n"
+        "Offenders:\n  " + _format_offenders(offenders)
+    )

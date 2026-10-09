@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/ui/map_overlay.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/ui/map_overlay.gd</h1><p>只读源快照 · SHA-256 58d1c0cccdf7c5d463dad9be6bab29ccef3f1783a987696363f374af2a57d8cf</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> extends &quot;res://scripts/ui/title_screen.gd&quot;</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const ROOM_NAMES: Dictionary = {&quot;grand_lobby&quot;: &quot;大厅&quot;, &quot;card_banquet_gallery&quot;: &quot;卡牌宴会长廊&quot;, &quot;roulette_clocktower&quot;: &quot;轮盘钟楼&quot;, &quot;quiet_save_room&quot;: &quot;静谧存档室&quot;, &quot;house_throne&quot;: &quot;庄家王座&quot;}</span>
+<span class="line" id="L4"><a href="#L4">   4</a> const POSITIONS: Dictionary = {&quot;grand_lobby&quot;: Vector2(40, 165), &quot;card_banquet_gallery&quot;: Vector2(340, 165), &quot;roulette_clocktower&quot;: Vector2(640, 165), &quot;quiet_save_room&quot;: Vector2(40, 35), &quot;house_throne&quot;: Vector2(340, 35)}</span>
+<span class="line" id="L5"><a href="#L5">   5</a> const CONNECTIONS: Array = [[&quot;grand_lobby&quot;, &quot;card_banquet_gallery&quot;], [&quot;card_banquet_gallery&quot;, &quot;roulette_clocktower&quot;], [&quot;grand_lobby&quot;, &quot;quiet_save_room&quot;], [&quot;quiet_save_room&quot;, &quot;house_throne&quot;]]</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var diagram: Control</span>
+<span class="line" id="L7"><a href="#L7">   7</a> var room_boxes: Dictionary = {}</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var connectors: Array[Dictionary] = []</span>
+<span class="line" id="L9"><a href="#L9">   9</a> </span>
+<span class="line" id="L10"><a href="#L10">  10</a> func _ready() -&gt; void:</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	var content := build_modal(&quot;已探索地图&quot;, &quot;仅显示你亲自到访的房间&quot;, false, 980)</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	diagram = Control.new()</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	diagram.name = &quot;DiscoveredRooms&quot;</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 	diagram.custom_minimum_size = Vector2(920, 290)</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	diagram.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	content.add_child(diagram)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	for pair in CONNECTIONS:</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		var line := Line2D.new()</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		line.width = 3.0</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		line.default_color = Color(0.63, 0.47, 0.31)</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		line.add_point(POSITIONS[pair[0]] + Vector2(110, 44))</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		line.add_point(POSITIONS[pair[1]] + Vector2(110, 44))</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		diagram.add_child(line)</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 		connectors.append({&quot;rooms&quot;: pair, &quot;node&quot;: line})</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	for room_id in ROOM_NAMES:</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		var panel := PanelContainer.new()</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 		panel.name = room_id</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		panel.position = POSITIONS[room_id]</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		panel.size = Vector2(220, 88)</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		diagram.add_child(panel)</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		var label := add_label(panel, ROOM_NAMES[room_id], 22)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		label.name = &quot;RoomLabel&quot;</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		room_boxes[room_id] = panel</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 	add_button(content, &quot;返回游戏&quot;, &quot;resume&quot;, &quot;CloseButton&quot;)</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 	add_label(content, &quot;M / Esc 关闭 · 地图不能传送&quot;, 22)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> </span>
+<span class="line" id="L37"><a href="#L37">  37</a> func refresh(snapshot: Dictionary) -&gt; void:</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 	var visited: Array = snapshot.get(&quot;visited_rooms&quot;, [])</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	for room_id in room_boxes:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		var panel: PanelContainer = room_boxes[room_id]</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 		panel.visible = room_id in visited</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 		var current: bool = room_id == snapshot.get(&quot;room_id&quot;, &quot;&quot;)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 		var label: Label = panel.get_node(&quot;RoomLabel&quot;)</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		label.text = ROOM_NAMES[room_id] + (&quot;\n当前位置&quot; if current else &quot;&quot;)</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 		label.add_theme_color_override(&quot;font_color&quot;, Color(1.0, 0.84, 0.45) if current else Color(0.86, 0.80, 0.94))</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	for connector in connectors:</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		connector.node.visible = connector.rooms[0] in visited and connector.rooms[1] in visited</span>
+</pre>

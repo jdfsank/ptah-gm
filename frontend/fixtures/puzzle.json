@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": "puzzle-fixture-v1",
+  "scope": {
+    "claim": "Synthetic noncombat contract fixture; no engine or source extraction claims."
+  },
+  "objects": [
+    {
+      "id": "puzzle.tile",
+      "label": "Puzzle tile",
+      "kind": "environment",
+      "layer": "definition",
+      "body": "A reusable tile definition; placement and snapping are separate from the completion rule.",
+      "drivers": [
+        "player",
+        "physics"
+      ],
+      "behaviors": [
+        {
+          "id": "puzzle.drag",
+          "label": "Drag tile",
+          "type": "continuous",
+          "summary": "Drag tile",
+          "states": [
+            "idle",
+            "dragging",
+            "released"
+          ],
+          "motion": {
+            "kind": "constraint",
+            "description": "Pointer position constrained to board bounds."
+          },
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        },
+        {
+          "id": "puzzle.snap",
+          "label": "Snap on release",
+          "type": "response",
+          "summary": "Snap on release",
+          "states": [
+            "released",
+            "snapped",
+            "rejected"
+          ],
+          "motion": null,
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        }
+      ],
+      "evidence": "intent",
+      "sourceRefs": [],
+      "status": {
+        "implementation": "specification",
+        "mapping": "fixture",
+        "editability": "read-only",
+        "verification": "model-test"
+      },
+      "facets": {
+        "design": {
+          "text": "A reusable tile definition; placement and snapping are separate from the completion rule.",
+          "evidence": "intent"
+        },
+        "narrative": null,
+        "art": null
+      }
+    },
+    {
+      "id": "puzzle.lift",
+      "label": "Moving platform",
+      "kind": "environment",
+      "layer": "definition",
+      "body": "A timed environment object, without an animation requirement.",
+      "drivers": [
+        "time"
+      ],
+      "behaviors": [
+        {
+          "id": "puzzle.lift.move",
+          "label": "Travel between endpoints",
+          "type": "continuous",
+          "summary": "Travel between endpoints",
+          "states": [
+            "forward",
+            "reverse"
+          ],
+          "motion": {
+            "kind": "path",
+            "description": "Time advances the position along a path; no sprite animation."
+          },
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        }
+      ],
+      "evidence": "intent",
+      "sourceRefs": [],
+      "status": {
+        "implementation": "specification",
+        "mapping": "fixture",
+        "editability": "read-only",
+        "verification": "model-test"
+      },
+      "facets": {
+        "design": {
+          "text": "A timed environment object, without an animation requirement.",
+          "evidence": "intent"
+        },
+        "narrative": null,
+        "art": null
+      }
+    },
+    {
+      "id": "puzzle.complete",
+      "label": "Completion rule",
+      "kind": "rule",
+      "layer": "definition",
+      "body": "All tiles in their assigned sockets.",
+      "drivers": [
+        "event"
+      ],
+      "behaviors": [
+        {
+          "id": "puzzle.check",
+          "label": "Verify arrangement",
+          "type": "rule",
+          "summary": "Verify arrangement",
+          "states": [
+            "incomplete",
+            "complete"
+          ],
+          "motion": null,
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        }
+      ],
+      "evidence": "intent",
+      "sourceRefs": [],
+      "status": {
+        "implementation": "specification",
+        "mapping": "fixture",
+        "editability": "read-only",
+        "verification": "model-test"
+      },
+      "facets": {
+        "design": {
+          "text": "All tiles in their assigned sockets.",
+          "evidence": "intent"
+        },
+        "narrative": null,
+        "art": null
+      }
+    }
+  ],
+  "instances": [],
+  "spawnRules": [],
+  "sources": [],
+  "ledger": []
+}

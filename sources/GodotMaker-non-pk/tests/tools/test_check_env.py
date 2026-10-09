@@ -1,0 +1,842 @@
+"""Tests for check_env.py."""
+import builtins
+import os
+import sys
+import subprocess
+from pathlib import Path
+import pytest
+from unittest.mock import patch, MagicMock
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "tools",
+))
+
+from check_env import EnvCheck, get_version, parse_version
+
+
+class TestEnvCheck:
+    def test_initial_state(self):
+        r = EnvCheck()
+        assert r.passed == []
+        assert r.failed == []
+        assert r.warnings == []
+
+    def test_ok_records(self):
+        r = EnvCheck()
+        r.ok("test passed")
+        assert "test passed" in r.passed
+        assert len(r.failed) == 0
+
+    def test_fail_records(self):
+        r = EnvCheck()
+        r.fail("test failed")
+        assert "test failed" in r.failed
+        assert len(r.passed) == 0
+
+    def test_warn_records(self):
+        r = EnvCheck()
+        r.warn("test warning")
+        assert "test warning" in r.warnings
+
+    def test_mixed(self):
+        r = EnvCheck()
+        r.ok("a")
+        r.fail("b")
+        r.warn("c")
+        assert len(r.passed) == 1
+        assert len(r.failed) == 1
+        assert len(r.warnings) == 1
+
+
+class TestParseVersion:
+    def test_three_part(self):
+        assert parse_version("4.4.1") == (4, 4, 1)
+
+    def test_two_part(self):
+        assert parse_version("3.9") == (3, 9)
+
+    def test_comparison(self):
+        assert parse_version("4.4.0") >= (4, 4)
+        assert parse_version("4.3.9") < (4, 4)
+        assert parse_version("2.30.0") >= (2, 30)
+        assert parse_version("2.29.0") < (2, 30)
+
+    def test_major_version(self):
+        assert parse_version("18.0.0") >= (18,)
+        assert parse_version("16.5.0") < (18,)
+
+
+class TestGetVersion:
+    @patch("check_env.subprocess.run")
+    def test_extracts_version(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout="git version 2.37.3.windows.1\n",
+            stderr="",
+        )
+        assert get_version("git") == "2.37.3"
+
+    @patch("check_env.subprocess.run")
+    def test_version_from_stderr(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout="",
+            stderr="Python 3.10.9\n",
+        )
+        assert get_version("python") == "3.10.9"
+
+    @patch("check_env.subprocess.run")
+    def test_no_match_returns_none(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="no version here\n", stderr="")
+        assert get_version("foo") is None
+
+    @patch("check_env.subprocess.run", side_effect=FileNotFoundError)
+    def test_missing_command_returns_none(self, mock_run):
+        assert get_version("nonexistent") is None
+
+    @patch("check_env.subprocess.run", side_effect=subprocess.TimeoutExpired("x", 10))
+    def test_timeout_returns_none(self, mock_run):
+        assert get_version("slow") is None
+
+    @patch("check_env.subprocess.run")
+    def test_node_version(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="v24.14.0\n", stderr="")
+        assert get_version("node") == "24.14.0"
+
+    @patch("check_env.subprocess.run")
+    def test_godot_version(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout="Godot Engine v4.4.stable.official\n",
+            stderr="",
+        )
+        assert get_version("godot") == "4.4"
+
+
+class TestCheckFunctions:
+    """Test individual check functions with mocked externals."""
+
+    @patch("check_env.get_version", return_value="2.37.3")
+    @patch("check_env.subprocess.run")
+    def test_check_git_pass(self, mock_run, mock_ver):
+        from check_env import check_git
+        mock_run.return_value = MagicMock(stdout="John\n")
+        r = EnvCheck()
+        check_git(r)
+        assert any("Git 2.37.3" in p for p in r.passed)
+        assert len(r.failed) == 0
+
+    @patch("check_env.get_version", return_value=None)
+    def test_check_git_missing(self, mock_ver):
+        from check_env import check_git
+        r = EnvCheck()
+        check_git(r)
+        assert any("not found" in f.lower() for f in r.failed)
+
+    @patch("check_env.get_version", return_value="2.20.0")
+    def test_check_git_old(self, mock_ver):
+        from check_env import check_git
+        r = EnvCheck()
+        check_git(r)
+        assert any("too old" in f for f in r.failed)
+
+    @patch("check_env.get_version", return_value="24.14.0")
+    @patch("check_env.shutil.which", return_value="/usr/bin/npx")
+    def test_check_node_pass(self, mock_which, mock_ver):
+        from check_env import check_node
+        r = EnvCheck()
+        check_node(r)
+        assert any("Node.js 24.14.0" in p for p in r.passed)
+        assert any("npx" in p for p in r.passed)
+
+    @patch("check_env.get_version", return_value=None)
+    def test_check_node_missing(self, mock_ver):
+        from check_env import check_node
+        r = EnvCheck()
+        check_node(r)
+        assert any("not found" in f.lower() for f in r.failed)
+
+    def test_check_python_current(self):
+        from check_env import check_python
+        r = EnvCheck()
+        check_python(r)
+        # Current interpreter should pass version check
+        assert any("Python" in p for p in r.passed)
+
+    @patch("check_env.shutil.which", return_value="/usr/bin/claude")
+    def test_check_claude_found(self, mock_which):
+        from check_env import check_claude
+        r = EnvCheck()
+        check_claude(r)
+        assert any("Claude Code found" in p for p in r.passed)
+
+    @patch("check_env.shutil.which", return_value=None)
+    def test_check_claude_missing(self, mock_which):
+        from check_env import check_claude
+        r = EnvCheck()
+        check_claude(r)
+        assert any("not found" in f.lower() for f in r.failed)
+
+    @patch("check_env._get_version_from_path", return_value="4.5.1")
+    @patch("check_env.read_godot_path", return_value="/opt/godot")
+    def test_check_godot_uses_configured_agent_path(self, mock_path, mock_ver, tmp_path):
+        from check_env import check_godot
+        r = EnvCheck()
+        check_godot(r, tmp_path)
+        assert any("configured path: /opt/godot" in p for p in r.passed)
+        assert len(r.failed) == 0
+
+    @patch("check_env.check_codex")
+    @patch("check_env.detect_agent", return_value="codex")
+    def test_check_selected_agent_uses_codex(self, mock_detect, mock_codex, tmp_path):
+        from check_env import check_selected_agent
+        r = EnvCheck()
+        check_selected_agent(r, tmp_path)
+        mock_codex.assert_called_once_with(r, tmp_path)
+
+    @patch("check_env.check_opencode")
+    @patch("check_env.detect_agent", return_value="opencode")
+    def test_check_selected_agent_uses_opencode(
+        self, mock_detect, mock_opencode, tmp_path
+    ):
+        from check_env import check_selected_agent
+        r = EnvCheck()
+        check_selected_agent(r, tmp_path)
+        mock_opencode.assert_called_once_with(r, tmp_path)
+
+    @patch("check_env.check_claude")
+    @patch("check_env.detect_agent", return_value="claude-code")
+    def test_check_selected_agent_uses_claude(self, mock_detect, mock_claude, tmp_path):
+        from check_env import check_selected_agent
+        r = EnvCheck()
+        check_selected_agent(r, tmp_path)
+        mock_claude.assert_called_once_with(r)
+
+    @patch("check_env.get_version", return_value="0.99.0")
+    @patch("check_env.shutil.which", return_value="/usr/bin/codex")
+    @patch("check_env.subprocess.run")
+    def test_check_codex_validates_runtime_files_and_mcp(
+        self, mock_run, mock_which, mock_ver, tmp_path: Path
+    ):
+        from check_env import check_codex
+        (tmp_path / ".agents" / "skills").mkdir(parents=True)
+        (tmp_path / ".agents" / "references").mkdir()
+        (tmp_path / ".agents" / "references" / "runtime-mapping.md").write_text("")
+        (tmp_path / ".agents" / "godotmaker.yaml").write_text("godot_path: /opt/godot\n")
+        mock_run.return_value = MagicMock(returncode=0, stdout="godot\n", stderr="")
+
+        r = EnvCheck()
+        check_codex(r, tmp_path)
+
+        assert any("Codex CLI found" in p for p in r.passed)
+        assert any("Codex MCP server 'godot' configured" in p for p in r.passed)
+        assert len(r.failed) == 0
+
+    @patch("check_env.get_version", return_value="1.17.7")
+    @patch("check_env.shutil.which", return_value="/usr/bin/opencode")
+    @patch("check_env.subprocess.run")
+    def test_check_opencode_validates_runtime_files_and_mcp(
+        self, mock_run, mock_which, mock_ver, tmp_path: Path
+    ):
+        from check_env import check_opencode
+        (tmp_path / ".opencode" / "skills").mkdir(parents=True)
+        (tmp_path / ".opencode" / "agents").mkdir()
+        (tmp_path / ".opencode" / "references").mkdir()
+        (tmp_path / ".opencode" / "plugins").mkdir()
+        (
+            tmp_path / ".opencode" / "references" / "runtime-mapping.md"
+        ).write_text("")
+        (
+            tmp_path / ".opencode" / "godotmaker.yaml"
+        ).write_text("godot_path: /opt/godot\n")
+        (
+            tmp_path / ".opencode" / "plugins" / "godotmaker-hooks.js"
+        ).write_text("export const GodotMakerHooks = async () => ({})\n")
+        mock_run.return_value = MagicMock(returncode=0, stdout="godot\n", stderr="")
+
+        r = EnvCheck()
+        check_opencode(r, tmp_path)
+
+        assert any("OpenCode CLI found" in p for p in r.passed)
+        assert any(".opencode/plugins/godotmaker-hooks.js present" in p for p in r.passed)
+        assert any("OpenCode MCP server 'godot' configured" in p for p in r.passed)
+        assert len(r.failed) == 0
+
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "AIzaSyTestKey12345678"}, clear=False)
+    def test_check_api_keys_present_for_configured_gemini(self):
+        from check_env import check_api_keys
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "gemini:gemini-3.1-flash-image-preview"})
+        assert any("GOOGLE_API_KEY set" in p for p in r.passed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_check_api_keys_missing_for_configured_gemini(self):
+        from check_env import check_api_keys
+        r = EnvCheck()
+        # Need to also clear GEMINI_API_KEY
+        os.environ.pop("GOOGLE_API_KEY", None)
+        os.environ.pop("GEMINI_API_KEY", None)
+        check_api_keys(r, {"asset_image_model": "gemini:gemini-3.1-flash-image-preview"})
+        assert any("GOOGLE_API_KEY" in f for f in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_check_api_keys_without_config_uses_native_defaults(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, agent="codex")
+
+        assert not r.failed
+        assert not any("GOOGLE_API_KEY" in f for f in r.failed)
+        assert any("native image generation" in p for p in r.passed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_codex_image_model_on_codex_does_not_require_image_api_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "codex",
+                "vqa_model": "codex",
+            },
+            agent="codex",
+        )
+
+        assert not r.failed
+        assert any("active Codex runtime" in p for p in r.passed)
+        assert any("XAI_API_KEY not set" in w for w in r.warnings)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_openai_image_model_requires_openai_api_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "openai:gpt-image-2",
+                "vqa_model": "native",
+            },
+        )
+
+        assert any("OPENAI_API_KEY" in f for f in r.failed)
+        assert not any("GOOGLE_API_KEY" in f for f in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_wan_image_model_requires_key_and_explicit_region(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_API_KEY" in failure for failure in r.failed)
+        assert any("DASHSCOPE_REGION" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "  \t ", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_rejects_whitespace_only_api_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_API_KEY not set" in failure for failure in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_check_api_keys_rejects_wan_as_a_vqa_provider(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "native", "vqa_model": "wan"}, agent="codex")
+
+        assert any("vqa_model provider 'wan' is unsupported" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "singapore",
+            "DASHSCOPE_BASE_URL": "https://space.ap-southeast-1.maas.aliyuncs.com/api/v1/",
+        },
+        clear=True,
+    )
+    def test_wan_image_model_accepts_matching_singapore_business_space(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan:wan2.7-image-pro", "vqa_model": "native"}, agent="codex")
+
+        assert not any("DASHSCOPE" in failure for failure in r.failed)
+        assert any("DASHSCOPE_BASE_URL matches" in passed for passed in r.passed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "test-key", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_rejects_unsupported_model_during_preflight(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {"asset_image_model": "wan:not-a-model", "vqa_model": "native"},
+            agent="codex",
+        )
+
+        assert any("Unsupported Wan image model 'not-a-model'" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {"DASHSCOPE_API_KEY": "test-key", "DASHSCOPE_REGION": "beijing"},
+        clear=True,
+    )
+    def test_wan_image_model_does_not_treat_explicit_wan_as_the_bare_alias(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan:wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("Unsupported Wan image model 'wan'" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope-intl.aliyuncs.com",
+        },
+        clear=True,
+    )
+    def test_wan_image_model_rejects_region_base_url_mismatch(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("DASHSCOPE_BASE_URL" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com/not-api-v1",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_the_same_invalid_base_url_path_as_runtime(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("may be the regional host" in failure for failure in r.failed)
+
+    @patch.dict(
+        os.environ,
+        {
+            "DASHSCOPE_API_KEY": "test-key",
+            "DASHSCOPE_REGION": "beijing",
+            "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com:abc",
+        },
+        clear=True,
+    )
+    def test_wan_preflight_rejects_invalid_base_url_authority(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(r, {"asset_image_model": "wan", "vqa_model": "native"}, agent="codex")
+
+        assert any("standard HTTPS authority" in failure for failure in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_native_image_model_still_requires_configured_gemini_vqa_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "gemini:gemini-2.5-flash",
+            },
+            agent="codex",
+        )
+
+        assert any("GOOGLE_API_KEY" in f for f in r.failed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_claude_native_image_generation_warns(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "native",
+            },
+            agent="claude-code",
+        )
+
+        assert not r.failed
+        assert any("native image generation for Claude Code" in w for w in r.warnings)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_opencode_native_image_generation_fails_until_supported(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "native",
+            },
+            agent="opencode",
+        )
+
+        assert any("asset_image_model" in f for f in r.failed)
+        assert any("vqa_model" in f for f in r.failed)
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True)
+    def test_claude_native_vqa_inspection_can_pass(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "openai:gpt-image-2",
+                "vqa_model": "native",
+            },
+            agent="claude-code",
+        )
+
+        assert not r.failed
+        assert any("native image inspection" in p for p in r.passed)
+
+    @patch("check_env.shutil.which", return_value=None)
+    @patch.dict(os.environ, {}, clear=True)
+    def test_claude_codex_image_model_fails_when_codex_cli_missing(self, mock_which):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "codex",
+                "vqa_model": "codex",
+            },
+            agent="claude-code",
+        )
+
+        assert any("Codex CLI" in f for f in r.failed)
+
+    @patch("check_env.shutil.which", return_value="/usr/bin/codex")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_claude_codex_image_model_accepts_codex_exec_handoff(self, mock_which):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "codex",
+                "vqa_model": "codex",
+            },
+            agent="claude-code",
+        )
+
+        assert not r.failed
+        assert any("Codex CLI found for Codex image generation" in p for p in r.passed)
+
+    @patch("check_env.shutil.which", return_value="/usr/bin/codex")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_claude_codex_vqa_model_accepts_codex_exec_handoff(self, mock_which):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "codex",
+            },
+            agent="claude-code",
+        )
+
+        assert not r.failed
+        assert any("Codex CLI found for Codex image inspection" in p for p in r.passed)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_non_grok_image_model_does_not_require_xai_key(self):
+        from check_env import check_api_keys
+
+        r = EnvCheck()
+        check_api_keys(
+            r,
+            {
+                "asset_image_model": "native",
+                "vqa_model": "native",
+            },
+            agent="codex",
+        )
+
+        assert not any("XAI_API_KEY" in f for f in r.failed)
+
+    def test_python_checks_xai_sdk_for_grok_image(self, monkeypatch):
+        from check_env import check_python
+
+        imported: list[str] = []
+
+        def fake_import(name, *args, **kwargs):
+            imported.append(name)
+            return object()
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+        r = EnvCheck()
+        check_python(
+            r,
+            {
+                "asset_image_model": "grok:grok-imagine-image",
+                "vqa_model": "native",
+            },
+        )
+
+        assert "xai_sdk" in imported
+
+
+class TestPinnedPipCommand:
+    """The install line has to survive a copy-paste by someone who does
+    not know which Python is which — or which shell they are in."""
+
+    def test_plain_path_needs_no_quoting(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command("/usr/bin/python3") == (
+            "/usr/bin/python3 -m pip install godot-e2e"
+        )
+
+    def test_extra_flags_precede_the_package(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command("/usr/bin/python3", "--force-reinstall") == (
+            "/usr/bin/python3 -m pip install --force-reinstall godot-e2e"
+        )
+
+    def test_path_with_spaces_is_quoted(self):
+        from check_env import pinned_pip_command
+
+        assert pinned_pip_command(r"C:\Program Files\Python312\python.exe") == (
+            r'"C:\Program Files\Python312\python.exe" -m pip install godot-e2e'
+        )
+
+
+class TestPinnedPipInstruction:
+    """No single line runs in both Windows shells once the path needs
+    quotes: PowerShell reads a leading quoted path as a string and needs
+    `&`, which cmd.exe rejects outright. So the instruction only splits
+    per shell when it has to, and says which line is which."""
+
+    @patch("check_env.os.name", "nt")
+    def test_windows_spaced_path_labels_both_shells(self):
+        from check_env import pinned_pip_instruction
+
+        text = pinned_pip_instruction(r"C:\Program Files\Python312\python.exe")
+        assert r'PowerShell: & "C:\Program Files' in text
+        assert r'Command Prompt (cmd.exe): "C:\Program Files' in text
+
+    @patch("check_env.os.name", "nt")
+    def test_windows_plain_path_stays_one_line(self):
+        """No quotes needed, so the same line runs in both shells."""
+        from check_env import pinned_pip_instruction
+
+        text = pinned_pip_instruction(r"C:\Python310\python.exe")
+        assert text == (
+            "copy this whole line into your terminal and run it: "
+            r"C:\Python310\python.exe -m pip install godot-e2e"
+        )
+        assert "PowerShell" not in text
+
+    @patch("check_env.os.name", "posix")
+    def test_posix_spaced_path_stays_one_line(self):
+        from check_env import pinned_pip_instruction
+
+        text = pinned_pip_instruction("/opt/my python/bin/python")
+        assert text == (
+            "copy this whole line into your terminal and run it: "
+            '"/opt/my python/bin/python" -m pip install godot-e2e'
+        )
+
+    def test_instruction_is_ascii_only(self):
+        """Printed to a console whose code page may not be UTF-8."""
+        from check_env import pinned_pip_instruction
+
+        with patch("check_env.os.name", "nt"):
+            assert pinned_pip_instruction(r"C:\Program Files\py\python.exe").isascii()
+        assert pinned_pip_instruction("/usr/bin/python3").isascii()
+
+
+class TestGodotE2ECheck:
+    """The community report: `godot-e2e` reads as missing while it is
+    installed — into a different Python. Every verdict names the
+    interpreter it ran on and hands back a paste-ready fix. Only a package
+    this interpreter cannot import blocks; PATH mismatches warn, because
+    pyenv/asdf shims live outside the interpreter's scripts directory by
+    design and a false blocker would strand a non-technical user.
+    """
+
+    THIS_ENV = os.path.join("/opt", "envs", "project", "bin")
+    OTHER_ENV = os.path.join("/opt", "envs", "other", "bin")
+
+    def _run(self, *, importable=True, command=None, scripts=None,
+             import_error=None):
+        from check_env import check_godot_e2e
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "godot_e2e":
+                if import_error is not None:
+                    raise import_error
+                if not importable:
+                    raise ImportError("No module named 'godot_e2e'")
+                return MagicMock()
+            return real_import(name, *args, **kwargs)
+
+        r = EnvCheck()
+        with patch("builtins.__import__", side_effect=fake_import):
+            with patch("check_env._find_godot_e2e_command", return_value=command):
+                with patch("check_env._interpreter_scripts_dirs",
+                           return_value=scripts if scripts is not None
+                           else [self.THIS_ENV]):
+                    check_godot_e2e(r)
+        return r
+
+    def _fix_line(self):
+        from check_env import pinned_pip_command
+
+        return pinned_pip_command(sys.executable)
+
+    def test_installed_with_matching_command_passes(self):
+        r = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
+        assert not r.failed and not r.warnings
+        assert sys.executable in r.passed[0]
+
+    def test_missing_gives_a_paste_ready_fix(self):
+        r = self._run(importable=False)
+        assert len(r.failed) == 1
+        assert self._fix_line() in r.failed[0]
+        assert "copy this whole line" in r.failed[0]
+
+    def test_installed_in_another_environment_is_not_a_plain_absence(self):
+        other = os.path.join(self.OTHER_ENV, "godot-e2e")
+        r = self._run(importable=False, command=other)
+        assert len(r.failed) == 1
+        assert other in r.failed[0]
+        assert "different Python" in r.failed[0]
+        assert self._fix_line() in r.failed[0]
+
+    def test_command_from_another_environment_only_warns(self):
+        """pyenv/asdf shims resolve correctly from outside the scripts
+        directory — blocking on this heuristic would be a false alarm."""
+        other = os.path.join(self.OTHER_ENV, "godot-e2e")
+        r = self._run(command=other)
+        assert not r.failed
+        assert len(r.warnings) == 1
+        assert other in r.warnings[0]
+        assert "pyenv" in r.warnings[0]
+        assert self._fix_line() in r.warnings[0]
+
+    def test_no_command_on_path_only_warns(self):
+        r = self._run(command=None)
+        assert not r.failed
+        assert len(r.warnings) == 1
+        assert self.THIS_ENV in r.warnings[0]
+        assert self._fix_line() in r.warnings[0]
+
+    def test_warnings_say_when_no_action_is_needed(self):
+        """A warning a non-technical user cannot act on is noise; each one
+        states the symptom that would make it matter."""
+        for r in (self._run(command=None),
+                  self._run(command=os.path.join(self.OTHER_ENV, "godot-e2e"))):
+            assert "Nothing to do unless" in r.warnings[0]
+
+    def test_broken_install_asks_for_a_reinstall(self):
+        r = self._run(import_error=RuntimeError("boom"))
+        assert len(r.failed) == 1
+        assert "--force-reinstall" in r.failed[0]
+        assert sys.executable in r.failed[0]
+
+    def test_redetects_after_the_environment_is_fixed(self):
+        before = self._run(importable=False)
+        after = self._run(command=os.path.join(self.THIS_ENV, "godot-e2e"))
+        assert before.failed and not before.passed
+        assert after.passed and not after.failed
+
+    def test_does_not_speak_for_the_godot_addon(self):
+        r = self._run(importable=False)
+        assert "addons/" not in r.failed[0]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows shells only")
+class TestSpacedPathRunsInBothWindowsShells:
+    """Execute both printed forms in the real shells.
+
+    The crossed cases are the load-bearing half: they show the split is
+    necessary, not decorative. A stub stands in for the interpreter —
+    what is under test is how each shell parses a quoted path, not pip.
+    """
+
+    STUB_BODY = "@echo off\r\nexit /b 0\r\n"
+
+    def _forms(self, tmp_path):
+        from check_env import pinned_pip_command
+
+        target = tmp_path / "my dir"
+        target.mkdir()
+        stub = target / "python.bat"
+        stub.write_text(self.STUB_BODY, encoding="ascii")
+        assert " " in str(stub)
+        cmd_form = pinned_pip_command(str(stub))
+        return cmd_form, "& " + cmd_form
+
+    def _exit_code(self, script, body, argv):
+        script.write_text(body + "\r\n", encoding="ascii")
+        return subprocess.run(
+            argv, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=60,
+        ).returncode
+
+    def _in_cmd(self, tmp_path, line):
+        script = tmp_path / "run.bat"
+        return self._exit_code(script, "@echo off\r\n" + line,
+                               ["cmd", "/c", str(script)])
+
+    def _in_powershell(self, tmp_path, line):
+        script = tmp_path / "run.ps1"
+        return self._exit_code(
+            script, line,
+            ["powershell", "-NoProfile", "-File", str(script)],
+        )
+
+    def test_cmd_form_runs_in_cmd(self, tmp_path):
+        cmd_form, _ = self._forms(tmp_path)
+        assert self._in_cmd(tmp_path, cmd_form) == 0
+
+    def test_powershell_form_runs_in_powershell(self, tmp_path):
+        _, ps_form = self._forms(tmp_path)
+        assert self._in_powershell(tmp_path, ps_form) == 0
+
+    def test_powershell_form_is_rejected_by_cmd(self, tmp_path):
+        _, ps_form = self._forms(tmp_path)
+        assert self._in_cmd(tmp_path, ps_form) != 0
+
+    def test_cmd_form_is_rejected_by_powershell(self, tmp_path):
+        cmd_form, _ = self._forms(tmp_path)
+        assert self._in_powershell(tmp_path, cmd_form) != 0

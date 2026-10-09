@@ -1,0 +1,18 @@
+拆分交付更新：以本说明替代第一包的旧四包步骤
+
+由于聊天附件大小限制，原 part3-godot-game-source.zip 和 part4-reference-inputs.zip 不再作为下载步骤。已经收到的 part1-start-frontend-history.zip 和 part2-gm-framework.zip 保留，不需要重新下载或替换。
+
+本次共 7 个有效 ZIP：已经收到的前两包，加上 3 个 game-slice 包和 2 个 references 包。所有都是普通 ZIP，先分别解压到同一个新父目录，共用根目录 local-codex-handoff-20261008-compact。不要解压进已有用户工程。文件管理器若按 ZIP 名自动套外层目录，请将每包内的同名根目录合并。
+
+Godot源ZIP只是按字节切片，未删除或修改游戏资源；不能直接打开part001等切片。全部新包解压后，在共享根目录运行：
+python3 tools/reassemble-game-source.py
+
+脚本校验每片SHA并恢复原来的 source-zips/velvet-eclipse-source-v2-delivery.zip，再验证完整源ZIP SHA。已有同SHA文件会直接确认，已有不同文件会停止，不覆盖。然后运行：
+python3 tools/verify-package.py
+python3 tools/unpack-sources.py
+
+完整性检查的原209项应全部通过。transfer-parts、重组脚本和SPLIT-DELIVERY-UPDATE说明是新增交付辅助文件，旧verify脚本可能列为额外文件，这是预期现象。sources若已存在，解包脚本会停止以保护现有改动。
+
+之后阅读START-HERE.zh-CN.md并复制COPY-TO-CODEX.txt给本地Codex。原SPLIT-DELIVERY.json仍是旧四包记录，不作为当前下载清单。SPLIT-ZIP-SHA256SUMS-UPDATE.txt列出全部有效ZIP的正确SHA和文件名。
+
+原精简完整包的所有字节保持一致；8张PNG不压画质、不改格式。只有四个框架文档演示GIF按之前说明省略，游戏素材没有删减。source-lock两处差异、run_verify后续修复、缺失真实映射和真实闭环未验证等警示继续适用。

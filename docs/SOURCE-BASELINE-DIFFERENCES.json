@@ -1,0 +1,25 @@
+{
+  "checkedFiles": 69,
+  "matchingFiles": 67,
+  "mismatches": [
+    {
+      "path": "scripts/ui/hud.gd",
+      "frontendExpectedSha256": "ba6df2476dec0e68501d1e09af832c35b68c9a81ca1cc40d6720907eacb87342",
+      "deliveredGameSha256": "1ff8457a491e6403c728782703ac750672dea6c88296f7f3c47bf16ad4f6ea48"
+    },
+    {
+      "path": "scripts/ui/title_screen.gd",
+      "frontendExpectedSha256": "d73865d46d7c4f8d71683adba6fd7f231a0daae7a44bd602d88fe2edcfb9cac7",
+      "deliveredGameSha256": "352b900cdc5781c68f29c9d1a988801f83d4d30334485e6ca2c508b93e5e5922"
+    }
+  ],
+  "resolution": "BLOCKED until source differences and adapter baseline are reviewed locally; no automatic hash refresh",
+  "deployedToolFork": {
+    "path": "tools/run_verify.py",
+    "sha256": {
+      "sources/GodotMaker-non-pk/tools/run_verify.py": "e01deea1c3c3a81fdb13dbb4b5d82cabe4a108812c5a9c79c89ae2ae828fe085",
+      "sources/velvet-eclipse/tools/run_verify.py": "0ca29953ae98c7e9decc89ecba1d2fc3e05a75ff31caee4b326460554aadc722"
+    },
+    "resolution": "Preserve reviewed deployed game tool; do not overwrite with older framework copy. 47 capability-lock entries match game source; frameworkRevision label alone is not byte equality."
+  }
+}

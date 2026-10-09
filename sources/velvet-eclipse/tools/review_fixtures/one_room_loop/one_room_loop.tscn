@@ -1,0 +1,291 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://game.gd" id="1_game"]
+[ext_resource type="Script" path="res://player.gd" id="2_player"]
+
+[sub_resource type="RectangleShape2D" id="Shape_horizontal"]
+size = Vector2(736, 16)
+
+[sub_resource type="RectangleShape2D" id="Shape_vertical"]
+size = Vector2(16, 304)
+
+[sub_resource type="RectangleShape2D" id="Shape_player"]
+size = Vector2(20, 20)
+
+[sub_resource type="CircleShape2D" id="Shape_key"]
+radius = 14.0
+
+[sub_resource type="RectangleShape2D" id="Shape_gate"]
+size = Vector2(24, 288)
+
+[sub_resource type="RectangleShape2D" id="Shape_gate_sensor"]
+size = Vector2(88, 288)
+
+[sub_resource type="RectangleShape2D" id="Shape_exit"]
+size = Vector2(44, 72)
+
+[node name="OneRoomLoop" type="Node2D"]
+process_mode = 3
+script = ExtResource("1_game")
+
+[node name="World" type="Node2D" parent="."]
+process_mode = 1
+
+[node name="Floor" type="Polygon2D" parent="World"]
+polygon = PackedVector2Array(40, 104, 760, 104, 760, 392, 40, 392)
+color = Color(0.11, 0.15, 0.21, 1)
+
+[node name="Walls" type="StaticBody2D" parent="World"]
+
+[node name="Top" type="CollisionShape2D" parent="World/Walls"]
+position = Vector2(400, 96)
+shape = SubResource("Shape_horizontal")
+
+[node name="Bottom" type="CollisionShape2D" parent="World/Walls"]
+position = Vector2(400, 400)
+shape = SubResource("Shape_horizontal")
+
+[node name="Left" type="CollisionShape2D" parent="World/Walls"]
+position = Vector2(32, 248)
+shape = SubResource("Shape_vertical")
+
+[node name="Right" type="CollisionShape2D" parent="World/Walls"]
+position = Vector2(768, 248)
+shape = SubResource("Shape_vertical")
+
+[node name="Gate" type="StaticBody2D" parent="World"]
+position = Vector2(480, 248)
+
+[node name="Visual" type="Polygon2D" parent="World/Gate"]
+polygon = PackedVector2Array(-12, -144, 12, -144, 12, 144, -12, 144)
+color = Color(0.85, 0.35, 0.2, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Gate"]
+shape = SubResource("Shape_gate")
+
+[node name="GateSensor" type="Area2D" parent="World"]
+position = Vector2(480, 248)
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/GateSensor"]
+shape = SubResource("Shape_gate_sensor")
+
+[node name="Key" type="Area2D" parent="World"]
+position = Vector2(240, 176)
+collision_layer = 0
+collision_mask = 2
+
+[node name="Visual" type="Polygon2D" parent="World/Key"]
+polygon = PackedVector2Array(0, -14, 14, 0, 0, 14, -14, 0)
+color = Color(1, 0.8, 0.15, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Key"]
+shape = SubResource("Shape_key")
+
+[node name="Exit" type="Area2D" parent="World"]
+position = Vector2(704, 320)
+collision_layer = 0
+collision_mask = 2
+
+[node name="Visual" type="Polygon2D" parent="World/Exit"]
+polygon = PackedVector2Array(-22, -36, 22, -36, 22, 36, -22, 36)
+color = Color(0.1, 0.6, 0.4, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Exit"]
+shape = SubResource("Shape_exit")
+
+[node name="Player" type="CharacterBody2D" parent="World"]
+position = Vector2(96, 320)
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("2_player")
+
+[node name="Visual" type="Polygon2D" parent="World/Player"]
+polygon = PackedVector2Array(-10, -10, 10, -10, 10, 10, -10, 10)
+color = Color(0.3, 0.75, 1, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Player"]
+shape = SubResource("Shape_player")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Root" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HUD" type="Control" parent="UI/Root"]
+visible = false
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+mouse_filter = 2
+
+[node name="KeyLabel" type="Label" parent="UI/Root/HUD"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 20.0
+offset_right = 160.0
+offset_bottom = 52.0
+text = "Key: 0/1"
+
+[node name="GateLabel" type="Label" parent="UI/Root/HUD"]
+layout_mode = 0
+offset_left = 180.0
+offset_top = 20.0
+offset_right = 400.0
+offset_bottom = 52.0
+text = "Gate: locked"
+
+[node name="HintLabel" type="Label" parent="UI/Root/HUD"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 420.0
+offset_right = 760.0
+offset_bottom = 452.0
+text = "Find the gold key, pass the gate, reach the exit."
+
+[node name="PauseButton" type="Button" parent="UI/Root/HUD"]
+layout_mode = 0
+offset_left = 640.0
+offset_top = 20.0
+offset_right = 760.0
+offset_bottom = 64.0
+text = "Pause"
+
+[node name="StartMenu" type="Control" parent="UI/Root"]
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+
+[node name="Background" type="ColorRect" parent="UI/Root/StartMenu"]
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.04, 0.06, 0.1, 0.96)
+
+[node name="Title" type="Label" parent="UI/Root/StartMenu"]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 100.0
+offset_right = 660.0
+offset_bottom = 156.0
+theme_override_font_sizes/font_size = 32
+text = "One-Room Loop"
+horizontal_alignment = 1
+
+[node name="Instructions" type="Label" parent="UI/Root/StartMenu"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 176.0
+offset_right = 700.0
+offset_bottom = 252.0
+text = "Move with WASD or arrow keys.\nCollect the gold key, unlock the gate, reach the green exit.\nA fixed smoke fixture; not a generated-game review."
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="UI/Root/StartMenu"]
+layout_mode = 0
+offset_left = 290.0
+offset_top = 290.0
+offset_right = 510.0
+offset_bottom = 342.0
+text = "Start"
+
+[node name="PauseMenu" type="Control" parent="UI/Root"]
+visible = false
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+
+[node name="Background" type="ColorRect" parent="UI/Root/PauseMenu"]
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.04, 0.06, 0.1, 0.9)
+
+[node name="Title" type="Label" parent="UI/Root/PauseMenu"]
+layout_mode = 0
+offset_left = 200.0
+offset_top = 120.0
+offset_right = 600.0
+offset_bottom = 176.0
+theme_override_font_sizes/font_size = 32
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="UI/Root/PauseMenu"]
+layout_mode = 0
+offset_left = 290.0
+offset_top = 212.0
+offset_right = 510.0
+offset_bottom = 264.0
+focus_neighbor_top = NodePath("../RestartButton")
+focus_neighbor_bottom = NodePath("../RestartButton")
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="UI/Root/PauseMenu"]
+layout_mode = 0
+offset_left = 290.0
+offset_top = 286.0
+offset_right = 510.0
+offset_bottom = 338.0
+focus_neighbor_top = NodePath("../ResumeButton")
+focus_neighbor_bottom = NodePath("../ResumeButton")
+text = "Restart"
+
+[node name="ResultMenu" type="Control" parent="UI/Root"]
+visible = false
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+
+[node name="Background" type="ColorRect" parent="UI/Root/ResultMenu"]
+layout_mode = 0
+offset_right = 800.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.04, 0.06, 0.1, 0.96)
+
+[node name="Title" type="Label" parent="UI/Root/ResultMenu"]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 120.0
+offset_right = 660.0
+offset_bottom = 176.0
+theme_override_font_sizes/font_size = 32
+text = "Room complete!"
+horizontal_alignment = 1
+
+[node name="Summary" type="Label" parent="UI/Root/ResultMenu"]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 200.0
+offset_right = 660.0
+offset_bottom = 246.0
+text = "Key collected. Gate unlocked. Exit reached."
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="UI/Root/ResultMenu"]
+layout_mode = 0
+offset_left = 290.0
+offset_top = 290.0
+offset_right = 510.0
+offset_bottom = 342.0
+text = "Play again"
+
+[connection signal="body_entered" from="World/Key" to="." method="_on_key_body_entered"]
+[connection signal="body_entered" from="World/GateSensor" to="." method="_on_gate_body_entered"]
+[connection signal="body_entered" from="World/Exit" to="." method="_on_exit_body_entered"]
+[connection signal="pressed" from="UI/Root/HUD/PauseButton" to="." method="pause_round"]
+[connection signal="pressed" from="UI/Root/StartMenu/StartButton" to="." method="start_round"]
+[connection signal="pressed" from="UI/Root/PauseMenu/ResumeButton" to="." method="resume_round"]
+[connection signal="pressed" from="UI/Root/PauseMenu/RestartButton" to="." method="start_round"]
+[connection signal="pressed" from="UI/Root/ResultMenu/RestartButton" to="." method="start_round"]

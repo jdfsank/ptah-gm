@@ -1,0 +1,55 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/main.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/main.gd</h1><p>只读源快照 · SHA-256 0859275c757356df909876db002ba4c51c84bb9bbdde0aaee9397e7c5fd583de</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> extends Control</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const SCREENS: Dictionary = {&quot;title&quot;: preload(&quot;res://scenes/ui/title_screen.tscn&quot;), &quot;hud&quot;: preload(&quot;res://scenes/ui/hud.tscn&quot;), &quot;paused&quot;: preload(&quot;res://scenes/ui/pause_overlay.tscn&quot;), &quot;map&quot;: preload(&quot;res://scenes/ui/map_overlay.tscn&quot;), &quot;dead&quot;: preload(&quot;res://scenes/ui/death_screen.tscn&quot;), &quot;ending&quot;: preload(&quot;res://scenes/ui/ending_screen.tscn&quot;)}</span>
+<span class="line" id="L4"><a href="#L4">   4</a> @onready var runtime: GameRuntime = $GameWorld</span>
+<span class="line" id="L5"><a href="#L5">   5</a> var screens: Dictionary = {}</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var current_mode: String = &quot;&quot;</span>
+<span class="line" id="L7"><a href="#L7">   7</a> var continue_available: bool = false</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var continue_notice: String = &quot;&quot;</span>
+<span class="line" id="L9"><a href="#L9">   9</a> </span>
+<span class="line" id="L10"><a href="#L10">  10</a> func _ready() -&gt; void:</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	for screen_id in SCREENS:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 		var screen: CasinoScreen = SCREENS[screen_id].instantiate()</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		screen.name = screen_id</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 		$Overlay/Controls.add_child(screen)</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		screen.action_requested.connect(_on_action)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		screen.set_active(false)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		screens[screen_id] = screen</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 	runtime.ui_root = self</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 	present(runtime.get_run_snapshot(), runtime.world.entity_id_registry.session.get_component(C_UIState))</span>
+<span class="line" id="L20"><a href="#L20">  20</a> </span>
+<span class="line" id="L21"><a href="#L21">  21</a> func _on_action(action: String) -&gt; void:</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	if action == &quot;map&quot; and runtime.session.mode == &quot;paused&quot;:</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		runtime.request_session_action(&quot;resume&quot;)</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	runtime.request_session_action(action)</span>
+<span class="line" id="L25"><a href="#L25">  25</a> </span>
+<span class="line" id="L26"><a href="#L26">  26</a> func present(snapshot: Dictionary, state: C_UIState) -&gt; void:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 	var mode: String = snapshot.get(&quot;mode&quot;, &quot;title&quot;)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 	if mode == &quot;title&quot; and current_mode != mode:</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		continue_available = runtime.can_continue()</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		continue_notice = &quot;可继续上次的检查点&quot; if continue_available else runtime.save_repository.last_error + &quot; · 请选择开始游戏&quot;</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 	if mode != current_mode:</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		current_mode = mode</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		get_viewport().gui_release_focus()</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		for screen_id in screens:</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			screens[screen_id].set_active(screen_id == mode or (screen_id == &quot;hud&quot; and mode in [&quot;playing&quot;, &quot;paused&quot;, &quot;map&quot;, &quot;transition&quot;]))</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 	snapshot[&quot;can_continue&quot;] = continue_available</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 	snapshot[&quot;continue_notice&quot;] = continue_notice</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 	snapshot[&quot;notice&quot;] = state.notice if state.notice_left &gt; 0.0 or snapshot.get(&quot;save_status&quot;, &quot;&quot;) == &quot;failed&quot; else &quot;&quot;</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	for screen_id in screens:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		if screens[screen_id].visible:</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			screens[screen_id].refresh(snapshot)</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 	var focus: Control = get_viewport().gui_get_focus_owner()</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 	if focus != null and mode in screens:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		state.focus_index = screens[mode].buttons.find(focus)</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	# Existing world-space boss labels are replaced by the screen-safe authoritative HUD.</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	for boss in snapshot.get(&quot;bosses&quot;, []):</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		var entity: Entity = runtime.world.entity_id_registry.get(boss.id)</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 		if is_instance_valid(entity):</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 			var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 			if body != null and is_instance_valid(body.root):</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 				for node_name in [&quot;BossHealth&quot;, &quot;BossTitle&quot;]:</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 					var label: CanvasItem = body.root.get_node_or_null(node_name)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 					if label != null:</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 						label.hide()</span>
+</pre>

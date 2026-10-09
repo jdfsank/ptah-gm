@@ -1,0 +1,46 @@
+{
+  "created": "2026-10-08",
+  "frontend": {
+    "version": "0.6.0",
+    "commit": "fe1fc88ee4fe4a8d5ce32493b76e8d4c20dd2af1",
+    "workingTreeClean": true,
+    "source": "frontend",
+    "history": "history/frontend-v6.bundle"
+  },
+  "framework": {
+    "commit": "c16d4bb8091af784fc801ca6734e79d6b17b136e",
+    "validatedGodot": "4.6.3.stable.official.7d41c59c4"
+  },
+  "game": {
+    "name": "Velvet Eclipse",
+    "sourceDelivery": "v2",
+    "commit": "not asserted; archive bytes are authoritative"
+  },
+  "excluded": [
+    "node_modules",
+    ".venv",
+    "__pycache__",
+    ".godot generated cache",
+    "credentials",
+    "assistant internal notes",
+    "local .git configuration"
+  ],
+  "archives": [
+    {
+      "path": "source-zips/GodotMaker-non-pk-c16d4bb-code.zip",
+      "bytes": 2977702,
+      "sha256": "73649fb91d3117d328b263bfaa3ce93b551502f0ff7cdefcd79274bb494e8a2c",
+      "files": 572,
+      "inventory": "docs/GodotMaker-non-pk-c16d4bb-code-inventory.json",
+      "derivation": "docs/COMPACT-ARCHIVE-CHANGES.json"
+    },
+    {
+      "path": "source-zips/velvet-eclipse-source-v2-delivery.zip",
+      "bytes": 35664219,
+      "sha256": "a0fd49db688973c1c5673e8186a2a6fdd30f718a830dc8c01da4a2ac36a07935",
+      "files": 2232,
+      "inventory": "docs/velvet-eclipse-source-v2-delivery-inventory.json"
+    }
+  ],
+  "variant": "compact; only four framework documentation GIFs omitted"
+}

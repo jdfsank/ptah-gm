@@ -1,0 +1,4 @@
+7bac2f208074f7420951247dc611747a35616b99f5b6fc0ef4d1f1e25f368756  GM-DNA-v6-part1-start-frontend-history.zip
+18fb5e6101a3635f630adbfadb3625e529f64e6c421e90e00bc614c490e60316  GM-DNA-v6-part2-gm-framework.zip
+ef98fe4ff788a19bd86c09fb4d3ffbd3b498cb3f758abcddf6c6c2c675caa208  GM-DNA-v6-part3-godot-game-source.zip
+ac3663e35aa19e081e564df559aee1671b388c0b8e8f9cfa513b154506ae2bc7  GM-DNA-v6-part4-reference-inputs.zip

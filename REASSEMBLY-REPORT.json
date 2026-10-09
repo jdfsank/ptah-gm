@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-09",
+  "operation": "reassemble and extract supplied delivery only",
+  "output": "/Users/typ/Desktop/godot_project/ptah-gm/local-codex-handoff-20261008-compact",
+  "verification": [
+    "ZIP CRC during decompression",
+    "declared file counts and sizes",
+    "direct byte equality"
+  ],
+  "hash_checks_performed": false,
+  "build_performed": false,
+  "outer_archives": [
+    {
+      "archive": "GM-DNA-v6-part1-start-frontend-history.zip",
+      "files": 202,
+      "uncompressed_bytes": 18161191,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-part2-gm-framework.zip",
+      "files": 1,
+      "uncompressed_bytes": 2977702,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-game-slice-01-of-03.zip",
+      "files": 4,
+      "uncompressed_bytes": 12586937,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-game-slice-02-of-03.zip",
+      "files": 1,
+      "uncompressed_bytes": 12582912,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-game-slice-03-of-03.zip",
+      "files": 1,
+      "uncompressed_bytes": 10498395,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-references-01-of-02.zip",
+      "files": 4,
+      "uncompressed_bytes": 12211781,
+      "crc": "passed during extraction"
+    },
+    {
+      "archive": "GM-DNA-v6-references-02-of-02.zip",
+      "files": 4,
+      "uncompressed_bytes": 12020890,
+      "crc": "passed during extraction"
+    }
+  ],
+  "source_archives": [
+    {
+      "archive": "source-zips/GodotMaker-non-pk-c16d4bb-code.zip",
+      "files": 572,
+      "extracted_bytes": 5817008,
+      "inventory_count_and_sizes": "passed",
+      "crc": "passed during extraction",
+      "extracted_byte_comparison": "identical"
+    },
+    {
+      "archive": "source-zips/velvet-eclipse-source-v2-delivery.zip",
+      "files": 2232,
+      "extracted_bytes": 44158513,
+      "inventory_count_and_sizes": "passed",
+      "crc": "passed during extraction",
+      "extracted_byte_comparison": "identical"
+    }
+  ],
+  "reassembled_game_zip_bytes": 35664219,
+  "original_game_package_byte_comparison": "identical",
+  "original_reference_package_byte_comparison": {
+    "result": "identical",
+    "files": 8
+  },
+  "archived_documents": [
+    "SPLIT-DELIVERY-UPDATE.zh-CN.txt",
+    "SPLIT-ZIP-SHA256SUMS.txt"
+  ],
+  "retained_transfer_parts": true,
+  "unused_duplicate_outer_archives": [
+    "GM-DNA-v6-part3-godot-game-source.zip",
+    "GM-DNA-v6-part4-reference-inputs.zip"
+  ],
+  "game_project": "/Users/typ/Desktop/godot_project/ptah-gm/local-codex-handoff-20261008-compact/sources/velvet-eclipse/project.godot",
+  "reference_png_files": 8,
+  "package_manifest_files_present": 209,
+  "extracted_source_files": 2804,
+  "validation_notes": [
+    "Reference image extensions are uppercase .PNG; original filenames retained.",
+    "SHA manifests and original verification scripts retained as historical delivery files; no digest functions invoked."
+  ]
+}

@@ -1,0 +1,31 @@
+// Real domain + React UI + frozen producer + browser-local receipt + Python validator.
+// No model, network, fake domain adapter, or Godot claim. Browser transport is the product demo.
+const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{spawnSync}=require('child_process'),{JSDOM}=require('jsdom');
+const root=path.resolve(__dirname,'..'),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(fn){for(let n=0;n<250;n++){if(fn())return;await sleep(20)}assert(fn(),'UI condition timed out')}
+(async()=>{const dom=new JSDOM(fs.readFileSync(root+'/dist/index.html','utf8'),{url:'https://dna-velvet-workbench.mbvs9mqhp8.chatgpt.site/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,d=w.document;w.structuredClone=x=>JSON.parse(JSON.stringify(x));let networkCalls=0;w.fetch=()=>{networkCalls++;throw Error('Unexpected network')};
+try {
+for(const name of ['demo-data','semantic-model','semantic-data','app','workbench'])w.eval(fs.readFileSync(root+'/dist/'+name+'.js','utf8'));
+await until(()=>d.querySelector('.workbench-shell'));
+const button=text=>{const x=[...d.querySelectorAll('#workbench-root button')].find(x=>x.textContent.includes(text));assert(x,text);return x};
+const change=(selector,value)=>{const el=d.querySelector(selector);assert(el,selector);Object.getOwnPropertyDescriptor(w.HTMLSelectElement.prototype,'value').set.call(el,value);el.dispatchEvent(new w.Event('change',{bubbles:true}))};
+const id='transition:route:grand_lobby:to_gallery';assert(w.DNAWorkbench.navigateTarget(id));assert.equal(w.DNAWorkbench.currentTarget().id,id);
+change('#transition-mode','none');await sleep(30);button('预览与提交').click();await until(()=>d.querySelector('.submit-panel'));await until(()=>!d.querySelector('button[type=submit]').disabled);
+change('[aria-label="提交协议"]','1');await sleep(30);
+// v1 may not silently downgrade new targets to a project-wide instruction.
+d.querySelector('button[type=submit]').click();await sleep(30);assert(!d.querySelector('.submission-preview'));assert(d.querySelector('.action-feedback').textContent.includes('v2'));assert.equal(w.localStorage.getItem('velvet-eclipse-pending-submission'),null);
+change('[aria-label="提交协议"]','2');await sleep(30);d.querySelector('button[type=submit]').click();await until(()=>d.querySelector('.submission-preview'));
+const frozen=[...d.querySelectorAll('.submission-preview pre')].map(x=>x.textContent).find(x=>x.startsWith('{"version"'));assert(frozen);const payload=JSON.parse(frozen);assert.equal(payload.taskId,'velvet-eclipse');assert.equal(payload.resolvedTargets.length,1);assert.equal(payload.resolvedTargets[0].id,id);assert.equal(payload.resolvedTargets[0].rangeIntent,'single-transition');assert.equal(payload.diff[0].targetId,id);assert(payload.diff.every(x=>x.path.startsWith('/transitions/route:grand_lobby:to_gallery/config/')));assert.deepEqual(payload.resolvedTargets[0].sourceExitRef,{roomId:'grand_lobby',exitId:'to_gallery'});assert.deepEqual(payload.resolvedTargets[0].targetEntryRef,{roomId:'card_banquet_gallery',spawnId:'from_lobby'});assert(!Object.hasOwn(payload.snapshot.transitions[0],'targetEntryRef'));assert(!payload.resolvedTargets.some(x=>x.id==='project'));
+const code="import json,sys;sys.path.insert(0,'bridge');import gm_contract as gm;p=json.load(sys.stdin);gm.validate_v2(p);gm.verify_reviewed_diff(p,gm.adapter_baseline());print('PASS')";
+const check=p=>spawnSync('python3',['-c',code],{cwd:root,input:JSON.stringify(p),encoding:'utf8'});const good=check(payload);assert.equal(good.status,0,good.stderr);
+for(const mutate of [p=>p.diff[0].targetId='project',p=>p.diff[0].before='preset']){const bad=structuredClone(payload);mutate(bad);assert.notEqual(check(bad).status,0,'Forged diff must fail');}
+button('确认并提交这份载荷').click();await until(()=>JSON.parse(w.localStorage.getItem('dna-browser-submit-demo-v1')||'{}').last?.submissionId===payload.submissionId);const receipt=JSON.parse(w.localStorage.getItem('dna-browser-submit-demo-v1')).last;assert.equal(JSON.stringify(receipt.payload),frozen);assert.equal(receipt.result.refs.submissionId,payload.submissionId);assert.equal(receipt.result.items[0].id,id);assert.equal(receipt.result.implementation,'BLOCKED');assert.equal(receipt.result.verification,'BLOCKED');assert.equal(receipt.result.certified,false);assert.equal(receipt.result.refs.runId,null);assert.equal(networkCalls,0);
+// Leaving a Transition must retarget both domain and React note scope atomically.
+w.DNAWorkbench.navigateTarget('transition:route:card_banquet_gallery:to_clocktower');await sleep(30);
+d.querySelector('[data-action="new-scene"]').click();d.querySelector('#new-name').value='Transition scope regression';d.querySelector('[data-action="create-scene"]').click();await sleep(40);
+let current=w.DNAWorkbench.currentTarget();assert.equal(current.kind,'scene');assert(current.id.startsWith('scene:scene_'));assert.equal(d.querySelector('#target-comment').dataset.commentTarget,current.id);assert(!d.querySelector('#transition-mode'));assert.equal(new w.URLSearchParams(w.location.hash.slice(1)).get('target'),current.id);
+w.DNAWorkbench.navigateTarget('transition:route:card_banquet_gallery:to_clocktower');await sleep(30);d.querySelector('[data-action="drafts"]').click();d.querySelector('[data-action="reset"]').click();d.querySelector('[data-action="confirm-reset"]').click();await sleep(40);
+assert.equal(w.DNAWorkbench.currentTarget().id,'scene:grand_lobby');assert.equal(d.querySelector('#target-comment').dataset.commentTarget,'scene:grand_lobby');assert(!d.querySelector('#transition-mode'));assert.equal(new w.URLSearchParams(w.location.hash.slice(1)).get('target'),'scene:grand_lobby');
+const node=d.querySelector('[role="button"][data-action="target"][data-id="'+id+'"]');assert(node);const space=new w.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});node.dispatchEvent(space);await sleep(30);assert(space.defaultPrevented);assert.equal(w.DNAWorkbench.currentTarget().id,id);assert.equal(d.querySelector('#target-comment').dataset.commentTarget,id);
+console.log('transition-chain: real DOM edit → frozen v2 → Python baseline PASS → exact local receipt; v1/project/forged-before failures PASS; no network/model/Godot execution');
+} finally {w.close()}})().catch(e=>{console.error(e);process.exit(1)});

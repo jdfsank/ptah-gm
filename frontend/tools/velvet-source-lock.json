@@ -1,0 +1,278 @@
+[
+  {
+    "path": "ASSETS.md",
+    "sha256": "f0d4cd768e6bfe50777e5d8329cb7491fde7bb79db177b202291786715cf3aa6"
+  },
+  {
+    "path": "DESIGN.md",
+    "sha256": "e5c8000f5c62d1aebafeb148e67b5890227187f3793640705b4183639b2aa12a"
+  },
+  {
+    "path": "GDD.md",
+    "sha256": "9cbd69d655e88288022374c7c8836519b5a98c91da29581f72c299261e97a66a"
+  },
+  {
+    "path": "SCENES.md",
+    "sha256": "2648d853c44128f36e7eb8949370ff4d3d8e7855955f22d43830da1830a6f8cb"
+  },
+  {
+    "path": "STRUCTURE.md",
+    "sha256": "769fed6146568e9ebf68f9c0cf5d8ccc9f6907ccb7dbf8d2cb6f4bfa3cc085bc"
+  },
+  {
+    "path": "assets/generated/character-bundle/boss_frames/boss_frames.tres",
+    "sha256": "683f7f80637977a0c131b9216e8babcb9e584e02a9320fe98edfca0f5d391713"
+  },
+  {
+    "path": "assets/generated/character-bundle/dealer_frames/dealer_frames.tres",
+    "sha256": "5e4b886081fbbb69796e07cbfd0d881b70a6cb73e8383d6cc23a551333c33b52"
+  },
+  {
+    "path": "assets/generated/character-bundle/heroine_frames/heroine_frames.tres",
+    "sha256": "d538eba09eabf5a075e5460b45ed17096342474211a6b484a210116ab1e4359f"
+  },
+  {
+    "path": "data/rooms/card_banquet_gallery.json",
+    "sha256": "bf5721a3a9fe50c846fce98d5a7b2cb14f6b4b6448ed6b37fc2c150e6e73adad"
+  },
+  {
+    "path": "data/rooms/grand_lobby.json",
+    "sha256": "c4d25d892efe0751bb58839bbc8bc74c9c6c65cf0e69df8acc6273ff9e5bd0c1"
+  },
+  {
+    "path": "data/rooms/house_throne.json",
+    "sha256": "2bae8df1695d9615503ed9f6d4a2f1665fea11a996fedee82562f84df67e3c20"
+  },
+  {
+    "path": "data/rooms/quiet_save_room.json",
+    "sha256": "2d53b222a6a870bb64a4b6553edb16a646d7849ecdc4ee3fc48c98a5f847c1fe"
+  },
+  {
+    "path": "data/rooms/roulette_clocktower.json",
+    "sha256": "1a7a00924819ad493179384d8a69c58c96dfb730c523c26b4256e6e717ecbc83"
+  },
+  {
+    "path": "project.godot",
+    "sha256": "4884d26ebdb2a00c4df2df5ce10866b42963bd9df3cb3f4ca6a260ac3035f926"
+  },
+  {
+    "path": "resources/ui/casino_theme.tres",
+    "sha256": "87ec60b62be7555603e48ddccb094f7910365a5a71ef4363f5721f5862791b39"
+  },
+  {
+    "path": "scenes/game_world.tscn",
+    "sha256": "4f58b42b6374e931bc9341f3fe04d5f753c1a480311eb65cbd9cb529f68d346f"
+  },
+  {
+    "path": "scenes/main.tscn",
+    "sha256": "1be0f98f06488de7bd6fce316569a1b8726ee2ad05a42d6e764cdf674eaf3198"
+  },
+  {
+    "path": "scenes/ui/death_screen.tscn",
+    "sha256": "09f3d19ae94c5bb66c7fc940e533099c49cdff796b359cff74a5e3dcc74a0e8c"
+  },
+  {
+    "path": "scenes/ui/ending_screen.tscn",
+    "sha256": "b5f71cc0ff0ebc3fa76fd7b2be8fcc496cdcbd2c8638c245fbbf6582c5b44378"
+  },
+  {
+    "path": "scenes/ui/hud.tscn",
+    "sha256": "94097f42e866109e9246c0a8e6ff4487144ba912f8da3f1ba7a630370cb22015"
+  },
+  {
+    "path": "scenes/ui/map_overlay.tscn",
+    "sha256": "354a67e1e62f8da1e024f0b482bd286c7af46ef2e4eb5522d3c6a21e10f99c07"
+  },
+  {
+    "path": "scenes/ui/pause_overlay.tscn",
+    "sha256": "54a7d80d2f7487256692c1440b966ba5361b586b71e36299d646d5671813d0ed"
+  },
+  {
+    "path": "scenes/ui/title_screen.tscn",
+    "sha256": "e5cc158dff493dd3f9f2df32afbab36f6781192242f6b87a5db016233fec60e8"
+  },
+  {
+    "path": "scripts/components/c_body.gd",
+    "sha256": "1badce22ea0f7363b3f894cd07f900edad470055354394ce7fb5859045b9389a"
+  },
+  {
+    "path": "scripts/components/c_boss.gd",
+    "sha256": "fd662f6861733252ca9ea14bc28d997d0718347efb5776ac6e17a1a65eecb585"
+  },
+  {
+    "path": "scripts/components/c_camera_target.gd",
+    "sha256": "dcd15aec8fadf7226318e36f3540f7803f8dbbc98b8ef97c9d337a12eff211eb"
+  },
+  {
+    "path": "scripts/components/c_checkpoint.gd",
+    "sha256": "d872fb1247f0f86c000f03353690b96c6ce60fd2a541d80d6ea3ed089254a53e"
+  },
+  {
+    "path": "scripts/components/c_combat.gd",
+    "sha256": "84db6451296dd170f9628e6412927b16dde64ba6a69408ed00f176cb7c6ac28f"
+  },
+  {
+    "path": "scripts/components/c_effect.gd",
+    "sha256": "ed9e65cb573cf586f69acc7d387d2d231498a44315894166bb6584198583b88a"
+  },
+  {
+    "path": "scripts/components/c_enemy_ai.gd",
+    "sha256": "3dd3989804faa7a08d1f2b955fb1df37d6224d8304026d0017b35e0231c850ec"
+  },
+  {
+    "path": "scripts/components/c_health.gd",
+    "sha256": "165316c0bf3f4d6ba62d66d4a6059f3246ced91d26a7fc453b145127f61153b9"
+  },
+  {
+    "path": "scripts/components/c_hitbox.gd",
+    "sha256": "29c4e5ae6022ad41e5dd06a75e0ada66a197032e28eb2aa28e2af333cdc64c1e"
+  },
+  {
+    "path": "scripts/components/c_input.gd",
+    "sha256": "5b17d80369c2693fe6157b7c4c44e72708b09910f5ea8587c9494e273d78b3cb"
+  },
+  {
+    "path": "scripts/components/c_interaction.gd",
+    "sha256": "5758b8096bad1d71498d2dc5f276d435ca218af336dbf2f44a529bb454d9990b"
+  },
+  {
+    "path": "scripts/components/c_motion.gd",
+    "sha256": "16a08494c71f6ce38da6a1a2f07fb13d358e1348b04e34a4dcf6995733b9ead3"
+  },
+  {
+    "path": "scripts/components/c_progression.gd",
+    "sha256": "9f6ba9aeedd8153aab2975a6e28f71e01ed812a9ab37ad7af0a95d016003c530"
+  },
+  {
+    "path": "scripts/components/c_projectile.gd",
+    "sha256": "312ee87ae24873a86ff1a48df1240a8df30845cc61d9a453697f3ee06aed18a4"
+  },
+  {
+    "path": "scripts/components/c_room_member.gd",
+    "sha256": "e4d8d74b884464015a7a99cc66a8d113febcc47efa77c1590240b491e7607992"
+  },
+  {
+    "path": "scripts/components/c_session.gd",
+    "sha256": "67ca2db580874eae09732ba5680ecd36710fa29517ce2c4f891d585a92b58060"
+  },
+  {
+    "path": "scripts/components/c_transform.gd",
+    "sha256": "95e9c157159a5567aab449bfdfebbc57840787b2acf56fbd28ecf708faf5c6ea"
+  },
+  {
+    "path": "scripts/components/c_ui_state.gd",
+    "sha256": "5b36cb5c293f41ae4b43c47982f4641e04306da5b427b5c27bb900484c11f7f6"
+  },
+  {
+    "path": "scripts/components/c_visual.gd",
+    "sha256": "2afc6654777ad444a475e62fcf5f7ce82bfda4ec06c71f31ed60b32e5335a4a8"
+  },
+  {
+    "path": "scripts/entities/game_entity.gd",
+    "sha256": "4a15d5529b7a7e87fe4998210d8fee104f6bd565e60d8ce8236358456399b5f5"
+  },
+  {
+    "path": "scripts/main.gd",
+    "sha256": "0859275c757356df909876db002ba4c51c84bb9bbdde0aaee9397e7c5fd583de"
+  },
+  {
+    "path": "scripts/runtime/entity_factory.gd",
+    "sha256": "0c9777459003e615d1d44e890f9e725573c77d608a1f00667384db3685c8b8af"
+  },
+  {
+    "path": "scripts/runtime/game_runtime.gd",
+    "sha256": "34b67833fb8c3d93b6c9039c5655782ef50856c177ea59b07d15530758e99941"
+  },
+  {
+    "path": "scripts/runtime/resource_catalog.gd",
+    "sha256": "79bf20653097dcbe7d84925cc6614ef290731452a7b9805b7539535585fef673"
+  },
+  {
+    "path": "scripts/runtime/room_catalog.gd",
+    "sha256": "4615f7a93044f51d389ee8fcd18701663de37d28a99aba5b7dd52a385c8d70f5"
+  },
+  {
+    "path": "scripts/runtime/save_repository.gd",
+    "sha256": "915b2dae573e4d94ca001fa21c8dfe696ce74a312c330f06214b891e33aaecdd"
+  },
+  {
+    "path": "scripts/systems/animation_system.gd",
+    "sha256": "90c1e561cd727786667a9f14d3e45a831eb77ca669df88af222c4c6fe71c2475"
+  },
+  {
+    "path": "scripts/systems/boss_system.gd",
+    "sha256": "38b1f6701506d7a08163d2e442ba73932142e678996efc2e1f15eb2aacd39b7a"
+  },
+  {
+    "path": "scripts/systems/camera_system.gd",
+    "sha256": "085fdeaaed731fad094120cecd413f081f031f8498c507ffdbbbf2fc4c4feabf"
+  },
+  {
+    "path": "scripts/systems/combat_system.gd",
+    "sha256": "4057b4dbe05d050f224c560676146bb2a12fff74c8ddf88fabd315debed159ab"
+  },
+  {
+    "path": "scripts/systems/damage_system.gd",
+    "sha256": "a6d24294bf87d18b3b78e3f423e07ba9c47a81e60bbf421b2d133faedecdb93a"
+  },
+  {
+    "path": "scripts/systems/effect_system.gd",
+    "sha256": "2457f962c449d03426492b9f8fbbe2d15b448ef16020671c57a8433bc685e415"
+  },
+  {
+    "path": "scripts/systems/enemy_ai_system.gd",
+    "sha256": "cfdb3f314cd6d090dfa222a1363c8e04b048063a6c51ebd8537bfbe8ab46c236"
+  },
+  {
+    "path": "scripts/systems/input_system.gd",
+    "sha256": "c3a451e20d9fedc92c38c16b4d8fe56dde53b27cc0f18308f3ba3108d6f1ddbe"
+  },
+  {
+    "path": "scripts/systems/interaction_system.gd",
+    "sha256": "2500a8e89f7e6877e00b8b0a20e21e6fe3b3b3e5c7ec0aa031f1cb8bb381faa0"
+  },
+  {
+    "path": "scripts/systems/materialization_system.gd",
+    "sha256": "9afbb3bcbe2f77f59aa9a27cc0c38f4b323e7ae04cd943ed6f4de755189819fa"
+  },
+  {
+    "path": "scripts/systems/movement_system.gd",
+    "sha256": "fb1bf72968022cb925e64d5c603a4ab067723e13ec02881d96bea871c1341d15"
+  },
+  {
+    "path": "scripts/systems/progression_system.gd",
+    "sha256": "0b2edc7ec446492a11f9f2d8771be80162181a2d32f3eca62e7b6f54f3df1914"
+  },
+  {
+    "path": "scripts/systems/save_system.gd",
+    "sha256": "ca746df95665866f8b22822d8be4ef0d5ee45116d2d76c8e69e37f1f3b983ee6"
+  },
+  {
+    "path": "scripts/systems/ui_system.gd",
+    "sha256": "f0cabdde7e24311e73ab9da24f793e3fcdb8341f705b4639ebc55299250b9bb7"
+  },
+  {
+    "path": "scripts/ui/death_screen.gd",
+    "sha256": "410909529713969041388f08efb422847d95201f02a9a8a758e120811f785cae"
+  },
+  {
+    "path": "scripts/ui/ending_screen.gd",
+    "sha256": "f456a189e3a1a8caafd6cfbfae1bc32ebd08261a61d88e8bf5451d32d0e57b5a"
+  },
+  {
+    "path": "scripts/ui/hud.gd",
+    "sha256": "ba6df2476dec0e68501d1e09af832c35b68c9a81ca1cc40d6720907eacb87342"
+  },
+  {
+    "path": "scripts/ui/map_overlay.gd",
+    "sha256": "58d1c0cccdf7c5d463dad9be6bab29ccef3f1783a987696363f374af2a57d8cf"
+  },
+  {
+    "path": "scripts/ui/pause_overlay.gd",
+    "sha256": "ffd35c66abcbbd88f0c54c90aeb2a733757394a85bc8f69d4133a3bb1564fb8a"
+  },
+  {
+    "path": "scripts/ui/title_screen.gd",
+    "sha256": "d73865d46d7c4f8d71683adba6fd7f231a0daae7a44bd602d88fe2edcfb9cac7"
+  }
+]

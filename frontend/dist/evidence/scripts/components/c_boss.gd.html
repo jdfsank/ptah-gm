@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/components/c_boss.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/components/c_boss.gd</h1><p>只读源快照 · SHA-256 fd662f6861733252ca9ea14bc28d997d0718347efb5776ac6e17a1a65eecb585</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name C_Boss extends Component</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var phase: int = 1</span>
+<span class="line" id="L4"><a href="#L4">   4</a> @export var state: String = &quot;idle&quot;</span>
+<span class="line" id="L5"><a href="#L5">   5</a> @export var time_left: float = 1.2</span>
+<span class="line" id="L6"><a href="#L6">   6</a> @export var attack_index: int = 0</span>
+<span class="line" id="L7"><a href="#L7">   7</a> @export var phase_changed: bool = false</span>
+<span class="line" id="L8"><a href="#L8">   8</a> @export var arena_active: bool = false</span>
+<span class="line" id="L9"><a href="#L9">   9</a> @export var slam_center: Vector2 = Vector2.ZERO</span>
+</pre>

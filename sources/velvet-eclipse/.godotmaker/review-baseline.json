@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "variant": "gm-non-pk",
+  "upstream_url": "https://github.com/RandallLiuXin/GodotMaker",
+  "upstream_commit": "1d4702caa2ac5fdbe1b0139e1787691cb52ae290",
+  "upstream_version": "1.1.0",
+  "license": "BUSL-1.1",
+  "planner_runtime_dependency": false,
+  "validated_environment": {
+    "host": "Linux x86_64",
+    "python": "3.12.14",
+    "uv": "0.12.19",
+    "godot": "4.6.3.stable.official.7d41c59c4",
+    "godot_binary_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
+    "godot_origin": "Preinstalled execution-environment binary; no engine download performed"
+  },
+  "enabled_capabilities": ["doctor", "fixed_fixture_smoke", "version_bound_check", "native_snapshot_preview", "immutable_feedback_to_gap", "interactive_decision_guard"],
+  "product_validation": {"real_user_generation_repair_acceptance": "needs_human", "react_workbench": "not_implemented_pending_N05", "physical_devices": "not_tested"}
+}

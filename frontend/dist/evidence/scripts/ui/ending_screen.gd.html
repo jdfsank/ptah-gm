@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/ui/ending_screen.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/ui/ending_screen.gd</h1><p>只读源快照 · SHA-256 f456a189e3a1a8caafd6cfbfae1bc32ebd08261a61d88e8bf5451d32d0e57b5a</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> extends &quot;res://scripts/ui/title_screen.gd&quot;</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> func _ready() -&gt; void:</span>
+<span class="line" id="L4"><a href="#L4">   4</a> 	var content := build_modal(&quot;庄家已败&quot;, &quot;绯月消散 · 赌城的诅咒已被斩断&quot;)</span>
+<span class="line" id="L5"><a href="#L5">   5</a> 	add_label(content, &quot;你以剑与飞牌打破命运，走出了永夜的赌局。&quot;, 24)</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	detail = add_label(content, &quot;&quot;, 21)</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	add_button(content, &quot;重新开始&quot;, &quot;new_run&quot;, &quot;RestartButton&quot;)</span>
+<span class="line" id="L8"><a href="#L8">   8</a> 	add_button(content, &quot;返回标题&quot;, &quot;title&quot;, &quot;TitleButton&quot;)</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	add_label(content, &quot;感谢游玩 · VELVET ECLIPSE&quot;, 22)</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func refresh(snapshot: Dictionary) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	detail.text = snapshot.get(&quot;message&quot;, &quot;&quot;)</span>
+</pre>

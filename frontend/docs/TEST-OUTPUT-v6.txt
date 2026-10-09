@@ -1,0 +1,321 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> dna-velvet-workbench-concept@0.6.0 check
+> node --check dist/app.js && node --check dist/demo-data.js && node --check dist/semantic-model.js && node --check dist/semantic-data.js && node --check src/browser-demo.js && node --check src/submission-contract.js
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> dna-velvet-workbench-concept@0.6.0 test
+> node tools/write-adapter-baseline.cjs --check && node tests/dom-qa.cjs && node tests/semantic-qa.cjs && node tests/navigation-qa.cjs && node tests/workbench-qa.cjs && node tests/submission-contract-qa.cjs && node tests/submission-shell-qa.cjs && node tests/review-edge-qa.cjs && python3 -m unittest discover -s tests -p "test*.py" && node tests/browser-demo-contract-qa.cjs && node tests/browser-demo-qa.cjs && node tests/cross-contract-qa.cjs && node tests/transition-qa.cjs && node tests/transition-chain-qa.cjs && node tests/comment-coverage-qa.cjs && node tests/review-ui-v6.cjs
+
+{
+  "type": "DOM event tests using jsdom, not rendered browser QA",
+  "testedAt": "2026-10-08T07:56:31.604Z",
+  "checks": [
+    {
+      "name": "Overview imports actual five rooms and contextual DNA",
+      "status": "pass"
+    },
+    {
+      "name": "Blank scene cancellation, missing entrance/floor, place objects, singleton guard",
+      "status": "pass"
+    },
+    {
+      "name": "Instance coordinate boundaries, locks and manual grouped undo",
+      "status": "pass"
+    },
+    {
+      "name": "Transition target/spawn edits update graph source and protect missing destinations",
+      "status": "pass"
+    },
+    {
+      "name": "Timing fields change phases, reject invalid numbers and preview UI exists",
+      "status": "pass"
+    },
+    {
+      "name": "AI rule proposal excludes locked/gameplay, apply atomic, undo complete, unknown input graceful",
+      "status": "pass"
+    },
+    {
+      "name": "AI stale revision disables apply after manual edit; cancellation no mutation",
+      "status": "pass"
+    },
+    {
+      "name": "AI shared timing scope stays explicit and grouped undo works",
+      "status": "pass"
+    },
+    {
+      "name": "Browser-local save/reopen/reset and immutable source snapshot",
+      "status": "pass"
+    },
+    {
+      "name": "Incompatible local version never overwrites current scene",
+      "status": "pass"
+    },
+    {
+      "name": "Runtime transient assets are read-only with source provenance",
+      "status": "pass"
+    },
+    {
+      "name": "WebMCP registration contract and valid/invalid navigation use visible state (mocked context)",
+      "status": "pass"
+    },
+    {
+      "name": "Phone workflow: scene selection drawer, tabs, close, placement cancel, template and no duplicate",
+      "status": "pass"
+    }
+  ],
+  "errors": [],
+  "browserQA": "Not completed: cloud browser returned ERR_CONNECTION_REFUSED for executor loopback preview; portable environment has no managed preview forwarding. No screenshots fabricated.",
+  "webMCP": "Mocked registry contract only; a supported native WebMCP browser context was unavailable."
+}
+{
+  "type": "Semantic model, extraction snapshot and jsdom interaction tests; not rendered browser QA",
+  "counts": {
+    "objects": 21,
+    "behaviors": 38,
+    "instances": 93,
+    "spawnRules": 9,
+    "sources": 338,
+    "ledger": 455,
+    "unmapped": 0
+  },
+  "checks": [
+    {
+      "name": "Neutral contract accepts current source catalog and both noncombat fixtures",
+      "status": "pass"
+    },
+    {
+      "name": "Model rejects duplicate IDs, broken refs, fake source writeback and unmapped facts",
+      "status": "pass"
+    },
+    {
+      "name": "Extraction finite denominators: input, state, resources, UI, reverse ownership",
+      "status": "pass"
+    },
+    {
+      "name": "Source snapshot links resolve to actual line anchors, thumbnails exist",
+      "status": "pass"
+    },
+    {
+      "name": "Definition, placed instance, spawn marker and ephemeral rule stay distinct",
+      "status": "pass"
+    },
+    {
+      "name": "Source values and behavior types are faithful",
+      "status": "pass"
+    },
+    {
+      "name": "Migration preserves old values, unknown fields and original bytes",
+      "status": "pass"
+    },
+    {
+      "name": "Every semantic definition and all 38 behavior views render without runtime errors",
+      "status": "pass"
+    },
+    {
+      "name": "Player definition accessible from spawn independently of room, enemies include ranged placement",
+      "status": "pass"
+    },
+    {
+      "name": "Type-specific panels do not force continuous/response/interaction into attack timeline",
+      "status": "pass"
+    },
+    {
+      "name": "Read-only behavior fields and optional Narrative are honest",
+      "status": "pass"
+    },
+    {
+      "name": "Coverage filter reaches inputs, state, resources, source pages and method",
+      "status": "pass"
+    },
+    {
+      "name": "Legacy storage is not overwritten on load; reopening migrates explicitly, saving preserves backup",
+      "status": "pass"
+    },
+    {
+      "name": "Phone semantic selection, coverage, DNA drawer and method close paths",
+      "status": "pass"
+    }
+  ],
+  "browserQA": "Not performed: cloud browser cannot reach the executor loopback preview. No screenshot or engine-playability claim."
+}
+{
+  "type": "jsdom navigation contracts",
+  "checks": [
+    {
+      "name": "Single rail holds scene views, definitions and behavior navigation",
+      "status": "pass"
+    },
+    {
+      "name": "Exact room+draft ID mapping preserves colon spawn IDs and catalog identities",
+      "status": "pass"
+    },
+    {
+      "name": "Instance target synchronizes canvas, DNA, breadcrumbs and event target",
+      "status": "pass"
+    },
+    {
+      "name": "Shared definition has source/draft/generated references and exact return journey",
+      "status": "pass"
+    },
+    {
+      "name": "Name and exact catalog-ID search navigate without creating objects",
+      "status": "pass"
+    },
+    {
+      "name": "Background notes navigation shares selected scene and Art lens",
+      "status": "pass"
+    },
+    {
+      "name": "Unknown stale target cannot mutate draft or replace selection",
+      "status": "pass"
+    },
+    {
+      "name": "Baseline remains immutable after domain editing",
+      "status": "pass"
+    },
+    {
+      "name": "Browser Back/Forward restores the same target without changing draft",
+      "status": "pass"
+    }
+  ],
+  "summary": "9/9 passed",
+  "limitations": "No rendered browser or Godot execution claim."
+}
+{
+  "type": "Built React workbench and real domain-script integration in jsdom with mocked fetch",
+  "checks": [
+    {
+      "name": "Idle, typed edits, navigation, notes and theme controls never POST or poll a model",
+      "status": "pass"
+    },
+    {
+      "name": "Target catalog covers each scene/background/instance, all 21 definitions and all 38 behaviors",
+      "status": "pass"
+    },
+    {
+      "name": "Notes stay scoped through switches, panel close, domain edits and page reload",
+      "status": "pass"
+    },
+    {
+      "name": "Explicit Submit freezes one authenticated snapshot with thread/base revision and blocks double clicks",
+      "status": "pass"
+    },
+    {
+      "name": "Empty unchanged draft is rejected locally; typed-only changes can be explicitly submitted",
+      "status": "pass"
+    },
+    {
+      "name": "Offline startup keeps browser editing usable and explicit refresh restores the connection",
+      "status": "pass"
+    },
+    {
+      "name": "Uncertain POST blocks retries until refresh verifies no receipt; refresh never auto-resubmits",
+      "status": "pass"
+    },
+    {
+      "name": "A lost POST response recovers the accepted exact-ID receipt without resubmission",
+      "status": "pass"
+    },
+    {
+      "name": "Changing durable store or thread cannot clear an unresolved envelope; restoring the original mapping can",
+      "status": "pass"
+    },
+    {
+      "name": "Unavailable recovery storage prevents POST instead of losing the immutable recovery envelope",
+      "status": "pass"
+    },
+    {
+      "name": "Stale source baseline disables submission until a refreshed adapter match is verified",
+      "status": "pass"
+    },
+    {
+      "name": "Polling interruption keeps a known receipt visible and refresh can recover without duplicate POST",
+      "status": "pass"
+    },
+    {
+      "name": "HTTP conflict reconciles to another-tab receipt and uses its updated base revision only on the next Submit",
+      "status": "pass"
+    },
+    {
+      "name": "Reload restores an active receipt, polls to failure and preserves notes without issuing any POST",
+      "status": "pass"
+    }
+  ],
+  "summary": "14/14 passed",
+  "limitations": "No rendered-browser visual/accessibility claim, real network, Codex inference, or source-writeback claim."
+}
+submission-contract: all assertions passed
+submission-shell: preview/cancel/navigation/theme/content/baseline/exact body passed
+{
+  "checks": [
+    "orphan retained and blocks preview",
+    "explicit reassociation preserves existing note",
+    "navigation syncs scope and reveals hidden entrance without invalidating preview",
+    "cancel has zero POST and pending",
+    "background to pointer-drag synchronizes target and notes",
+    "unknown initial hash renders fallback"
+  ],
+  "status": "PASS",
+  "limitations": "jsdom, mocked status; no real browser or GM run"
+}
+..............................................................................
+----------------------------------------------------------------------
+Ran 78 tests in 0.783s
+
+OK
+browser-demo-contract: version/schema/target union/truth/idempotency passed
+PASS: hosted demo theme, notes, typed edits, immediate receipt, duplicate-click block, refresh recovery, zero network/model calls
+cross-contract: actual JS v2 payload passes Python schema/baseline; forged before rejected
+{
+  "checks": [
+    "Derived unset baseline has no content difference",
+    "Independent target resolves direction and honest unmapped status",
+    "Transition navigation synchronizes selection, scope, breadcrumbs and deep link",
+    "Unset / none / preset preserve separate typed state; undo restores baseline",
+    "Preset usage is shared while reverse direction stays unset",
+    "Target entry follows source exit changes without duplicating data",
+    "Save migration preserves presets and legacy drafts derive unset",
+    "Invalid presets are rejected and removed exits lose targets",
+    "Browser effect preview is explicit and does not mutate draft",
+    "Transition exact ID search and fresh deep link restore without edits",
+    "Browser back restores transition"
+  ],
+  "passed": 11,
+  "limitations": "DOM/model QA only; browser rendering and Godot runtime are not asserted."
+}
+transition-chain: real DOM edit → frozen v2 → Python baseline PASS → exact local receipt; v1/project/forged-before failures PASS; no network/model/Godot execution
+{
+  "status": "PASS",
+  "targets": {
+    "project": 1,
+    "scene": 5,
+    "background": 5,
+    "instance": 93,
+    "transition": 9,
+    "definition": 21,
+    "behavior": 38,
+    "preset": 2,
+    "spawn-rule": 9
+  },
+  "total": 183,
+  "checks": [
+    "all targets navigate, bind comments and survive switching",
+    "single native editor; independent modal; inert background",
+    "all nonempty comments in notes-only frozen v2 preview",
+    "Python schema and exact baseline acceptance",
+    "navigation preserves preview; comment edits invalidate",
+    "cancel zero receipt; duplicate confirm exact body once",
+    "unmapped preset/rule scope remains precise and blocked",
+    "refresh retains comments; missing draft targets explicitly orphaned",
+    "small-screen list/detail structural state"
+  ],
+  "limitations": "DOM/CSS/state checks; rendered-browser connection refused. No visual, model or Godot verification."
+}
+review-ui-v6: loading guard, synchronous input, persistent storage failure, mobile navigation, modal undo guard, scroll/inert cleanup and visible focus wrap PASS (jsdom only)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

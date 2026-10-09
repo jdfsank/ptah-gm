@@ -1,0 +1,157 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/runtime/save_repository.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/runtime/save_repository.gd</h1><p>只读源快照 · SHA-256 915b2dae573e4d94ca001fa21c8dfe696ce74a312c330f06214b891e33aaecdd</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name SaveRepository extends RefCounted</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const VERSION: int = 1</span>
+<span class="line" id="L4"><a href="#L4">   4</a> const BROWSER_KEY: String = &quot;velvet_eclipse_save_v1&quot;</span>
+<span class="line" id="L5"><a href="#L5">   5</a> const MAX_SAVE_BYTES: int = 65536</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var bridge_evaluator: Callable</span>
+<span class="line" id="L7"><a href="#L7">   7</a> var last_read_acknowledged: bool = false</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var path: String = &quot;user://velvet_eclipse_save.json&quot;</span>
+<span class="line" id="L9"><a href="#L9">   9</a> var last_error: String = &quot;&quot;</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func _init(save_path: String = &quot;user://velvet_eclipse_save.json&quot;, evaluator: Callable = Callable()) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	path = save_path</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	bridge_evaluator = evaluator</span>
+<span class="line" id="L14"><a href="#L14">  14</a> </span>
+<span class="line" id="L15"><a href="#L15">  15</a> func validate(payload: Variant, rooms: RoomCatalog, resources: ResourceCatalog) -&gt; Dictionary:</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	last_error = &quot;&quot;</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	if not payload is Dictionary:</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		return _reject(&quot;存档格式无效&quot;)</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 	var version: Variant = payload.get(&quot;version&quot;)</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	if not (version is int or version is float) or version != VERSION:</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		return _reject(&quot;存档版本不受支持或文件已损坏&quot;)</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	for key in [&quot;checkpoint_id&quot;, &quot;room_id&quot;, &quot;spawn_id&quot;]:</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if not payload.get(key) is String or payload[key].is_empty():</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			return _reject(&quot;存档地点格式无效&quot;)</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	for key in [&quot;moonstep&quot;, &quot;boss_defeated&quot;, &quot;ending_seen&quot;]:</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if not payload.get(key) is bool:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			return _reject(&quot;存档进度格式无效&quot;)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 	if not payload.get(&quot;visited_rooms&quot;) is Array:</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		return _reject(&quot;存档地图格式无效&quot;)</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	var discovered: Array[String] = []</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 	for room_id in payload.visited_rooms:</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		if not room_id is String or not rooms.ROOM_PATHS.has(room_id):</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 			return _reject(&quot;存档包含未知房间&quot;)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		if not room_id in discovered:</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			discovered.append(room_id)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 	var room: Dictionary = rooms.load_room(payload.room_id, resources)</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 	if room.is_empty() or not room.spawns.has(payload.spawn_id):</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		return _reject(&quot;存档出生点无效&quot;)</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	var initial: bool = payload.checkpoint_id == &quot;start&quot; and payload.room_id == &quot;grand_lobby&quot; and payload.spawn_id == &quot;start&quot;</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 	var shrine: Variant = room.get(&quot;checkpoint&quot;)</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 	if not initial and (not shrine is Dictionary or shrine.id != payload.checkpoint_id or shrine.spawn_id != payload.spawn_id):</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 		return _reject(&quot;存档检查点无效&quot;)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 	if not payload.room_id in discovered or not &quot;grand_lobby&quot; in discovered:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		return _reject(&quot;存档地图缺少检查点&quot;)</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	if payload.moonstep and not &quot;roulette_clocktower&quot; in discovered:</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 		return _reject(&quot;存档月步发现记录无效&quot;)</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 	if payload.boss_defeated and (not payload.moonstep or not &quot;house_throne&quot; in discovered):</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 		return _reject(&quot;存档胜利记录无效&quot;)</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 	if payload.ending_seen and not payload.boss_defeated:</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 		return _reject(&quot;存档结局状态无效&quot;)</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 	if payload.room_id == &quot;quiet_save_room&quot; and not payload.moonstep:</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 		return _reject(&quot;存档缺少月步能力&quot;)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 	return {&quot;version&quot;: VERSION, &quot;checkpoint_id&quot;: payload.checkpoint_id, &quot;room_id&quot;: payload.room_id, &quot;spawn_id&quot;: payload.spawn_id, &quot;moonstep&quot;: payload.moonstep, &quot;visited_rooms&quot;: discovered, &quot;boss_defeated&quot;: payload.boss_defeated, &quot;ending_seen&quot;: payload.ending_seen}</span>
+<span class="line" id="L54"><a href="#L54">  54</a> </span>
+<span class="line" id="L55"><a href="#L55">  55</a> func read_save(rooms: RoomCatalog, resources: ResourceCatalog) -&gt; Dictionary:</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 	last_read_acknowledged = false</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 	if uses_browser_storage():</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 		var response: Dictionary = _browser_result(browser_script(&quot;read&quot;))</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 		if response.is_empty():</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 			return {}</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 		var stored: Variant = response.get(&quot;value&quot;)</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 		if stored == null:</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 			return _reject(&quot;暂无存档&quot;)</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 		if not stored is String or stored.to_utf8_buffer().size() &gt; MAX_SAVE_BYTES:</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 			return _reject(&quot;浏览器存档大小或格式无效&quot;)</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 		var payload: Dictionary = _decode(stored, rooms, resources)</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 		last_read_acknowledged = not payload.is_empty()</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		return payload</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 	if not FileAccess.file_exists(path):</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 		return _reject(&quot;暂无存档&quot;)</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 	var file := FileAccess.open(path, FileAccess.READ)</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 	if file == null:</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 		return _reject(&quot;无法读取存档&quot;)</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 	if file.get_length() &gt; MAX_SAVE_BYTES:</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 		file.close()</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 		return _reject(&quot;存档大小无效&quot;)</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 	var text: String = file.get_as_text()</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 	file.close()</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 	return _decode(text, rooms, resources)</span>
+<span class="line" id="L80"><a href="#L80">  80</a> </span>
+<span class="line" id="L81"><a href="#L81">  81</a> func write_save(payload: Dictionary, rooms: RoomCatalog, resources: ResourceCatalog) -&gt; bool:</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 	var valid: Dictionary = validate(payload, rooms, resources)</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 	if valid.is_empty():</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 		return false</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 	if uses_browser_storage():</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 		var encoded: String = JSON.stringify(valid)</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 		if encoded.to_utf8_buffer().size() &gt; MAX_SAVE_BYTES:</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 			last_error = &quot;存档大小无效&quot;</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 			return false</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 		var response: Dictionary = _browser_result(browser_script(&quot;write&quot;, encoded))</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 		if response.is_empty():</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 			return false</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 		if not response.get(&quot;value&quot;) is String or response.value != encoded:</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 			last_error = &quot;浏览器存档写入校验失败&quot;</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 			return false</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 		return true</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 	var temporary: String = path + &quot;.tmp&quot;</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 	var file := FileAccess.open(temporary, FileAccess.WRITE)</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 	if file == null:</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 		last_error = &quot;无法写入存档：&quot; + error_string(FileAccess.get_open_error())</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 		return false</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 	file.store_string(JSON.stringify(valid))</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 	file.flush()</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 	var error: Error = file.get_error()</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 	file.close()</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 	if error != OK:</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 		last_error = &quot;写入存档失败：&quot; + error_string(error)</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 		return false</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 	var rename_error: Error = DirAccess.rename_absolute(temporary, path)</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 	if rename_error != OK:</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 		last_error = &quot;保存存档失败：&quot; + error_string(rename_error)</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 		return false</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 	var readback: Dictionary = read_save(rooms, resources)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 	if readback != valid:</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 		last_error = &quot;存档写入校验失败&quot;</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 		return false</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> 	return true</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> </span>
+<span class="line" id="L119"><a href="#L119"> 119</a> func _reject(message: String) -&gt; Dictionary:</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 	last_error = message</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 	return {}</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> </span>
+<span class="line" id="L123"><a href="#L123"> 123</a> func uses_browser_storage() -&gt; bool:</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 	return OS.has_feature(&quot;web&quot;) or bridge_evaluator.is_valid()</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> </span>
+<span class="line" id="L126"><a href="#L126"> 126</a> func _decode(text: String, rooms: RoomCatalog, resources: ResourceCatalog) -&gt; Dictionary:</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 	var parser := JSON.new()</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 	if parser.parse(text) != OK:</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 		return _reject(&quot;存档文件已损坏&quot;)</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 	return validate(parser.data, rooms, resources)</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> </span>
+<span class="line" id="L132"><a href="#L132"> 132</a> func browser_script(operation: String, encoded: String = &quot;&quot;) -&gt; String:</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 	# JSON.stringify encodes the JSON string again before embedding it in JS source.</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 	var body: String</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 	if operation == &quot;read&quot;:</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 		body = &quot;var value = storage.getItem(key); if (value !== null &amp;&amp; value.length &gt; 65536) { return JSON.stringify({ok:false,error:&#x27;size&#x27;}); } return JSON.stringify({ok:true,value:value});&quot;</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 	elif operation == &quot;write&quot;:</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 		body = &quot;var value = %s; if (value.length &gt; 65536) { return JSON.stringify({ok:false,error:&#x27;size&#x27;}); } storage.setItem(key, value); var readback = storage.getItem(key); if (readback !== value) { return JSON.stringify({ok:false,error:&#x27;readback&#x27;}); } return JSON.stringify({ok:true,value:readback});&quot; % JSON.stringify(encoded)</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> 	else:</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> 		return &quot;JSON.stringify({ok:false,error:&#x27;operation&#x27;})&quot;</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 	return &quot;(function(){ try { var storage = window.localStorage; var key = %s; %s } catch (error) { return JSON.stringify({ok:false,error:String(error &amp;&amp; error.name || &#x27;storage&#x27;)}); } })()&quot; % [JSON.stringify(BROWSER_KEY), body]</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> </span>
+<span class="line" id="L143"><a href="#L143"> 143</a> func _browser_result(script: String) -&gt; Dictionary:</span>
+<span class="line" id="L144"><a href="#L144"> 144</a> 	var raw: Variant = bridge_evaluator.call(script) if bridge_evaluator.is_valid() else JavaScriptBridge.eval(script)</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> 	if not raw is String or raw.to_utf8_buffer().size() &gt; MAX_SAVE_BYTES * 3:</span>
+<span class="line" id="L146"><a href="#L146"> 146</a> 		return _reject(&quot;浏览器存储不可用或未确认&quot;)</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> 	var parser := JSON.new()</span>
+<span class="line" id="L148"><a href="#L148"> 148</a> 	if parser.parse(raw) != OK or not parser.data is Dictionary or not parser.data.get(&quot;ok&quot;) is bool:</span>
+<span class="line" id="L149"><a href="#L149"> 149</a> 		return _reject(&quot;浏览器存储响应无效&quot;)</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> 	var response: Dictionary = parser.data</span>
+<span class="line" id="L151"><a href="#L151"> 151</a> 	if not response.ok:</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> 		return _reject(&quot;浏览器无法保存或读取进度（配额、权限或校验失败）&quot;)</span>
+<span class="line" id="L153"><a href="#L153"> 153</a> 	if not response.has(&quot;value&quot;):</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> 		return _reject(&quot;浏览器存储响应缺少数据&quot;)</span>
+<span class="line" id="L155"><a href="#L155"> 155</a> 	last_error = &quot;&quot;</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> 	return response</span>
+</pre>

@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/save_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/save_system.gd</h1><p>只读源快照 · SHA-256 ca746df95665866f8b22822d8be4ef0d5ee45116d2d76c8e69e37f1f3b983ee6</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name SaveSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> func setup() -&gt; void:</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	return q.with_all([C_Session, C_Progression, C_Checkpoint]).enabled()</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func process(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	for entity in entities:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		if not entity.enabled:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 			continue</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		var checkpoint: C_Checkpoint = entity.get_component(C_Checkpoint)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		var session: C_Session = entity.get_component(C_Session)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var progression: C_Progression = entity.get_component(C_Progression)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		if not checkpoint.save_requested:</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 			if session.save_status == &quot;pending&quot; and runtime.save_repository.uses_browser_storage() and runtime.save_repository.last_read_acknowledged:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 				session.save_status = &quot;saved&quot;</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 				session.message = &quot;已读取本浏览器检查点&quot;</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 			continue</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		checkpoint.save_requested = false</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 		var payload: Dictionary = {&quot;version&quot;: 1, &quot;checkpoint_id&quot;: checkpoint.checkpoint_id, &quot;room_id&quot;: checkpoint.room_id, &quot;spawn_id&quot;: checkpoint.spawn_id, &quot;moonstep&quot;: progression.moonstep, &quot;visited_rooms&quot;: progression.visited_rooms.duplicate(), &quot;boss_defeated&quot;: progression.boss_defeated, &quot;ending_seen&quot;: progression.ending_seen}</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		var valid: Dictionary = runtime.save_repository.validate(payload, runtime.rooms, runtime.resources)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if valid.is_empty():</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			session.save_status = &quot;failed&quot;</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 			session.message = runtime.save_repository.last_error</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 			continue</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		checkpoint.payload = valid.duplicate(true)</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		checkpoint.valid = true</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		session.save_status = &quot;pending&quot;</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		if not runtime.save_repository.write_save(valid, runtime.rooms, runtime.resources):</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 			session.save_status = &quot;failed&quot;</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			session.message = runtime.save_repository.last_error + &quot; · 本次可从检查点重试&quot;</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		elif runtime.save_repository.uses_browser_storage():</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 			session.save_status = &quot;saved&quot;</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 			session.message = &quot;已存入本浏览器 · 请保留此站点数据&quot;</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		else:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 			session.save_status = &quot;saved&quot;</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			session.message = &quot;绯月消散 · 赌城的诅咒已被斩断 · 进度已保存&quot; if session.mode == &quot;ending&quot; else &quot;存档成功&quot;</span>
+</pre>

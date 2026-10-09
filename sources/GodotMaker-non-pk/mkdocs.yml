@@ -1,0 +1,191 @@
+site_name: GodotMaker
+site_url: https://RandallLiuXin.github.io/GodotMaker/
+site_description: ECS-native text-to-game framework for Godot
+site_author: RandallLiuXin
+repo_url: https://github.com/RandallLiuXin/GodotMaker
+repo_name: RandallLiuXin/GodotMaker
+edit_uri: edit/main/docs/
+exclude_docs: |
+  contributing/**
+  decisions/**
+  zh/decisions/**
+  update/next.template.md
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Wiki Home: wiki/Home.md
+  - Getting Started:
+      - Installation: wiki/01-getting-started/installation.md
+      - Upgrade to 1.0: wiki/01-getting-started/upgrade-to-v1.md
+      - Your First Game: wiki/01-getting-started/first-game.md
+      - Project Layout: wiki/01-getting-started/project-layout.md
+  - Concepts:
+      - How It Works: wiki/02-concepts/how-it-works.md
+      - The 9 Roles: wiki/02-concepts/the-9-roles.md
+      - ECS in Plain English: wiki/02-concepts/ecs-in-plain-english.md
+      - Why This Approach: wiki/02-concepts/why-this-approach.md
+  - Skills:
+      - Skill System: wiki/03-skills/skill-system.md
+      - Core Skills: wiki/03-skills/core-skills.md
+      - Reviewer Skills: wiki/03-skills/reviewer-skills.md
+  - Troubleshooting:
+      - Common Problems: wiki/04-troubleshooting/common-problems.md
+      - Recovery & Resume: wiki/04-troubleshooting/recovery-and-resume.md
+  - Tools:
+      - Publish: wiki/05-tools/publish.md
+      - Check Env: wiki/05-tools/check-env.md
+      - Check Project: wiki/05-tools/check-project.md
+      - Asset Tools: wiki/05-tools/asset-tools.md
+      - Tag Archives: wiki/05-tools/seal-tag.md
+  - Configuration:
+      - Project Config: wiki/06-configuration/project-config.md
+      - godotmaker.yaml: wiki/06-configuration/godotmaker-yaml.md
+      - Addon Versions: wiki/06-configuration/addon-versions.md
+  - Contributing:
+      - Development Setup: wiki/07-contributing/development-setup.md
+      - Codebase Guide: wiki/07-contributing/codebase-guide.md
+      - Writing a Skill: wiki/07-contributing/writing-a-skill.md
+      - Writing a Hook: wiki/07-contributing/writing-a-hook.md
+      - Testing: wiki/07-contributing/testing.md
+      - Release Process: wiki/07-contributing/release-process.md
+  - Reference:
+      - Glossary: wiki/08-reference/glossary.md
+      - FAQ: wiki/08-reference/faq.md
+      - Changelog: wiki/08-reference/changelog.md
+  - Release Notes:
+      - Latest: update/next.md
+      - v1.1.0: update/v1.1.0.md
+      - v1.0.0: update/v1.0.0.md
+      - v0.8.2: update/v0.8.2.md
+      - v0.8.1: update/v0.8.1.md
+      - v0.8.0: update/v0.8.0.md
+      - v0.7.0: update/v0.7.0.md
+      - v0.6.5: update/v0.6.5.md
+      - v0.6.4: update/v0.6.4.md
+      - v0.6.3: update/v0.6.3.md
+      - v0.6.2: update/v0.6.2.md
+      - v0.6.1: update/v0.6.1.md
+      - v0.6.0: update/v0.6.0.md
+      - v0.5.0: update/v0.5.0.md
+      - v0.4.1: update/v0.4.1.md
+      - v0.4.0: update/v0.4.0.md
+      - v0.3.5: update/v0.3.5.md
+      - v0.3.4: update/v0.3.4.md
+      - v0.3.3: update/v0.3.3.md
+      - v0.3.2: update/v0.3.2.md
+      - v0.3.1: update/v0.3.1.md
+      - v0.3.0: update/v0.3.0.md
+      - v0.2.2: update/v0.2.2.md
+      - v0.2.1: update/v0.2.1.md
+      - v0.2.0: update/v0.2.0.md
+      - Release Checklist: update/release-checklist.md
+  - Project Docs:
+      - Versioning: versioning.md
+      - Hooks Reference: hooks.md
+      - Tips & Tricks: tips.md
+      - User Notice: user-notice.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang:
+        - en
+        - zh
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 中文
+          build: true
+          nav_translations:
+            Home: 首页
+            Wiki Home: Wiki 首页
+            Getting Started: 快速开始
+            Installation: 安装
+            Upgrade to 1.0: 升级到 1.0
+            Your First Game: 第一款游戏
+            Project Layout: 项目结构
+            Concepts: 核心概念
+            How It Works: 工作原理
+            The 9 Roles: 9 个角色
+            ECS in Plain English: 大白话讲 ECS
+            Why This Approach: 为什么这么设计
+            Skills: 技能
+            Skill System: 技能体系
+            Core Skills: 核心技能
+            Reviewer Skills: 评审技能
+            Troubleshooting: 故障排查
+            Common Problems: 常见问题
+            Recovery & Resume: 恢复与续跑
+            Tools: 工具
+            Publish: Publish 工具
+            Check Env: 环境检查
+            Check Project: 项目检查
+            Asset Tools: 资源工具
+            Configuration: 配置
+            Project Config: 项目配置
+            godotmaker.yaml: godotmaker.yaml
+            Addon Versions: 插件版本
+            Contributing: 贡献指南
+            Development Setup: 开发环境
+            Codebase Guide: 代码导览
+            Writing a Skill: 编写 Skill
+            Writing a Hook: 编写 Hook
+            Testing: 测试
+            Release Process: 发布流程
+            Reference: 参考资料
+            Glossary: 术语表
+            FAQ: 常见疑问
+            Changelog: 更新日志
+            Release Notes: 发布说明
+            Latest: 最新
+            Release Checklist: 发布清单
+            Project Docs: 项目文档
+            Versioning: 版本管理
+            Hooks Reference: Hooks 参考
+            Tips & Tricks: 小贴士
+            User Notice: 用户须知

@@ -1,0 +1,60 @@
+{
+  "skill_name": "gecs",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Create a player entity with Health, Position, and Velocity components using gecs. Write the component files and entity file as complete GDScript. The player should have 100 max health, start at position (0, 0, 0), and have zero initial velocity.",
+      "expected_output": "GDScript files: C_Health, C_Position, C_Velocity components extending Component with @export properties, and a Player entity extending Entity with define_components()",
+      "files": [],
+      "assertions": [
+        "Entity class extends Entity (not Node, Node2D, or CharacterBody)",
+        "All component classes extend Component (which extends Resource)",
+        "Component class names use C_ prefix (C_Health, C_Position, C_Velocity)",
+        "All @export properties have default values",
+        "Entity uses define_components() returning .new() instances",
+        "No game logic in component classes (pure data)"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Write a movement system in gecs that processes all entities with Position and Velocity components. The system should update position based on velocity each frame. Write the complete GDScript file.",
+      "expected_output": "A System class with query() using with_all and process() that updates position from velocity",
+      "files": [],
+      "assertions": [
+        "System class extends System (not Node)",
+        "Has query() method returning QueryBuilder (using q.with_all)",
+        "query() uses with_all([C_Position, C_Velocity]) or similar correct syntax",
+        "Has process() with correct signature (entities: Array[Entity], components: Array, delta: float)",
+        "Accesses components via entity.get_component(C_ClassName) passing the class",
+        "Updates position using delta for frame-independent movement"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "How do I inspect entities at runtime using gecs debug tools? I want to see what components an entity has, monitor system performance, and check query cache efficiency.",
+      "expected_output": "Explanation of gecs debug mode, editor debugger, lastRunData, cache stats, and how to enable them",
+      "files": [],
+      "assertions": [
+        "Mentions enabling debug mode via ECS.debug or project settings (gecs/settings/debug_mode)",
+        "Mentions the editor debugger plugin or debug tab",
+        "Mentions lastRunData for system performance monitoring",
+        "Mentions get_cache_stats() for query cache efficiency",
+        "Does NOT give generic Godot debugging advice as if gecs debug tools don't exist"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Set up a complete gecs World with a player entity, 3 enemy entities, and a movement system. Show the main scene script that processes systems by group, and the scene tree structure. Write all files as complete GDScript.",
+      "expected_output": "World setup with ECS.world assignment, entity creation, system registration, grouped processing in _process/_physics_process",
+      "files": [],
+      "assertions": [
+        "Sets ECS.world = world (or $World) in _ready()",
+        "Uses ECS.process(delta, group_name) pattern for system processing",
+        "Creates entities via Entity.new() or scene instantiation, then ECS.world.add_entity()",
+        "System groups are organized (e.g. gameplay, physics, or similar grouping)",
+        "Shows or describes the scene tree structure with World and SystemGroup nodes",
+        "Enemy entities are created in a loop or individually with correct gecs API"
+      ]
+    }
+  ]
+}

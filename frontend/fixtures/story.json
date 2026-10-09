@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": "story-fixture-v1",
+  "scope": {
+    "claim": "Synthetic noncombat contract fixture; no engine or source extraction claims."
+  },
+  "objects": [
+    {
+      "id": "story.npc",
+      "label": "Librarian NPC",
+      "kind": "actor",
+      "layer": "definition",
+      "body": "An autonomous story participant.",
+      "drivers": [
+        "AI",
+        "event"
+      ],
+      "behaviors": [
+        {
+          "id": "story.npc.wait",
+          "label": "Observe conversation availability",
+          "type": "rule",
+          "summary": "Observe conversation availability",
+          "states": [
+            "waiting",
+            "available"
+          ],
+          "motion": null,
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        },
+        {
+          "id": "story.npc.talk",
+          "label": "Talk and choose",
+          "type": "interaction",
+          "summary": "Talk and choose",
+          "states": [
+            "eligible",
+            "choice",
+            "consequence"
+          ],
+          "motion": null,
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        }
+      ],
+      "evidence": "intent",
+      "sourceRefs": [],
+      "status": {
+        "implementation": "specification",
+        "mapping": "fixture",
+        "editability": "read-only",
+        "verification": "model-test"
+      },
+      "facets": {
+        "design": {
+          "text": "An autonomous story participant.",
+          "evidence": "intent"
+        },
+        "narrative": null,
+        "art": null
+      }
+    },
+    {
+      "id": "story.progress",
+      "label": "Story progress",
+      "kind": "progression",
+      "layer": "definition",
+      "body": "Record which clue was disclosed; no movement or animation.",
+      "drivers": [
+        "event"
+      ],
+      "behaviors": [
+        {
+          "id": "story.branch",
+          "label": "Branch on chosen response",
+          "type": "rule",
+          "summary": "Branch on chosen response",
+          "states": [
+            "unread",
+            "disclosed",
+            "withheld"
+          ],
+          "motion": null,
+          "presentation": {
+            "clips": []
+          },
+          "parameters": {},
+          "evidence": "intent",
+          "sourceRefs": [],
+          "status": {
+            "implementation": "specification",
+            "mapping": "fixture",
+            "editability": "read-only",
+            "verification": "model-test"
+          }
+        }
+      ],
+      "evidence": "intent",
+      "sourceRefs": [],
+      "status": {
+        "implementation": "specification",
+        "mapping": "fixture",
+        "editability": "read-only",
+        "verification": "model-test"
+      },
+      "facets": {
+        "design": {
+          "text": "Record which clue was disclosed; no movement or animation.",
+          "evidence": "intent"
+        },
+        "narrative": null,
+        "art": null
+      }
+    }
+  ],
+  "instances": [],
+  "spawnRules": [],
+  "sources": [],
+  "ledger": []
+}

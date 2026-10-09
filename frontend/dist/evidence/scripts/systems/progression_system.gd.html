@@ -1,0 +1,186 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/progression_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/progression_system.gd</h1><p>只读源快照 · SHA-256 0b2edc7ec446492a11f9f2d8771be80162181a2d32f3eca62e7b6f54f3df1914</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name ProgressionSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> func setup() -&gt; void:</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	return q.with_all([C_Session, C_Progression, C_Checkpoint]).enabled()</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func process(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	for entity in entities:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		if not entity.enabled:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 			continue</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		var session: C_Session = entity.get_component(C_Session)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		var progress: C_Progression = entity.get_component(C_Progression)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var checkpoint: C_Checkpoint = entity.get_component(C_Checkpoint)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		var actions: Array[String] = runtime.take_session_actions()</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		for action in entity.get_component(C_Input).ui_actions:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 			if not action in actions:</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 				actions.append(action)</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		# Escape is mapped to both pause and ui_cancel; consume it once.</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if &quot;pause&quot; in actions and &quot;ui_cancel&quot; in actions:</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			actions.erase(&quot;ui_cancel&quot;)</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		for action in actions:</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 			match action:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 				&quot;new_run&quot;:</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 					_new_run(progress, checkpoint)</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 					return</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 				&quot;continue_run&quot;:</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 					var payload: Dictionary = runtime.save_repository.read_save(runtime.rooms, runtime.resources)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 					if payload.is_empty():</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 						session.save_status = &quot;failed&quot;</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 						session.message = runtime.save_repository.last_error + &quot; · 可以开始新游戏&quot;</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 					else:</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 						session.save_status = &quot;pending&quot; if OS.has_feature(&quot;web&quot;) else &quot;saved&quot;</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 						session.message = &quot;已读取检查点&quot;</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 						checkpoint.payload = payload</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 						checkpoint.restore_requested = true</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 				&quot;retry&quot;:</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 					if session.mode == &quot;dead&quot;:</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 						checkpoint.restore_requested = true</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 				&quot;pause&quot;, &quot;map&quot;:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 					if session.mode == &quot;playing&quot;:</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 						session.mode = &quot;paused&quot; if action == &quot;pause&quot; else &quot;map&quot;</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 						runtime.clear_gameplay_input()</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 					elif session.mode in [&quot;paused&quot;, &quot;map&quot;]:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 						session.mode = &quot;playing&quot;</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 						runtime.clear_gameplay_input()</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 				&quot;resume&quot;, &quot;ui_cancel&quot;:</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 					if session.mode in [&quot;paused&quot;, &quot;map&quot;]:</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 						session.mode = &quot;playing&quot;</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 						runtime.clear_gameplay_input()</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 				&quot;title&quot;:</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 					session.mode = &quot;title&quot;</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 					runtime.clear_gameplay_input()</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 		if checkpoint.restore_requested:</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 			checkpoint.restore_requested = false</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 			var payload: Dictionary = runtime.save_repository.validate(checkpoint.payload, runtime.rooms, runtime.resources)</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 			if payload.is_empty():</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 				session.save_status = &quot;failed&quot;</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 				session.message = runtime.save_repository.last_error + &quot; · 可以开始新游戏&quot;</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 				return</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 			progress.moonstep = payload.moonstep</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 			progress.visited_rooms.assign(payload.visited_rooms)</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			progress.boss_defeated = payload.boss_defeated</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 			progress.ending_seen = payload.ending_seen</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 			checkpoint.checkpoint_id = payload.checkpoint_id</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 			checkpoint.room_id = payload.room_id</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 			checkpoint.spawn_id = payload.spawn_id</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 			checkpoint.valid = true</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 			runtime.player.get_component(C_Health).heal_requested = true</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 			_reset_combat()</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 			_transition(payload.room_id, payload.spawn_id, &quot;restore&quot;)</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 			return</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 		if session.mode == &quot;transition&quot;:</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 			if session.transition.get(&quot;applied&quot;, false) and runtime.placements_complete():</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 				session.loading = false</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 				session.mode = &quot;ending&quot; if progress.ending_seen else &quot;playing&quot;</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 				session.transition.clear()</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 				if not session.room_id in progress.visited_rooms:</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 					progress.visited_rooms.append(session.room_id)</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 				_objective(progress)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 				runtime.announce_ready()</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 			return</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 		if session.mode != &quot;playing&quot;:</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 			return</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 		if runtime.player.get_component(C_Health).dead:</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 			session.mode = &quot;dead&quot;</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 			session.message = &quot;命运尚未终结 · 返回检查点再战&quot;</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 			runtime.clear_gameplay_input()</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 			runtime.discard_transients()</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 			_reset_combat()</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 			return</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 		for boss in runtime.world.query.with_all([C_Boss, C_Health]).enabled().execute():</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 			if boss.enabled and boss.get_component(C_Health).dead and session.room_id == &quot;house_throne&quot;:</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 				progress.boss_defeated = true</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 				progress.ending_seen = true</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 				session.mode = &quot;ending&quot;</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 				session.message = &quot;绯月消散 · 赌城的诅咒已被斩断&quot;</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 				runtime.clear_gameplay_input()</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 				runtime.discard_transients()</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 				_reset_combat()</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 				checkpoint.save_requested = true</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 				return</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 		for target in runtime.world.query.with_all([C_Interaction, C_RoomMember]).enabled().execute():</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 			if not target.enabled or target.get_component(C_RoomMember).room_id != session.room_id:</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 				continue</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 			var interaction: C_Interaction = target.get_component(C_Interaction)</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 			if not interaction.available or not interaction.requested:</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 				continue</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 			interaction.requested = false</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 			match interaction.kind:</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 				&quot;door&quot;:</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 					_transition(interaction.target_room, interaction.target_spawn, &quot;door&quot;)</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 				&quot;relic&quot;:</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> 					if not progress.moonstep:</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 						progress.moonstep = true</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 						interaction.available = false</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 						runtime.request_removal(target.id)</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 						session.message = &quot;获得月步！空中再按 Space/W 二段跳 · 返回大厅上层&quot;</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 						_objective(progress)</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 				&quot;checkpoint&quot;:</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 					checkpoint.checkpoint_id = interaction.interaction_id</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 					checkpoint.room_id = session.room_id</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 					checkpoint.spawn_id = interaction.target_spawn</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 					checkpoint.save_requested = true</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 					runtime.player.get_component(C_Health).heal_requested = true</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 			return</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> </span>
+<span class="line" id="L131"><a href="#L131"> 131</a> func _new_run(progress: C_Progression, checkpoint: C_Checkpoint) -&gt; void:</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 	progress.moonstep = false</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 	progress.visited_rooms.assign([&quot;grand_lobby&quot;])</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 	progress.boss_defeated = false</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 	progress.ending_seen = false</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 	checkpoint.checkpoint_id = &quot;start&quot;</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 	checkpoint.room_id = &quot;grand_lobby&quot;</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 	checkpoint.spawn_id = &quot;start&quot;</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> 	checkpoint.valid = true</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> 	checkpoint.restore_requested = false</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 	checkpoint.save_requested = false</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> 	checkpoint.payload = {&quot;version&quot;: 1, &quot;checkpoint_id&quot;: &quot;start&quot;, &quot;room_id&quot;: &quot;grand_lobby&quot;, &quot;spawn_id&quot;: &quot;start&quot;, &quot;moonstep&quot;: false, &quot;visited_rooms&quot;: [&quot;grand_lobby&quot;], &quot;boss_defeated&quot;: false, &quot;ending_seen&quot;: false}</span>
+<span class="line" id="L143"><a href="#L143"> 143</a> 	runtime.session.save_status = &quot;none&quot;</span>
+<span class="line" id="L144"><a href="#L144"> 144</a> 	runtime.session.message = &quot;前往轮盘钟楼寻找月步&quot;</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> 	runtime.player.get_component(C_Health).heal_requested = true</span>
+<span class="line" id="L146"><a href="#L146"> 146</a> 	_reset_combat()</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> 	_transition(&quot;grand_lobby&quot;, &quot;start&quot;, &quot;new_run&quot;)</span>
+<span class="line" id="L148"><a href="#L148"> 148</a> </span>
+<span class="line" id="L149"><a href="#L149"> 149</a> func _transition(room_id: String, spawn_id: String, reason: String) -&gt; void:</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> 	var room: Dictionary = runtime.rooms.load_room(room_id, runtime.resources)</span>
+<span class="line" id="L151"><a href="#L151"> 151</a> 	if room.is_empty() or not room.spawns.has(spawn_id):</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> 		runtime.session.message = &quot;无法前往未知地点&quot;</span>
+<span class="line" id="L153"><a href="#L153"> 153</a> 		return</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> 	runtime.session.mode = &quot;transition&quot;</span>
+<span class="line" id="L155"><a href="#L155"> 155</a> 	runtime.session.loading = true</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> 	runtime.session.transition = {&quot;room_id&quot;: room_id, &quot;spawn_id&quot;: spawn_id, &quot;reason&quot;: reason, &quot;applied&quot;: false}</span>
+<span class="line" id="L157"><a href="#L157"> 157</a> 	runtime.clear_gameplay_input()</span>
+<span class="line" id="L158"><a href="#L158"> 158</a> 	_reset_combat()</span>
+<span class="line" id="L159"><a href="#L159"> 159</a> 	runtime.schedule_flush()</span>
+<span class="line" id="L160"><a href="#L160"> 160</a> </span>
+<span class="line" id="L161"><a href="#L161"> 161</a> func _reset_combat() -&gt; void:</span>
+<span class="line" id="L162"><a href="#L162"> 162</a> 	for actor in runtime.world.query.with_all([C_Combat]).enabled().execute():</span>
+<span class="line" id="L163"><a href="#L163"> 163</a> 		if not actor.enabled:</span>
+<span class="line" id="L164"><a href="#L164"> 164</a> 			continue</span>
+<span class="line" id="L165"><a href="#L165"> 165</a> 		var combat: C_Combat = actor.get_component(C_Combat)</span>
+<span class="line" id="L166"><a href="#L166"> 166</a> 		combat.state = &quot;idle&quot;</span>
+<span class="line" id="L167"><a href="#L167"> 167</a> 		combat.time_left = 0.0</span>
+<span class="line" id="L168"><a href="#L168"> 168</a> 		combat.requested_attack = &quot;&quot;</span>
+<span class="line" id="L169"><a href="#L169"> 169</a> 		combat.dodge_invulnerable = false</span>
+<span class="line" id="L170"><a href="#L170"> 170</a> 		combat.sword_cooldown = 0.0</span>
+<span class="line" id="L171"><a href="#L171"> 171</a> 		combat.card_cooldown = 0.0</span>
+<span class="line" id="L172"><a href="#L172"> 172</a> 		combat.dodge_cooldown = 0.0</span>
+<span class="line" id="L173"><a href="#L173"> 173</a> 		combat.energy = combat.max_energy</span>
+<span class="line" id="L174"><a href="#L174"> 174</a> 		var boss: C_Boss = actor.get_component(C_Boss)</span>
+<span class="line" id="L175"><a href="#L175"> 175</a> 		if boss != null:</span>
+<span class="line" id="L176"><a href="#L176"> 176</a> 			boss.arena_active = false</span>
+<span class="line" id="L177"><a href="#L177"> 177</a> 			boss.state = &quot;idle&quot;</span>
+<span class="line" id="L178"><a href="#L178"> 178</a> 			boss.time_left = 1.2</span>
+<span class="line" id="L179"><a href="#L179"> 179</a> </span>
+<span class="line" id="L180"><a href="#L180"> 180</a> func _objective(progress: C_Progression) -&gt; void:</span>
+<span class="line" id="L181"><a href="#L181"> 181</a> 	runtime.session.objective = &quot;前往轮盘钟楼寻找月步&quot; if not progress.moonstep else &quot;用二段跳登上大厅高台，前往庄家王座&quot;</span>
+<span class="line" id="L182"><a href="#L182"> 182</a> 	if runtime.session.room_id == &quot;quiet_save_room&quot;:</span>
+<span class="line" id="L183"><a href="#L183"> 183</a> 		runtime.session.objective = &quot;在神龛恢复生命并存档，再进入王座&quot;</span>
+<span class="line" id="L184"><a href="#L184"> 184</a> 	elif runtime.session.room_id == &quot;house_throne&quot;:</span>
+<span class="line" id="L185"><a href="#L185"> 185</a> 		runtime.session.objective = &quot;看清预警，闪避卡牌与落掌，击败皇家庄家&quot;</span>
+</pre>

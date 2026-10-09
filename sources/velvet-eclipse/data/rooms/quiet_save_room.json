@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "id": "quiet_save_room",
+  "name": "静谧存档室",
+  "bounds": [
+    0,
+    0,
+    1280,
+    720
+  ],
+  "background": "bg_lobby",
+  "light": [
+    0.43,
+    0.4,
+    0.6,
+    1
+  ],
+  "spawns": {
+    "start": [
+      260,
+      620
+    ],
+    "from_lobby": [
+      240,
+      620
+    ],
+    "from_throne": [
+      1040,
+      620
+    ],
+    "shrine": [
+      550,
+      620
+    ]
+  },
+  "platforms": [
+    {
+      "id": "floor",
+      "rect": [
+        0,
+        620,
+        1280,
+        80
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "quiet_chandelier",
+      "asset_id": "chandelier",
+      "position": [
+        640,
+        140
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -5
+    },
+    {
+      "id": "quiet_curtain_left",
+      "asset_id": "curtain",
+      "position": [
+        290,
+        200
+      ],
+      "size": [
+        220,
+        380
+      ],
+      "z": -5
+    },
+    {
+      "id": "quiet_curtain_right",
+      "asset_id": "curtain",
+      "position": [
+        990,
+        200
+      ],
+      "size": [
+        220,
+        380
+      ],
+      "z": -5
+    },
+    {
+      "id": "shrine_candle_left",
+      "asset_id": "candle",
+      "position": [
+        520,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "shrine_candle_right",
+      "asset_id": "candle",
+      "position": [
+        760,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    }
+  ],
+  "enemies": [],
+  "doors": [
+    {
+      "id": "to_lobby",
+      "position": [
+        100,
+        620
+      ],
+      "target_room": "grand_lobby",
+      "target_spawn": "from_save",
+      "prompt": "返回大厅上层"
+    },
+    {
+      "id": "to_throne",
+      "position": [
+        1180,
+        620
+      ],
+      "target_room": "house_throne",
+      "target_spawn": "from_save",
+      "prompt": "进入庄家王座"
+    }
+  ],
+  "relic": null,
+  "checkpoint": {
+    "id": "quiet_shrine",
+    "spawn_id": "shrine",
+    "position": [
+      640,
+      620
+    ],
+    "prompt": "祈愿 · 恢复生命并存档"
+  },
+  "boss": null
+}

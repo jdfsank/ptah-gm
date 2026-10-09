@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 2,
+  "message": "Codex turn ended; implementation and formal verification remain unverified.",
+  "delivery": {
+    "status": "DELIVERED"
+  },
+  "turn": {
+    "status": "COMPLETED",
+    "id": "actual-python-shape"
+  },
+  "implementation": "BLOCKED",
+  "verification": "BLOCKED",
+  "humanRequired": null,
+  "items": [
+    {
+      "id": "project",
+      "implementation": "BLOCKED",
+      "verification": "BLOCKED",
+      "status": "review_required",
+      "reason": "No validated per-item implementation or formal GM verification evidence has been ingested.",
+      "refs": {
+        "submissionId": "fixture",
+        "turnId": "actual-python-shape",
+        "taskIds": [],
+        "runId": null,
+        "reportRefs": []
+      }
+    }
+  ],
+  "refs": {
+    "submissionId": "fixture",
+    "turnId": "actual-python-shape",
+    "taskId": "velvet-eclipse",
+    "runId": null,
+    "reportRefs": []
+  },
+  "executionPlan": null,
+  "response": "",
+  "certified": false
+}

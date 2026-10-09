@@ -1,0 +1,45 @@
+# Internal materials (design decisions, research notes, test metrics)
+.local-docs/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+
+# Godot
+.godot/
+*.import
+*.staging-*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Environment / Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Staging directory (not part of the project)
+_open-source-setup/
+
+# MkDocs build output
+site/
+docs/review/
+
+# Isolated review environment and generated evidence
+.venv/
+review-evidence/

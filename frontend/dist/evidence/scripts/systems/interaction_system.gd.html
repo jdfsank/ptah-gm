@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/interaction_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/interaction_system.gd</h1><p>只读源快照 · SHA-256 2500a8e89f7e6877e00b8b0a20e21e6fe3b3b3e5c7ec0aa031f1cb8bb381faa0</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name InteractionSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var _last_tick: int = -1</span>
+<span class="line" id="L5"><a href="#L5">   5</a> </span>
+<span class="line" id="L6"><a href="#L6">   6</a> func setup() -&gt; void:</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L10"><a href="#L10">  10</a> 	return q.with_all([C_Interaction, C_Transform]).enabled()</span>
+<span class="line" id="L11"><a href="#L11">  11</a> </span>
+<span class="line" id="L12"><a href="#L12">  12</a> func process(_entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	if _last_tick == runtime.tick_index:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 		return</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	_last_tick = runtime.tick_index</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	var interactions: Array = runtime.world.query.with_all([C_Interaction, C_Transform, C_RoomMember]).enabled().execute()</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	var nearest: Entity = null</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 	var best_distance: float = INF</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 	var player: Entity = runtime.player</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	var feet: Vector2 = player.get_component(C_Transform).position</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 	var motion: C_Motion = player.get_component(C_Motion)</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	for entity in interactions:</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if not entity.enabled:</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			continue</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		var interaction: C_Interaction = entity.get_component(C_Interaction)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		interaction.selected = false</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 		interaction.requested = false</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		if not interaction.available or runtime.session.mode != &quot;playing&quot; or not motion.grounded or motion.placement_pending:</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 			continue</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		if entity.get_component(C_RoomMember).room_id != runtime.session.room_id:</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 			continue</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		var position: Vector2 = entity.get_component(C_Transform).position</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		var distance: float = feet.distance_to(position)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		# Feet-level and grounded checks prevent reaching a high door from a jump below it.</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		if absf(feet.y - position.y) &gt; 35.0 or distance &gt; interaction.radius or distance &gt;= best_distance:</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 			continue</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		var ray := PhysicsRayQueryParameters2D.create(feet + Vector2(0, -48), position + Vector2(0, -48), 1)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		if not runtime.get_world_2d().direct_space_state.intersect_ray(ray).is_empty():</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 			continue</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		nearest = entity</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 		best_distance = distance</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 	if nearest != null:</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 		var chosen: C_Interaction = nearest.get_component(C_Interaction)</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		chosen.selected = true</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 		chosen.requested = player.get_component(C_Input).interact_pressed</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	for entity in interactions:</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		if not entity.enabled:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 			continue</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 		if body != null and is_instance_valid(body.root):</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 			var prompt: Label = body.root.get_node_or_null(&quot;InteractionPrompt&quot;)</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 			if prompt != null:</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 				prompt.visible = entity.get_component(C_Interaction).selected</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 				if prompt.visible:</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 					var canvas: Transform2D = body.root.get_global_transform_with_canvas()</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 					var viewport_size: Vector2 = runtime.get_viewport_rect().size</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 					var desired: Vector2 = canvas * Vector2(-280, -150)</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 					var scaled_size: Vector2 = prompt.size * canvas.get_scale().abs()</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 					desired.x = clampf(desired.x, 20.0, maxf(20.0, viewport_size.x - scaled_size.x - 20.0))</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 					desired.y = clampf(desired.y, 160.0, maxf(160.0, viewport_size.y - scaled_size.y - 80.0))</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 					prompt.position = canvas.affine_inverse() * desired</span>
+</pre>

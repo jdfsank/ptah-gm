@@ -1,0 +1,6 @@
+xai-sdk
+google-genai
+openai
+requests
+pillow
+pymatting==1.1.15

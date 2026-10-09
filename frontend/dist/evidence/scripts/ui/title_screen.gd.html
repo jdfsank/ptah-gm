@@ -1,0 +1,88 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/ui/title_screen.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/ui/title_screen.gd</h1><p>只读源快照 · SHA-256 d73865d46d7c4f8d71683adba6fd7f231a0daae7a44bd602d88fe2edcfb9cac7</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name CasinoScreen extends Control</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> signal action_requested(action: String)</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> const CONTROLS: String = &quot;A / D 或 ← / → 移动    Space / W 跳跃    点按 J 挥剑    点按 K 飞牌\nShift / L 闪避    E 互动    M 地图    Esc 暂停&quot;</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var buttons: Array[Button] = []</span>
+<span class="line" id="L7"><a href="#L7">   7</a> var detail: Label</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var continue_button: Button</span>
+<span class="line" id="L9"><a href="#L9">   9</a> </span>
+<span class="line" id="L10"><a href="#L10">  10</a> func _ready() -&gt; void:</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	var content := build_modal(&quot;绯月赌城&quot;, &quot;VELVET ECLIPSE&quot;, true, 940)</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	add_label(content, &quot;斩断赌城诅咒，夺回被庄家囚禁的命运。&quot;, 24)</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	add_button(content, &quot;开始游戏&quot;, &quot;new_run&quot;, &quot;StartButton&quot;)</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 	continue_button = add_button(content, &quot;继续游戏&quot;, &quot;continue_run&quot;, &quot;ContinueButton&quot;)</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	detail = add_label(content, &quot;正在检查存档…&quot;, 20)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	add_label(content, CONTROLS, 22)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	add_label(content, &quot;浏览器：先点击游戏画面取得键盘焦点\n↑ / ↓ 选择 · Enter 确认 · 也可直接点击按钮&quot;, 20)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> </span>
+<span class="line" id="L19"><a href="#L19">  19</a> func build_modal(heading: String, subtitle: String, opaque: bool = false, width: float = 860.0) -&gt; VBoxContainer:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	mouse_filter = Control.MOUSE_FILTER_STOP</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 	var veil := ColorRect.new()</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	veil.name = &quot;Veil&quot;</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 	veil.color = Color(0.028, 0.018, 0.057, 1.0 if opaque else 0.78)</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	add_child(veil)</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 	var center := CenterContainer.new()</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 	center.name = &quot;Center&quot;</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 	add_child(center)</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 	var panel := PanelContainer.new()</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 	panel.name = &quot;Panel&quot;</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 	panel.custom_minimum_size.x = width</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 	center.add_child(panel)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 	var content := VBoxContainer.new()</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 	content.name = &quot;Content&quot;</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 	panel.add_child(content)</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	add_label(content, heading, 48, Color(1.0, 0.82, 0.49))</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 	if not subtitle.is_empty():</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 		add_label(content, subtitle, 23, Color(0.79, 0.67, 0.95))</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 	return content</span>
+<span class="line" id="L43"><a href="#L43">  43</a> </span>
+<span class="line" id="L44"><a href="#L44">  44</a> func add_label(parent: Node, text_value: String, font_size: int = 22, color: Color = Color(0.97, 0.92, 0.84)) -&gt; Label:</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	var label := Label.new()</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	label.text = text_value</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 	label.add_theme_font_size_override(&quot;font_size&quot;, font_size)</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 	label.add_theme_color_override(&quot;font_color&quot;, color)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 	parent.add_child(label)</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 	return label</span>
+<span class="line" id="L53"><a href="#L53">  53</a> </span>
+<span class="line" id="L54"><a href="#L54">  54</a> func add_button(parent: Node, caption: String, action: String, node_name: String) -&gt; Button:</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 	var button := Button.new()</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 	button.name = node_name</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 	button.text = caption</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 	button.custom_minimum_size = Vector2(340, 54)</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 	button.pressed.connect(func(): action_requested.emit(action))</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 	parent.add_child(button)</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 	buttons.append(button)</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 	return button</span>
+<span class="line" id="L64"><a href="#L64">  64</a> </span>
+<span class="line" id="L65"><a href="#L65">  65</a> func set_active(active: bool) -&gt; void:</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 	visible = active</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 	for button in buttons:</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		button.focus_mode = Control.FOCUS_ALL if active and not button.disabled else Control.FOCUS_NONE</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 	if active:</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 		focus_first.call_deferred()</span>
+<span class="line" id="L71"><a href="#L71">  71</a> </span>
+<span class="line" id="L72"><a href="#L72">  72</a> func focus_first() -&gt; void:</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 	if not is_visible_in_tree():</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 		return</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 	for button in buttons:</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 		if not button.disabled:</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 			button.grab_focus()</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 			return</span>
+<span class="line" id="L79"><a href="#L79">  79</a> </span>
+<span class="line" id="L80"><a href="#L80">  80</a> func refresh(snapshot: Dictionary) -&gt; void:</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 	if continue_button == null:</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 		return</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 	continue_button.disabled = not snapshot.get(&quot;can_continue&quot;, false)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 	continue_button.focus_mode = Control.FOCUS_ALL if visible and not continue_button.disabled else Control.FOCUS_NONE</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 	detail.text = snapshot.get(&quot;continue_notice&quot;, &quot;&quot;)</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 	if snapshot.get(&quot;save_status&quot;, &quot;&quot;) == &quot;failed&quot;:</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 		detail.text = snapshot.get(&quot;message&quot;, detail.text)</span>
+</pre>

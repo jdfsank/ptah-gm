@@ -1,0 +1,421 @@
+"""Contract tests for the deterministic JSON Theme compiler."""
+import json
+import struct
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "skills" / "assets" / "_shared"))
+
+from asset_compiler import CompileRequest, CompilerError, build_default_registry, theme  # noqa: E402
+from asset_validation import ProbeResult, ValidationError  # noqa: E402
+from asset_validation.structure import StructureRequest  # noqa: E402
+
+
+def _recipe(**overrides):
+    value = {
+        "version": 1,
+        "colors": [{"type": "Button", "name": "font_color", "value": "#FFFFFF"}],
+        "font_sizes": [{"type": "Button", "name": "font_size", "value": 18}],
+        "constants": [{"type": "Button", "name": "outline_size", "value": 1}],
+        "fonts": [],
+        "icons": [],
+        "styleboxes": {
+            "button_normal": {
+                "type": "StyleBoxFlat",
+                "properties": {"bg_color": "#102030", "corner_radius": 8},
+            }
+        },
+        "styles": [{"type": "Button", "name": "normal", "stylebox": "button_normal"}],
+        "variations": [{"name": "PrimaryButton", "base_type": "Button"}],
+    }
+    value.update(overrides)
+    return value
+
+
+def _request(root: Path, *, spec=None):
+    return CompileRequest(
+        production_family="ui-kit",
+        asset_id="main",
+        source_layout_type="theme_recipe",
+        source_path="res://assets/generated/ui-kit/main/main.json",
+        artifact_type="Theme",
+        artifact_path="res://assets/generated/ui-kit/main/main.tres",
+        project_root=root, spec=spec or {},
+    )
+
+
+def _write_recipe(root: Path, recipe, *, source_path="res://assets/generated/ui-kit/main/main.json"):
+    path = root / source_path.removeprefix("res://")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(recipe), encoding="utf-8")
+
+
+def _compile(root: Path, *, spec=None):
+    registry = build_default_registry()
+    theme.register_into(registry)
+    return registry.compile(_request(root, spec=spec))
+
+
+def _structure_request(root: Path, *, source_path="res://assets/generated/ui-kit/main/main.json"):
+    button = {
+        "variation_base": "",
+        "colors": ["font_color"], "font_sizes": ["font_size"], "constants": ["outline_size"],
+        "fonts": [], "icons": [], "styles": ["normal"],
+        "color_values": {"font_color": [1.0, 1.0, 1.0, 1.0]},
+        "font_size_values": {"font_size": 18}, "constant_values": {"outline_size": 1},
+        "font_paths": {}, "icon_paths": {},
+        "styleboxes": {"normal": {"class": "StyleBoxFlat", "properties": {
+            "bg_color": [16 / 255, 32 / 255, 48 / 255, 1.0],
+            "corner_radius": [8, 8, 8, 8],
+        }}},
+    }
+    variation = {
+        "variation_base": "Button",
+        "colors": [], "font_sizes": [], "constants": [], "fonts": [], "icons": [], "styles": [],
+    }
+    return StructureRequest(
+        production_family="ui-kit",
+        asset_id="main",
+        source_layout_type="theme_recipe",
+        source_path=source_path,
+        artifact_type="Theme",
+        artifact_path="res://assets/generated/ui-kit/main/main.tres",
+        project_root=root,
+        probe=ProbeResult(
+            res_path="res://assets/generated/ui-kit/main/main.tres",
+            expected_type="Theme",
+            loaded=True,
+            godot_class="Theme",
+            type_matches=True,
+            structure={"theme": {"types": {"Button": button, "PrimaryButton": variation}}},
+        ),
+    )
+
+
+def test_compiles_a_complete_theme_with_a_variation_deterministically(tmp_path):
+    _write_recipe(tmp_path, _recipe())
+    first = _compile(tmp_path)
+    first_bytes = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_bytes()
+    second = _compile(tmp_path)
+    assert first.godot_artifact.to_dict() == {"type": "Theme", "path": "res://assets/generated/ui-kit/main/main.tres"}
+    assert second.receipt.details == {"variations": ["PrimaryButton"], "theme_items": 4, "styleboxes": ["button_normal"]}
+    assert (tmp_path / "assets/generated/ui-kit/main/main.tres").read_bytes() == first_bytes
+    text = first_bytes.decode()
+    assert 'PrimaryButton/base_type = &"Button"' in text
+    assert "Button/colors/font_color = Color(1, 1, 1, 1)" in text
+    assert 'Button/styles/normal = SubResource("StyleBox_button_normal")' in text
+
+
+def test_compiles_a_theme_that_binds_a_declared_generated_stylebox_texture(tmp_path):
+    frame_path = tmp_path / "assets/generated/ui-kit/main/button-frame.tres"
+    frame_path.parent.mkdir(parents=True)
+    frame_path.write_text('[gd_resource type="StyleBoxTexture" format=3]\n', encoding="utf-8")
+    recipe = _recipe(
+        styleboxes={
+            "button_normal": {
+                "type": "StyleBoxTexture",
+                "properties": {"path": "res://assets/generated/ui-kit/main/button-frame.tres"},
+            }
+        },
+    )
+    _write_recipe(tmp_path, recipe)
+
+    _compile(tmp_path)
+
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    assert 'type="StyleBoxTexture" path="res://assets/generated/ui-kit/main/button-frame.tres"' in text
+    assert 'Button/styles/normal = ExtResource("StyleBox_button_normal")' in text
+
+
+def test_rejects_theme_stylebox_paths_outside_the_declared_runtime_outputs(tmp_path):
+    frame_path = tmp_path / "assets/generated/ui-kit/main/button-frame.tres"
+    frame_path.parent.mkdir(parents=True)
+    frame_path.write_text('[gd_resource type="StyleBoxTexture" format=3]\n', encoding="utf-8")
+    recipe = _recipe(
+        styleboxes={
+            "button_normal": {
+                "type": "StyleBoxTexture",
+                "properties": {"path": "res://assets/generated/ui-kit/main/button-frame.tres"},
+            }
+        },
+    )
+    _write_recipe(tmp_path, recipe)
+
+    with pytest.raises(CompilerError, match="declared StyleBoxTexture runtime output"):
+        _compile(
+            tmp_path,
+            spec={"allowed_external_stylebox_paths": ["res://assets/generated/ui-kit/main/other.tres"]},
+        )
+
+
+def test_compiles_native_slider_icons_and_scrollbar_pressed_style(tmp_path):
+    source = tmp_path / "assets/generated/ui-kit/main/hslider_grabber.tres"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text(
+        '[gd_resource type="AtlasTexture" load_steps=1 format=3]\n\n[resource]\n',
+        encoding="utf-8",
+    )
+    recipe = _recipe(
+        icons=[{
+            "type": "HSlider",
+            "name": "grabber",
+            "value": {
+                "type": "AtlasTexture",
+                "path": "res://assets/generated/ui-kit/main/hslider_grabber.tres",
+            },
+        }],
+        styles=[
+            {"type": "Button", "name": "normal", "stylebox": "button_normal"},
+            {"type": "HScrollBar", "name": "grabber_pressed", "stylebox": "button_normal"},
+        ],
+    )
+    _write_recipe(tmp_path, recipe)
+
+    _compile(tmp_path)
+
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    assert 'HSlider/icons/grabber = ExtResource("Icon_0")' in text
+    assert 'HScrollBar/styles/grabber_pressed = SubResource("StyleBox_button_normal")' in text
+
+
+def test_structure_validation_reads_and_compares_the_declared_recipe_through_the_safe_resolver(tmp_path):
+    _write_recipe(tmp_path, _recipe())
+
+    details = theme.validate_theme_structure(_structure_request(tmp_path))
+
+    assert details["variations"] == ["PrimaryButton"]
+    changed = _recipe()
+    changed["font_sizes"][0]["value"] = 19
+    _write_recipe(
+        tmp_path,
+        changed,
+        source_path="res://assets/generated/ui-kit/main/alternate.json",
+    )
+    with pytest.raises(ValidationError, match="loaded Theme font_sizes item does not match the recipe"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/alternate.json",
+            )
+        )
+
+
+@pytest.mark.parametrize("source_path", [
+    "res://assets/generated/ui-kit/main/../outside.json",
+    "res:///outside.json",
+    "C:/outside.json",
+])
+def test_structure_validation_rejects_unsafe_recipe_paths_before_reading(tmp_path, source_path):
+    _write_recipe(tmp_path, _recipe())
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
+
+
+@pytest.mark.parametrize("source_path", [
+    "res://assets/generated/ui-kit/other/main.json",
+    "res://assets/work/ui-kit/main/main.json",
+])
+def test_structure_validation_rejects_readable_recipes_outside_the_stable_directory(tmp_path, source_path):
+    _write_recipe(tmp_path, _recipe(), source_path=source_path)
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(_structure_request(tmp_path, source_path=source_path))
+
+
+def _link_directory(link: Path, target: Path) -> None:
+    """Link a directory, using a junction where symlinks need a privilege."""
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        return
+    except (OSError, NotImplementedError):
+        pass
+    if sys.platform != "win32":
+        pytest.skip("directory links not permitted on this platform")
+    completed = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        pytest.skip(f"directory junctions not permitted: {completed.stderr.strip()}")
+
+
+def test_structure_validation_rejects_recipe_directory_link_escape_before_reading(tmp_path):
+    outside = tmp_path.parent / "outside-theme-recipe"
+    outside.mkdir()
+    (outside / "main.json").write_text(json.dumps(_recipe()), encoding="utf-8")
+    source = tmp_path / "assets/generated/ui-kit/main/nested"
+    source.parent.mkdir(parents=True)
+    try:
+        _link_directory(source, outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory links are not permitted on this platform")
+
+    with pytest.raises(ValidationError, match="source_path cannot be resolved"):
+        theme.validate_theme_structure(
+            _structure_request(
+                tmp_path,
+                source_path="res://assets/generated/ui-kit/main/nested/main.json",
+            )
+        )
+
+
+def test_structure_validation_normalizes_a_missing_recipe_file(tmp_path):
+    with pytest.raises(ValidationError, match="cannot read Theme recipe"):
+        theme.validate_theme_structure(_structure_request(tmp_path))
+
+
+def test_serializes_stylebox_flat_border_width_to_its_real_edge_properties(tmp_path):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["border_width"] = 3
+    _write_recipe(tmp_path, recipe)
+    _compile(tmp_path)
+
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    for edge in ("left", "top", "right", "bottom"):
+        assert f"border_width_{edge} = 3" in text
+    assert "border_width_top_left" not in text
+
+
+def test_allows_an_empty_stylebox_without_flat_only_properties(tmp_path):
+    recipe = _recipe(
+        styleboxes={"focus": {"type": "StyleBoxEmpty", "properties": {}}},
+        styles=[{"type": "Button", "name": "focus", "stylebox": "focus"}],
+    )
+    _write_recipe(tmp_path, recipe)
+    _compile(tmp_path)
+    text = (tmp_path / "assets/generated/ui-kit/main/main.tres").read_text(encoding="utf-8")
+    assert '[sub_resource type="StyleBoxEmpty" id="StyleBox_focus"]' in text
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda recipe: recipe["colors"].__setitem__(0, {"type": "Node", "name": "font_color", "value": "#FFFFFF"}), "ClassDB type"),
+        (lambda recipe: recipe["colors"].__setitem__(0, {"type": "Button", "name": "script", "value": "#FFFFFF"}), "allowed colors property"),
+        (lambda recipe: recipe["colors"].__setitem__(0, {"type": "Label", "name": "icon_normal_color", "value": "#FFFFFF"}), "allowed colors property for Label"),
+        (lambda recipe: recipe["styles"].__setitem__(0, {"type": "Button", "name": "normal", "stylebox": "missing"}), "unknown StyleBox"),
+        (lambda recipe: recipe["styleboxes"]["button_normal"].__setitem__("type", "Resource"), "StyleBoxFlat, StyleBoxEmpty, or StyleBoxTexture"),
+        (lambda recipe: recipe["styleboxes"]["button_normal"].update({"type": "StyleBoxEmpty", "properties": {"bg_color": "#FFFFFF"}}), "unsupported StyleBoxEmpty property"),
+    ],
+)
+def test_rejects_untrusted_type_property_and_stylebox_references(tmp_path, mutate, message):
+    recipe = _recipe()
+    mutate(recipe)
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match=message):
+        _compile(tmp_path)
+
+
+def test_rejects_missing_external_resources(tmp_path):
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/outside.ttf"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="does not exist"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("section", "resource_type", "path"),
+    [
+        ("fonts", "FontFile", "res://fake.ttf"),
+        ("icons", "Texture2D", "res://fake.png"),
+    ],
+)
+def test_rejects_wrongly_typed_external_resource_content(tmp_path, section, resource_type, path):
+    path = "res://assets/generated/ui-kit/main/" + Path(path).name
+    resource = tmp_path / path[len("res://"):]
+    resource.parent.mkdir(parents=True, exist_ok=True)
+    resource.write_bytes(b"not a resource")
+    item = {"type": "Button", "name": "font" if section == "fonts" else "icon", "value": {"type": resource_type, "path": path}}
+    _write_recipe(tmp_path, _recipe(**{section: [item]}))
+    with pytest.raises(CompilerError, match=f"not valid {resource_type} content"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("path", [
+    "res://C:/Windows/Fonts/arial.ttf",
+    "res:///etc/passwd",
+    "res://assets/generated/ui-kit/main/../escape.ttf",
+])
+def test_rejects_unsafe_external_resource_paths(tmp_path, path):
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": path}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="safe res:// path"):
+        _compile(tmp_path)
+
+
+def test_rejects_external_resource_symlink_escape(tmp_path):
+    source = tmp_path / "assets/generated/ui-kit/main/font.ttf"
+    source.parent.mkdir(parents=True)
+    outside = tmp_path / "outside.ttf"
+    outside.write_bytes(b"not a font")
+    try:
+        source.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks are not permitted on this platform")
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/font.ttf"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="safe res:// path"):
+        _compile(tmp_path)
+
+
+def test_rejects_a_truncated_png_with_valid_magic_and_iend(tmp_path):
+    # This satisfies the previous magic-byte-only check but has no IDAT chunk
+    # and no valid CRCs, so it cannot be a loadable Texture2D.
+    fake_png = (
+        b"\x89PNG\r\n\x1a\n"
+        + b"\x00\x00\x00\rIHDR"
+        + b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+        + b"\x00\x00\x00\x00"
+        + b"\x00\x00\x00\x00IEND\x00\x00\x00\x00"
+    )
+    target = tmp_path / "assets/generated/ui-kit/main/fake.png"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(fake_png)
+    recipe = _recipe(icons=[{"type": "Button", "name": "icon", "value": {"type": "Texture2D", "path": "res://assets/generated/ui-kit/main/fake.png"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="not valid Texture2D content"):
+        _compile(tmp_path)
+
+
+def test_rejects_a_minimal_sfnt_without_required_font_tables(tmp_path):
+    # The former bounds-only parser accepted this single empty cmap record.
+    fake_sfnt = b"\x00\x01\x00\x00" + struct.pack(">HHHH", 1, 0, 0, 0) + b"cmap" + struct.pack(">III", 0, 28, 0)
+    target = tmp_path / "assets/generated/ui-kit/main/fake.ttf"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(fake_sfnt)
+    recipe = _recipe(fonts=[{"type": "Button", "name": "font", "value": {"type": "FontFile", "path": "res://assets/generated/ui-kit/main/fake.ttf"}}])
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="not valid FontFile content"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_json_numbers_before_serialization(tmp_path, value):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["content_margin"] = value
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="non-finite JSON number"):
+        _compile(tmp_path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_vector_values_before_serialization(tmp_path, value):
+    recipe = _recipe()
+    recipe["styleboxes"]["button_normal"]["properties"]["shadow_offset"] = [value, 1]
+    _write_recipe(tmp_path, recipe)
+    with pytest.raises(CompilerError, match="non-finite JSON number"):
+        _compile(tmp_path)
+
+
+def test_registers_only_once_and_is_not_part_of_the_shared_default_registry():
+    registry = build_default_registry()
+    assert ("theme_recipe", "Theme") not in [route.key for route in registry.routes()]
+    theme.register_into(registry)
+    with pytest.raises(CompilerError, match="already registered"):
+        theme.register_into(registry)

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/fx-bundle/ghost_hand/ghost_hand.png",
+  "regions": [
+    {
+      "name": "ghost_hand",
+      "rect": [
+        32,
+        32,
+        192,
+        256
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    }
+  ]
+}

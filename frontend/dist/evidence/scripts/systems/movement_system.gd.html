@@ -1,0 +1,139 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/movement_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/movement_system.gd</h1><p>只读源快照 · SHA-256 fb1bf72968022cb925e64d5c603a4ab067723e13ec02881d96bea871c1341d15</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name MovementSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var _placements: Dictionary = {}</span>
+<span class="line" id="L5"><a href="#L5">   5</a> var _last_tick: int = -1</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var _room_epoch: int = -1</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func setup() -&gt; void:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	return q.with_all([C_Transform, C_RoomMember]).enabled()</span>
+<span class="line" id="L13"><a href="#L13">  13</a> </span>
+<span class="line" id="L14"><a href="#L14">  14</a> func process(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	if _room_epoch != runtime.room_epoch:</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		_room_epoch = runtime.room_epoch</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		_placements.clear()</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 	if _last_tick != runtime.tick_index:</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		_last_tick = runtime.tick_index</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		_placements.merge(runtime.take_placements(), true)</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		for entity_id in _placements.keys():</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 			if not runtime.world.entity_id_registry.has(entity_id):</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 				_placements.erase(entity_id)</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	for entity in entities:</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		if not entity.enabled:</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 			continue</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 		var transform: C_Transform = entity.get_component(C_Transform)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		var hitbox: C_Hitbox = entity.get_component(C_Hitbox)</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		var visual: C_Visual = entity.get_component(C_Visual)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		var root: Node2D = body.root if body != null else (visual.node.get_parent() if visual != null and is_instance_valid(visual.node) else null)</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		if body != null and (not body.ready or not is_instance_valid(root)):</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 			continue</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		if body == null and visual != null and not is_instance_valid(root):</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 			continue</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		var projectile: C_Projectile = entity.get_component(C_Projectile)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		if _placements.has(entity.id):</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 			var placement: Dictionary = _placements[entity.id]</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 			transform.position = placement.position</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			transform.rotation = placement.rotation</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 			transform.scale = placement.scale</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 			if is_instance_valid(root):</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 				root.global_position = transform.position</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 				root.rotation = transform.rotation</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 				root.scale = transform.scale</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 				root.visible = true</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 				if root is CollisionObject2D:</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 					root.set_deferred(&quot;collision_layer&quot;, body.layer)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 					root.set_deferred(&quot;collision_mask&quot;, body.mask)</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 				if body != null and is_instance_valid(body.shape):</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 					body.shape.set_deferred(&quot;disabled&quot;, false)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 			if motion != null:</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 				motion.velocity = Vector2.ZERO</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 				motion.grounded = false</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 				motion.jumps_used = 0</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 				motion.coyote_left = 0.0</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 				motion.buffer_left = 0.0</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 				motion.placement_pending = false</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 			if projectile != null:</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 				projectile.previous_position = transform.position</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 			_placements.erase(entity.id)</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 			runtime.placement_completed(entity.id)</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 			continue</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 		if hitbox != null and hitbox.follows_owner:</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			var owner: Entity = runtime.world.entity_id_registry.get(hitbox.owner_id)</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 			if is_instance_valid(owner):</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 				transform.position = owner.get_component(C_Transform).position + hitbox.offset</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 			continue</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 		if delta &lt;= 0.0 or motion == null or motion.placement_pending or not root is CharacterBody2D:</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 			continue</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 		var character: CharacterBody2D = root</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 		if projectile != null:</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 			if projectile.consumed:</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 				continue</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 			projectile.previous_position = transform.position</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 			motion.velocity = projectile.direction.normalized() * projectile.speed</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 			character.velocity = motion.velocity</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 			var collision: KinematicCollision2D = character.move_and_collide(motion.velocity * delta)</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 			transform.position = character.global_position</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 			if collision != null:</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 				var collider_entity: Node = collision.get_collider().get_parent()</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 				runtime.record_projectile_contact(entity.id, collider_entity.id if collider_entity is GameEntity else &quot;&quot;)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 			elif not runtime.room_bounds.grow(80.0).has_point(transform.position):</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 				runtime.record_projectile_contact(entity.id)</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 			continue</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 		var input: C_Input = entity.get_component(C_Input)</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 		var health: C_Health = entity.get_component(C_Health)</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 		var combat: C_Combat = entity.get_component(C_Combat)</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 		var axis: float = input.axis if input != null else 0.0</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 		var controlled: bool = input != null and input.source == &quot;player&quot;</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 		if controlled:</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 			motion.desired_velocity.x = axis * motion.speed</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 		if health != null and (health.dead or health.hurt_left &gt; 0.0):</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 			motion.desired_velocity = Vector2.ZERO</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 			axis = 0.0</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 		var dodging: bool = combat != null and combat.state == &quot;dodge&quot;</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 		if dodging:</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 			motion.velocity.x = motion.facing * 720.0</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 		else:</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 			if controlled:</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 				motion.velocity.x = clampf(motion.velocity.x, -motion.speed, motion.speed)</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 			motion.velocity.x = move_toward(motion.velocity.x, motion.desired_velocity.x, motion.acceleration * delta)</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 		if absf(axis) &gt; 0.01 and (combat == null or combat.state == &quot;idle&quot;):</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 			motion.facing = 1 if axis &gt; 0 else -1</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 		if motion.gravity == 0.0:</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 			motion.velocity.y = move_toward(motion.velocity.y, motion.desired_velocity.y, motion.acceleration * delta)</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 		else:</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 			motion.buffer_left = maxf(0.0, motion.buffer_left - delta)</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 			motion.coyote_left = motion.coyote_duration if motion.grounded else maxf(0.0, motion.coyote_left - delta)</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 			if input != null and input.jump_pressed and (health == null or not health.dead):</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 				motion.buffer_left = motion.buffer_duration</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 			motion.velocity.y = minf(motion.velocity.y + motion.gravity * delta, motion.max_fall_speed)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 			var first_jump: bool = motion.grounded or (motion.coyote_left &gt; 0.0 and motion.jumps_used == 0)</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 			var air_jump: bool = controlled and runtime.progression.moonstep and motion.jumps_used &lt; 2</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 			if motion.buffer_left &gt; 0.0 and (first_jump or air_jump):</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> 				motion.velocity.y = -motion.jump_speed</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 				motion.buffer_left = 0.0</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 				motion.coyote_left = 0.0</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 				motion.jumps_used = 1 if first_jump else 2</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 				motion.grounded = false</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 		character.velocity = motion.velocity</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 		character.move_and_slide()</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 		motion.velocity = character.velocity</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 		var was_grounded: bool = motion.grounded</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 		motion.grounded = character.is_on_floor()</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 		if motion.grounded:</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 			motion.jumps_used = 0</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 			if not was_grounded and controlled:</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 				runtime.landing_count += 1</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> 		var bounds: Rect2 = runtime.room_bounds</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 		var edge: float = maxf(body.size.x * 0.5, 64.0 if controlled else 24.0)</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 		var clamped_x: float = clampf(character.global_position.x, bounds.position.x + edge, bounds.end.x - edge)</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 		if clamped_x != character.global_position.x:</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 			character.global_position.x = clamped_x</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 			motion.velocity.x = 0.0</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 			character.velocity.x = 0.0</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 		transform.position = character.global_position</span>
+</pre>

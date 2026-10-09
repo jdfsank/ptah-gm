@@ -1,0 +1,143 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/runtime/room_catalog.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/runtime/room_catalog.gd</h1><p>只读源快照 · SHA-256 4615f7a93044f51d389ee8fcd18701663de37d28a99aba5b7dd52a385c8d70f5</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name RoomCatalog extends RefCounted</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const ROOM_PATHS: Dictionary = {</span>
+<span class="line" id="L4"><a href="#L4">   4</a> 	&quot;grand_lobby&quot;: &quot;res://data/rooms/grand_lobby.json&quot;,</span>
+<span class="line" id="L5"><a href="#L5">   5</a> 	&quot;card_banquet_gallery&quot;: &quot;res://data/rooms/card_banquet_gallery.json&quot;,</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	&quot;roulette_clocktower&quot;: &quot;res://data/rooms/roulette_clocktower.json&quot;,</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	&quot;quiet_save_room&quot;: &quot;res://data/rooms/quiet_save_room.json&quot;,</span>
+<span class="line" id="L8"><a href="#L8">   8</a> 	&quot;house_throne&quot;: &quot;res://data/rooms/house_throne.json&quot;</span>
+<span class="line" id="L9"><a href="#L9">   9</a> }</span>
+<span class="line" id="L10"><a href="#L10">  10</a> var last_error: String = &quot;&quot;</span>
+<span class="line" id="L11"><a href="#L11">  11</a> </span>
+<span class="line" id="L12"><a href="#L12">  12</a> func load_room(room_id: String, resources: ResourceCatalog) -&gt; Dictionary:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	if not ROOM_PATHS.has(room_id):</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 		last_error = &quot;Unknown room: &quot; + room_id</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		return {}</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	var parser := JSON.new()</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	if parser.parse(FileAccess.get_file_as_string(ROOM_PATHS[room_id])) != OK:</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		last_error = &quot;Corrupt room JSON: &quot; + room_id</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		return {}</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	var parsed: Variant = parser.data</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 	if not parsed is Dictionary or not validate_room(parsed, resources):</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		if last_error.is_empty():</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 			last_error = &quot;Room JSON is not an object: &quot; + room_id</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 		return {}</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	return parsed</span>
+<span class="line" id="L26"><a href="#L26">  26</a> </span>
+<span class="line" id="L27"><a href="#L27">  27</a> func validate_room(room: Dictionary, resources: ResourceCatalog) -&gt; bool:</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 	last_error = &quot;&quot;</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 	var version: Variant = room.get(&quot;version&quot;)</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	if not (version is int or version is float) or version != 1 or not ROOM_PATHS.has(room.get(&quot;id&quot;, &quot;&quot;)) or not room.get(&quot;name&quot;) is String or room.name.is_empty():</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		return _reject(&quot;Invalid room identity/version&quot;)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 	if not _vector(room.get(&quot;bounds&quot;), 4) or room.bounds[2] &lt;= 0 or room.bounds[3] &lt;= 0:</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		return _reject(&quot;Invalid room bounds&quot;)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 	if not resources.has_asset(room.get(&quot;background&quot;, &quot;&quot;)):</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		return _reject(&quot;Unknown room background&quot;)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 	if not _vector(room.get(&quot;light&quot;), 4):</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		return _reject(&quot;Invalid room light&quot;)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 	for value in room.light:</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		if value &lt; 0 or value &gt; 1:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 			return _reject(&quot;Light outside 0..1&quot;)</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 	if not room.get(&quot;spawns&quot;) is Dictionary or not room.spawns.has(&quot;start&quot;):</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 		return _reject(&quot;Missing start spawn&quot;)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 	for value in room.spawns.values():</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		if not _vector(value, 2):</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 			return _reject(&quot;Invalid spawn position&quot;)</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	var ids: Dictionary = {}</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 	for collection in [&quot;platforms&quot;, &quot;props&quot;, &quot;doors&quot;]:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 		if not room.get(collection) is Array:</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 			return _reject(&quot;Missing room array: &quot; + collection)</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 		for record in room[collection]:</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 			if not record is Dictionary or not record.get(&quot;id&quot;) is String or record.id.is_empty() or ids.has(record.id):</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 				return _reject(&quot;Missing or duplicate room record id&quot;)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 			ids[record.id] = true</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 			if collection == &quot;platforms&quot;:</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 				if not _vector(record.get(&quot;rect&quot;), 4) or record.rect[2] &lt; 320 or int(record.rect[2]) % 160 != 0 or record.rect[3] &lt;= 0:</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 					return _reject(&quot;Invalid platform rectangle or segment width&quot;)</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 			else:</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 				if not _vector(record.get(&quot;position&quot;), 2):</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 					return _reject(&quot;Invalid object position&quot;)</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 				if collection == &quot;props&quot; and (not resources.has_asset(record.get(&quot;asset_id&quot;, &quot;&quot;)) or not _vector(record.get(&quot;size&quot;), 2) or record.size[0] &lt;= 0 or record.size[1] &lt;= 0):</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 					return _reject(&quot;Invalid prop asset or size&quot;)</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 				if collection == &quot;doors&quot; and (not record.get(&quot;target_room&quot;) is String or not record.get(&quot;target_spawn&quot;) is String or not record.get(&quot;prompt&quot;) is String or record.target_room.is_empty() or record.target_spawn.is_empty()):</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 					return _reject(&quot;Invalid door destination&quot;)</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 	for spawn in room.spawns.values():</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 		if not _safe_spawn(spawn, room):</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			return _reject(&quot;Spawn has no safe standing surface&quot;)</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 	if not room.get(&quot;enemies&quot;, []) is Array:</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		return _reject(&quot;Invalid enemy array&quot;)</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 	for enemy in room.get(&quot;enemies&quot;, []):</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 		if not enemy is Dictionary or not enemy.get(&quot;kind&quot;, &quot;&quot;) in [&quot;melee&quot;, &quot;ranged&quot;, &quot;flying&quot;] or not _vector(enemy.get(&quot;position&quot;), 2):</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 			return _reject(&quot;Invalid enemy record&quot;)</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 		if not enemy.get(&quot;id&quot;) is String or enemy.id.is_empty() or ids.has(enemy.id):</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 			return _reject(&quot;Missing or duplicate enemy id&quot;)</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 		ids[enemy.id] = true</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 	for kind in [&quot;relic&quot;, &quot;checkpoint&quot;, &quot;boss&quot;]:</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 		var record: Variant = room.get(kind)</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 		if record == null:</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 			continue</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 		if not record is Dictionary or not _vector(record.get(&quot;position&quot;), 2) or not record.get(&quot;id&quot;) is String or record.id.is_empty() or ids.has(record.id):</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 			return _reject(&quot;Invalid interaction/boss record&quot;)</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 		ids[record.id] = true</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 		if kind != &quot;boss&quot; and not record.get(&quot;prompt&quot;) is String:</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 			return _reject(&quot;Missing interaction prompt&quot;)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 		if kind == &quot;relic&quot; and (room.id != &quot;roulette_clocktower&quot; or record.id != &quot;moonstep&quot;):</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 			return _reject(&quot;Invalid relic location&quot;)</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 		if kind == &quot;checkpoint&quot; and (room.id != &quot;quiet_save_room&quot; or not room.spawns.has(record.get(&quot;spawn_id&quot;, &quot;&quot;))):</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 			return _reject(&quot;Invalid checkpoint spawn&quot;)</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 		if kind == &quot;boss&quot;:</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 			if room.id != &quot;house_throne&quot; or record.id != &quot;royal_dealer&quot; or not _vector(record.get(&quot;arena&quot;), 4):</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 				return _reject(&quot;Invalid boss arena&quot;)</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 			var area := Rect2(record.arena[0], record.arena[1], record.arena[2], record.arena[3])</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 			var bounds := Rect2(room.bounds[0], room.bounds[1], room.bounds[2], room.bounds[3])</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 			if not bounds.encloses(area) or not area.has_area():</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 				return _reject(&quot;Boss arena outside room&quot;)</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 	return true</span>
+<span class="line" id="L96"><a href="#L96">  96</a> </span>
+<span class="line" id="L97"><a href="#L97">  97</a> func validate_graph(resources: ResourceCatalog) -&gt; bool:</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 	var catalog: Dictionary = {}</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 	for room_id in ROOM_PATHS:</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 		var room: Dictionary = load_room(room_id, resources)</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 		if room.is_empty():</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 			return false</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 		catalog[room_id] = room</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 	for room in catalog.values():</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 		for door in room.doors:</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 			if not catalog.has(door.target_room) or not catalog[door.target_room].spawns.has(door.target_spawn):</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 				return _reject(&quot;Dangling door destination: &quot; + room.id + &quot;/&quot; + door.id)</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 	var reached: Array[String] = [&quot;grand_lobby&quot;]</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 	var index: int = 0</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 	while index &lt; reached.size():</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 		for door in catalog[reached[index]].doors:</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 			if not door.target_room in reached:</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 				reached.append(door.target_room)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 		index += 1</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 	return true if reached.size() == ROOM_PATHS.size() else _reject(&quot;Disconnected room graph&quot;)</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> </span>
+<span class="line" id="L117"><a href="#L117"> 117</a> func _safe_spawn(value: Array, room: Dictionary) -&gt; bool:</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 	var bounds := Rect2(room.bounds[0], room.bounds[1], room.bounds[2], room.bounds[3])</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 	var feet := Vector2(value[0], value[1])</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 	if not bounds.has_point(feet) or feet.y - 96 &lt; bounds.position.y:</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 		return false</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 	var supported: bool = false</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 	var actor := Rect2(feet - Vector2(20, 96), Vector2(40, 95))</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 	for platform in room.platforms:</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 		var r: Array = platform.rect</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 		if absf(feet.y - r[1]) &lt; 0.1 and feet.x - 24 &gt;= r[0] and feet.x + 24 &lt;= r[0] + r[2]:</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 			supported = true</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 		if actor.intersects(Rect2(r[0], r[1], r[2], r[3])):</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 			return false</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 	return supported</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> </span>
+<span class="line" id="L132"><a href="#L132"> 132</a> func _vector(value: Variant, count: int) -&gt; bool:</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 	if not value is Array or value.size() != count:</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 		return false</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 	for part in value:</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 		if not (part is int or part is float) or not is_finite(float(part)):</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 			return false</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 	return true</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> </span>
+<span class="line" id="L140"><a href="#L140"> 140</a> func _reject(message: String) -&gt; bool:</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 	last_error = message</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> 	return false</span>
+</pre>

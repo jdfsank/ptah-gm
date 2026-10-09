@@ -1,0 +1,13 @@
+class_name ExampleSystem extends System
+
+## Example system — queries entities by components and runs logic.
+## Copy this file for new systems.
+## Naming convention: PascalCase + System suffix (MovementSystem, DamageSystem)
+
+func query() -> QueryBuilder:
+	return q.with_all([C_Example])
+
+func process(entity: Entity, delta: float) -> void:
+	var comp = entity.get_component(C_Example)
+	# TODO: Implement system logic
+	pass

@@ -1,0 +1,75 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/session_start.py"}
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/check_file_permissions.py"},
+          {"type": "command", "command": "python .godotmaker/hooks/stage_reminder.py"}
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/check_stage_prerequisites.py"},
+          {"type": "command", "command": "python .godotmaker/hooks/log_agent_tool.py"}
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/check_asset_access.py"}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/log_agent_tool.py"}
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/log_subagent.py"}
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/on_subagent_stop.py"}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/check_completion.py"},
+          {"type": "command", "command": "python .godotmaker/hooks/check_clean_workspace.py"}
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "python .godotmaker/hooks/log_compaction.py"}
+        ]
+      }
+    ]
+  }
+}

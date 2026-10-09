@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-06",
+  "upstream_commit": "1d4702caa2ac5fdbe1b0139e1787691cb52ae290",
+  "implementation_commit": "c16d4bb8091af784fc801ca6734e79d6b17b136e",
+  "branch": "feat/non-pk-playable-review",
+  "published": false,
+  "original_checkout_unchanged": true,
+  "environment": {
+    "godot": "4.6.3.stable.official.7d41c59c4",
+    "python": "3.12.14",
+    "uv": "0.12.19",
+    "python_environment": "uv-managed project .venv; exact dependencies in requirements-review.lock"
+  },
+  "python_regression": {
+    "original": {
+      "passed": 1957,
+      "skipped": 63,
+      "deselected": 1
+    },
+    "fork": {
+      "passed": 2127,
+      "skipped": 64,
+      "deselected": 1
+    },
+    "meaning": "compatibility and regression coverage, not pipeline performance comparison"
+  },
+  "actual_godot_fixture": [
+    {
+      "variant": "baseline",
+      "result": "PASS",
+      "passed": 28,
+      "failed": 0,
+      "failed_ids": [],
+      "exit_code": 0,
+      "source_digest": "sha256:07490c6aaf6dc7efebf87b40b7d6a26d065829274dbfec8f8ebc74c017e8d5e7",
+      "test_digest": "sha256:c5523f1d7ace33f9864af3bf2b0b51c0e63e2021fc19c40ace5203d8cbe18fc7",
+      "fixture_spec_digest": "sha256:405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+    },
+    {
+      "variant": "always_open_door",
+      "result": "FAIL",
+      "passed": 23,
+      "failed": 5,
+      "failed_ids": [
+        "FX-M3.initial_hud",
+        "FX-M3.locked_gate_collision",
+        "FX-M3.locked_feedback",
+        "FX-M6.restart_inventory",
+        "FX-M6.restart_gate_collision"
+      ],
+      "exit_code": 1,
+      "source_digest": "sha256:9b77ac84aeeb72212e400aa6cca0c841d0e7e691e0cefd07e04496d6bd764a67",
+      "test_digest": "sha256:c5523f1d7ace33f9864af3bf2b0b51c0e63e2021fc19c40ace5203d8cbe18fc7",
+      "fixture_spec_digest": "sha256:405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+    },
+    {
+      "variant": "stale_hud",
+      "result": "FAIL",
+      "passed": 26,
+      "failed": 2,
+      "failed_ids": [
+        "FX-M3.pickup_hud",
+        "FX-M6.restart_recollect"
+      ],
+      "exit_code": 1,
+      "source_digest": "sha256:eda05bdd5d8abe975be89d7c5b9d40827a2d4462f1968f48bca75e219d2ddf78",
+      "test_digest": "sha256:c5523f1d7ace33f9864af3bf2b0b51c0e63e2021fc19c40ace5203d8cbe18fc7",
+      "fixture_spec_digest": "sha256:405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+    },
+    {
+      "variant": "pause_input_leak",
+      "result": "FAIL",
+      "passed": 27,
+      "failed": 1,
+      "failed_ids": [
+        "FX-M4.paused_movement"
+      ],
+      "exit_code": 1,
+      "source_digest": "sha256:462527b11f26201140cb410d60278c67ac97858f689c63b47cad7f57d45baa70",
+      "test_digest": "sha256:c5523f1d7ace33f9864af3bf2b0b51c0e63e2021fc19c40ace5203d8cbe18fc7",
+      "fixture_spec_digest": "sha256:405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+    },
+    {
+      "variant": "dirty_restart",
+      "result": "FAIL",
+      "passed": 25,
+      "failed": 3,
+      "failed_ids": [
+        "FX-M6.restart_inventory",
+        "FX-M6.restart_gate_collision",
+        "FX-M6.restart_recollect"
+      ],
+      "exit_code": 1,
+      "source_digest": "sha256:2c707375a63fbe1fc3eb2791919e4710ef9abefb7c836c7aee69b54620ca2b0d",
+      "test_digest": "sha256:c5523f1d7ace33f9864af3bf2b0b51c0e63e2021fc19c40ace5203d8cbe18fc7",
+      "fixture_spec_digest": "sha256:405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+    }
+  ],
+  "cua_simulation": {
+    "actor": "agent_simulated_player",
+    "screenshots": 58,
+    "pause_before": "actual visible movement while paused",
+    "pause_after": "no visible movement; original 28-case suite PASS",
+    "formal_play": "native launch, Start/movement, clean exit; session PASS, input_drift false",
+    "arrow_compatibility": "logical arrow key binding validated by actual native input; physical WASD retained",
+    "human_acceptance": false,
+    "generated_user_game": false,
+    "n05_product_gate": "needs_human_and_real_generated_game"
+  },
+  "validation_limits": [
+    "Original fixed fixture is not a generated user game",
+    "No human refusal or acceptance event was created",
+    "No physical keyboard/controller/mobile/audio validation",
+    "No hosted CI run",
+    "gitleaks was unavailable and not run",
+    "N06 React workbench and broader N07 device work not started"
+  ]
+}

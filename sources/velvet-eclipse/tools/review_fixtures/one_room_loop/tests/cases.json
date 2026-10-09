@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "required_cases": {
+    "FX-M1.start_menu": "FX-M1",
+    "FX-M1.start_blocks_movement": "FX-M1",
+    "FX-M1.start_button": "FX-M1",
+    "FX-M2.input_movement": "FX-M2",
+    "FX-M2.wall_collision": "FX-M2",
+    "FX-M4.pause_menu": "FX-M4",
+    "FX-M4.paused_movement": "FX-M4",
+    "FX-M4.pause_navigation": "FX-M4",
+    "FX-M4.pause_navigation_back": "FX-M4",
+    "FX-M4.resume_no_stuck_input": "FX-M4",
+    "FX-M4.resume_movement": "FX-M4",
+    "FX-M3.initial_hud": "FX-M3",
+    "FX-M3.locked_gate_collision": "FX-M3",
+    "FX-M3.locked_feedback": "FX-M3",
+    "FX-M3.key_trigger": "FX-M3",
+    "FX-M3.pickup_hud": "FX-M3",
+    "FX-M3.no_duplicate_pickup": "FX-M3",
+    "FX-M3.key_opens_gate": "FX-M3",
+    "FX-M3.gate_hud": "FX-M3",
+    "FX-M5.no_early_win": "FX-M5",
+    "FX-M5.exit_result": "FX-M5",
+    "FX-M5.result_blocks_movement": "FX-M5",
+    "FX-M6.restart_ui": "FX-M6",
+    "FX-M6.restart_spawn": "FX-M6",
+    "FX-M6.restart_input": "FX-M6",
+    "FX-M6.restart_inventory": "FX-M6",
+    "FX-M6.restart_gate_collision": "FX-M6",
+    "FX-M6.restart_recollect": "FX-M6"
+  }
+}

@@ -1,0 +1,143 @@
+[gd_resource type="SpriteFrames" load_steps=45 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_01.png" id="1_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_02.png" id="2_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_03.png" id="3_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_04.png" id="4_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_05.png" id="5_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_idle_idle_06.png" id="6_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_01.png" id="7_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_02.png" id="8_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_03.png" id="9_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_04.png" id="10_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_05.png" id="11_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_06.png" id="12_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_07.png" id="13_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_run_run_08.png" id="14_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_01.png" id="15_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_02.png" id="16_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_03.png" id="17_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_04.png" id="18_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_05.png" id="19_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_jump_jump_06.png" id="20_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_01.png" id="21_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_02.png" id="22_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_03.png" id="23_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_04.png" id="24_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_05.png" id="25_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_attack_attack_06.png" id="26_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_01.png" id="27_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_02.png" id="28_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_03.png" id="29_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_04.png" id="30_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_05.png" id="31_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_cast_cast_06.png" id="32_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_01.png" id="33_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_02.png" id="34_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_03.png" id="35_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_04.png" id="36_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_05.png" id="37_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_dodge_dodge_06.png" id="38_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_01.png" id="39_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_02.png" id="40_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_03.png" id="41_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_04.png" id="42_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_05.png" id="43_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/heroine_frames/heroine_frames_hurt_hurt_06.png" id="44_texture"]
+
+[resource]
+animations = [
+{
+"frames": [
+{"duration": 1.5, "texture": ExtResource("1_texture")},
+{"duration": 1.0, "texture": ExtResource("2_texture")},
+{"duration": 1.0, "texture": ExtResource("3_texture")},
+{"duration": 1.5, "texture": ExtResource("4_texture")},
+{"duration": 1.0, "texture": ExtResource("5_texture")},
+{"duration": 1.0, "texture": ExtResource("6_texture")}
+],
+"loop": true,
+"name": &"idle",
+"speed": 7.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("7_texture")},
+{"duration": 1.0, "texture": ExtResource("8_texture")},
+{"duration": 1.0, "texture": ExtResource("9_texture")},
+{"duration": 1.0, "texture": ExtResource("10_texture")},
+{"duration": 1.0, "texture": ExtResource("11_texture")},
+{"duration": 1.0, "texture": ExtResource("12_texture")},
+{"duration": 1.0, "texture": ExtResource("13_texture")},
+{"duration": 1.0, "texture": ExtResource("14_texture")}
+],
+"loop": true,
+"name": &"run",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("15_texture")},
+{"duration": 1.0, "texture": ExtResource("16_texture")},
+{"duration": 1.5, "texture": ExtResource("17_texture")},
+{"duration": 1.0, "texture": ExtResource("18_texture")},
+{"duration": 1.0, "texture": ExtResource("19_texture")},
+{"duration": 1.0, "texture": ExtResource("20_texture")}
+],
+"loop": false,
+"name": &"jump",
+"speed": 10.0
+},
+{
+"frames": [
+{"duration": 1.3, "texture": ExtResource("21_texture")},
+{"duration": 0.7, "texture": ExtResource("22_texture")},
+{"duration": 1.0, "texture": ExtResource("23_texture")},
+{"duration": 0.7, "texture": ExtResource("24_texture")},
+{"duration": 1.0, "texture": ExtResource("25_texture")},
+{"duration": 1.2, "texture": ExtResource("26_texture")}
+],
+"loop": false,
+"name": &"attack",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("27_texture")},
+{"duration": 1.0, "texture": ExtResource("28_texture")},
+{"duration": 1.2, "texture": ExtResource("29_texture")},
+{"duration": 0.6, "texture": ExtResource("30_texture")},
+{"duration": 1.0, "texture": ExtResource("31_texture")},
+{"duration": 1.0, "texture": ExtResource("32_texture")}
+],
+"loop": false,
+"name": &"cast",
+"speed": 11.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("33_texture")},
+{"duration": 0.7, "texture": ExtResource("34_texture")},
+{"duration": 1.0, "texture": ExtResource("35_texture")},
+{"duration": 0.8, "texture": ExtResource("36_texture")},
+{"duration": 1.0, "texture": ExtResource("37_texture")},
+{"duration": 1.2, "texture": ExtResource("38_texture")}
+],
+"loop": false,
+"name": &"dodge",
+"speed": 13.0
+},
+{
+"frames": [
+{"duration": 0.7, "texture": ExtResource("39_texture")},
+{"duration": 1.4, "texture": ExtResource("40_texture")},
+{"duration": 1.0, "texture": ExtResource("41_texture")},
+{"duration": 1.0, "texture": ExtResource("42_texture")},
+{"duration": 1.0, "texture": ExtResource("43_texture")},
+{"duration": 1.0, "texture": ExtResource("44_texture")}
+],
+"loop": false,
+"name": &"hurt",
+"speed": 10.0
+}
+]

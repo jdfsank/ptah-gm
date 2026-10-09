@@ -1,0 +1,123 @@
+# 检查运行环境
+
+`check_env.py` 用于确认你的机器已正确配置，可以运行 GodotMaker。遇到任何异常时都可以执行它。
+
+```bash
+python tools/check_env.py
+```
+
+一切正常时，输出末尾会显示：
+
+```
+All required checks passed! Ready to use GodotMaker.
+```
+
+如果有项目缺失，你会看到一份失败检查列表以及每项的修复建议。
+
+## 检查内容
+
+### Git
+
+- 已安装 Git 2.30 或更高版本。
+- 已设置 `git user.name` 和 `git user.email`（`/gm-scaffold` 及 worktree 系统创建提交时需要用到）。
+
+### Python
+
+- 运行本脚本的 Python 版本为 3.10 或更高。
+- 已安装核心包：`requests`、`pillow`。
+- 根据 `.godotmaker/config.yaml` 检查提供方包：Gemini 需要 `google-genai`，OpenAI 需要 `openai`，Grok 图片生成需要 `xai-sdk`。Wan 使用标准库 HTTP 客户端；选中后还要求 `DASHSCOPE_API_KEY` 与显式 `DASHSCOPE_REGION`。
+
+### Godot E2E（Python 包）
+
+- `[FAIL]`：GodotMaker 使用的那个 Python 没有安装 `godot-e2e` 包。
+- `[WARN]`：包本身没问题，只是 PATH 上的 `godot-e2e` 命令来自另一个 Python。
+
+大多数电脑上装了不止一个 Python。`pip install godot-e2e` 会装进你终端当时用的那个 Python，而它未必就是 GodotMaker 运行时用的那个——这就是"明明装过了却被报成缺失"的原因。
+
+**这一项失败时**，把它打印的那一整行复制到终端里执行即可。那行命令里已经写好了正确 Python 的完整路径，你不需要自己判断是哪一个：
+
+```
+--- Godot E2E (Python package) ---
+  Python used by GodotMaker: /home/you/game/.venv/bin/python
+  VIRTUAL_ENV: not set
+  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
+```
+
+在 Windows 上，如果那个 Python 的路径里带空格，检查会分别打印 PowerShell 和 Command Prompt（cmd.exe）两行——两种终端的引号规则不同，用与你当前窗口相符的那一行即可。
+
+装完再跑一次 `python tools/check_env.py`。这项检查每次都是重新判定，装好后立刻变绿，不会沿用上一次的失败结果。
+
+**这一项是警告时**，说明目前没坏：包装在该在的地方，只是 PATH 上的命令来自别处——用 pyenv、asdf 或启动脚本时这很正常。只有当之后 e2e 测试报 `godot_e2e` 导入错误时才需要处理，警告里已经附上了同样的安装命令。
+
+这里检查的是 Python 包。游戏项目里的 `addons/godot_e2e/` addon 是另一个依赖。
+
+### Node.js
+
+- 已安装 Node.js 18 或更高版本（通过 `npx` 运行 `godot-mcp` 时需要）。
+- `npx` 在 PATH 中可用（随 Node.js 一起安装）。
+
+### Godot
+
+- Godot 4.5 或更高版本可通过 PATH 中的 `godot` 或 `godot4` 命令访问。
+
+如果 Godot 不在 PATH 中，这项检查会显示警告而非硬性失败——你仍可以在运行 `publish.py` 时手动输入可执行文件的完整路径，它会被保存到 `.claude/godotmaker.yaml` 供后续使用。
+
+### 所选 coding agent
+
+- Claude Code 项目会检查 `claude` 是否已安装。
+- Codex 项目会检查 `codex` 是否已安装、`.agents` runtime tree 是否存在，以及 `godot` MCP server 是否已配置。
+- OpenCode 项目会检查 `opencode` 是否已安装、`.opencode` runtime tree 和 hook adapter 是否存在，以及 `godot` MCP server 是否已配置。
+
+### API 密钥
+
+| 密钥 | 状态 | 用途 |
+|-----|--------|---------|
+| `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` | 选中时必填 | Gemini 图片生成或 VQA |
+| `OPENAI_API_KEY` | 选中时必填 | OpenAI 图片生成或 VQA |
+| `XAI_API_KEY` | 选中时必填 | xAI Grok 图片生成 |
+
+
+API 后端 selector 在缺少对应 key 时会失败。`asset_image_model: native` 对 Codex 会通过，对 Claude Code 会给出警告，因为检查工具无法证明 Claude 侧一定有原生生图能力。OpenCode 项目如果使用 `native` 生图或 `native` VQA 会失败，直到你把这些字段改成 `codex` 或 API 后端 selector。Claude Code 或 OpenCode 项目使用 `asset_image_model: codex` 时，需要 `codex` CLI 位于 PATH 中。
+
+检查工具还会验证被选中提供方的 Python 包能否正常导入，从而捕获单靠版本号检查无法发现的安装问题。
+
+## 读懂输出结果
+
+每行以以下三种标记之一开头：
+
+```
+[PASS] Git 2.43.0 (>= 2.30)
+[FAIL] Package 'google-genai' missing. Run: pip install google-genai
+[WARN] XAI_API_KEY not set (optional, cheaper image generation)
+```
+
+`[WARN]` 表示可选项——不影响 GodotMaker 的使用。`[FAIL]` 表示阻断性问题。
+
+输出末尾会汇总所有失败项，方便你一次性全部修复：
+
+```
+========================================
+Total: 14 checks
+  PASS: 12
+  FAIL: 1
+  WARN: 1
+
+Failed checks:
+  - Package 'google-genai' missing. Run: pip install google-genai
+
+Fix the above issues before using GodotMaker.
+```
+
+## 退出码
+
+| 退出码 | 含义 |
+|------|---------|
+| 0 | 所有必填检查通过（有警告也没关系） |
+| 1 | 一项或多项必填检查失败 |
+
+脚本和 CI 流水线可以依靠这个退出码来决定是否继续执行后续步骤。
+
+## 刚开始上手？
+
+参阅[安装指南](../01-getting-started/installation.md)，按步骤完成所有前置条件的配置，再运行 `check_env.py`。

@@ -1,0 +1,16 @@
+fe1fc88ee4fe4a8d5ce32493b76e8d4c20dd2af1 2026-10-08T00:58:44-07:00 Document v6 verification and retain reviewed regression results
+3f50322c4c06d0876f48c5037ea5f1c5536074bd 2026-10-08T00:56:05-07:00 Test modal recovery and explicit execution blocking for all comments
+e15b5cdd48534e953835b7da3b7683f0bcd79a69 2026-10-08T00:54:13-07:00 Fix loading comments and isolate modal keyboard navigation
+043a9968f82dac9fb3f4cbaa1484f46f90053e62 2026-10-08T00:50:20-07:00 Bind every semantic target to comments and simplify workspace layout
+c7c2120db449b26bec584b5596b82ade91057fc2 2026-10-08T00:23:51-07:00 Fix reviewed transition navigation scope and keyboard activation
+46da5d5d50a94162ac7c4e3328d01e63791c698a 2026-10-08T00:19:34-07:00 Add bounded exit transition targets and cross-language component validation
+bd6c8a1389ee7e4524e012f8a1fe6d2bf2f34bdb 2026-10-08T00:08:46-07:00 Checkpoint v4 before bounded transition and chain integration
+45c0569d713f403f28dc4b0042804d53037dd347 2026-10-07T23:28:06-07:00 Document independently reviewed v4 delivery and validation boundaries
+b7da3350f5ca6b178897c79a4b6d8ad45d6ed4e3 2026-10-07T23:24:17-07:00 Bind reviewed GM authority and audit exact diffs and controlled-file scope
+6be6b4c74aa227a1779dc5ba11d24d0a2e919cb7 2026-10-07T23:12:02-07:00 Fix target drag and preview preflight races with regression tests
+bac21fdf55a65d744391e2ab39a67b563b5d408e 2026-10-07T23:10:52-07:00 Add versioned fail-closed GM adapter and independently checked result import
+eaedfb27bb10967f0887b74f5207cd16bcca9244 2026-10-07T23:06:57-07:00 Implement scene-first targets and mandatory immutable submission review
+4a7e500ca6a2b885a5904322cd8394ef750e1ae0 2026-10-07T22:51:21-07:00 Checkpoint before reviewed navigation and GM adapter changes
+060695a08c005e0818c8eee52e03263b817ad00d 2026-10-07T18:00:44-07:00 Update Site source
+a6ea1703819e1b7023b9238e11eeb2ed9f787b95 2026-10-07T08:52:33-07:00 Update Site source
+dc89ed0bb0df90c2324e75b525ca85984920b03d 2026-10-07T06:12:43-07:00 Update Site source

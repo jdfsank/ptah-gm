@@ -1,0 +1,44 @@
+GodotMaker GM-Non-PK 核心实现与临时 N05 模拟交付
+日期：2026-10-06
+
+源码基线：1d4702caa2ac5fdbe1b0139e1787691cb52ae290（GodotMaker v1.1.0）。
+最终本地提交：c16d4bb8091af784fc801ca6734e79d6b17b136e。
+分支：feat/non-pk-playable-review。原始仓库保持不变，未推送、未发布。
+
+已实现
+- 复用原 gm-*、PLAN/GAP，新增只读 doctor 与真实固定夹具 smoke；没有 planner-kernal 或替代规划器。
+- 原验证器及消费者统一 PASS/FAIL/BLOCKED/ERROR，拒绝必需跳过、零用例、损坏/矛盾报告和伪旧证据。
+- 本地单操作锁、受控进程树清理、显式恢复、严格阶段事件。
+- 规格/源码/测试与运行依赖摘要、独立快照和原生 play；接受/归档时复核当前输入与原 evaluator 的覆盖、视觉及体验证据。
+- 不可覆盖反馈进入原 GAP，支持自动批准后的修复和早期反馈；真人决定只来自实际交互入口。
+- 原归档保存相关运行/反馈/决定及媒体来源，防止证据漂移和目录链接误复制。
+
+实际验证
+- 原始基线：1957 passed / 63 skipped / 1 network deselected。
+- 最终修改版：2127 passed / 64 skipped / 1 network deselected。
+- 额外的真实 Godot 集成单独执行通过：基线 28/28 PASS；四个真实行为反例分别捕获 5、2、1、3 个断言失败；正常退出码0，反例退出码1。
+- 五变体的规格和测试摘要一致，源码摘要各不相同；这不是硬编码的失败或制作效率跑分。
+- Ruff、文档镜像检查、git diff 检查通过；工作树干净。
+- 测试环境由 uv 管理的隔离 .venv 提供；依赖版本见 requirements-review.lock。
+
+按本次要求做的 computer-use 临时 N05 模拟
+- 实际原生窗口复现：Paused 显示后按 D 500ms，角色仍位移约120px。
+- 记录为 agent_simulated_player 反馈，进入实验 GAP；独立修复仅改实际游戏暂停处理代码，原测试逐字保留。
+- 修复后相同28断言全部通过，真实 CUA 复玩确认暂停不动，完整 WASD 钥匙/门/HUD/结算/重开正常。
+- 额外实际验证 gm_review play 入口：启动原生窗口、Start/移动、正常退出，session PASS、input_drift=false；该夹具并不具备完整原 gm-evaluate/gdUnit 前提，因此正式 check 仍如实 BLOCKED。
+- 发现当前 CUA→X11→Godot 的箭头物理码异常；逻辑箭头绑定兼容方案已真实回放通过，并纳入主夹具，WASD 保留物理键位。
+- 58张真实截图、事件日志、前后源码与精确补丁、原始报告均在综合证据包中。
+
+边界
+这是固定夹具和模拟玩家的真实运行/修复证据，不是从用户 PLAN 生成的完整游戏，也不是用户本人的否决或认可；没有写 human accept。
+完整 N05 仍需真实生成项目与真人体验验收。N06 React 工作台及更广的 N07 设备能力尚未启动。
+未验证实体键盘/手柄/手机或音频。未运行托管 CI；gitleaks 未安装，未执行。
+原 BUSL 1.1 许可保留在源码 LICENSE/FORK.md 中。
+
+运行入口
+解压源码后，先阅读 docs/zh/review.md。
+环境：uv venv --python 3.12 .venv，然后 uv pip sync --python .venv/bin/python requirements-review.lock。
+只读检查：python tools/gm_review.py doctor --project /absolute/game --json。
+真实冒烟：python tools/gm_review.py smoke --fixture one_room_loop --output /absolute/new-run --json。
+原生运行固定夹具：godot --path tests/fixtures/one_room_loop。
+证据包保留的是已发生运行的原始路径与摘要；这些路径是历史记录，不代表解压后同一路径存在。

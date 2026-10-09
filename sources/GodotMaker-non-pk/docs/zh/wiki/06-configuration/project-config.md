@@ -1,0 +1,153 @@
+# 项目配置
+
+`.godotmaker/config.yaml` 是每个项目独立的配置文件，用来选择智能体运行时、角色模型、视觉 QA 模型和资源生成模型。它位于游戏项目目录中，因此不同游戏可以使用不同配置。
+
+## 文件如何创建
+
+普通用户第一次运行 `godotmaker-cli` 时，CLI 会在发布框架文件的同时把默认配置复制到 `.godotmaker/config.yaml`，并在继续前让你看到这个路径。手动使用框架的高级用户也可以运行 `python tools/publish.py <project>` 创建同一个文件。之后再次发布不会覆盖你的配置；只有 `agent` 字段会更新为当前选择的运行时。
+
+## 常用字段
+
+**`pipeline.model`** — 可选的 `godotmaker-cli` 模型覆盖项，用于自动 build/evaluate 阶段。GodotMaker 框架会保留 `.godotmaker/config.yaml` 里的这个值，但不会直接消费它；请使用所选 agent runtime 支持的模型 ID，具体以 `godotmaker-cli` / GodotMakerApp 文档为准。
+
+**`agent`** — 当前项目选择的编码智能体运行时，例如 `claude-code`、`codex` 或 `opencode`。
+
+**`worker_model`** — 编写游戏代码的 Claude 模型。默认是 `sonnet`；需要更强实现推理的游戏可改为 `opus`。
+
+**`verifier_model`**、**`reviewer_model`**、**`analyst_model`**、**`auditor_model`**、**`decomposer_model`** — 验证、审查、图片分析、审计和 GDD 拆分等角色的默认模型。
+
+**`vqa_model`** — 视觉 QA 的主模型选择器。支持 `native`、`codex`、`gemini:<model>` 和 `openai:<model>`。`native` 表示由当前智能体运行时直接检查图片；`codex` 表示由 Codex 提供图片检查能力；API 后端会运行 `visual_qa.py`。
+
+**`vqa_fallback_model`** — 主 VQA 后端不可用时的回退模型。支持 `native`、`codex` 和 `none`。
+
+**`asset_image_model`** — `/gm-asset` 使用的图片生成选择器。支持 `native`、`codex`、`gemini:<model>`、`openai:<model>`、`grok:<model>` 和 `wan:<model>`。`wan` 默认使用 `wan2.7-image`；高质量模型请显式使用 `wan:wan2.7-image-pro`。`native` 由当前运行时处理；`codex` 由 Codex 原生图片生成处理；API 后端会运行 `tools/asset_source_generate.py --spec <spec.json>`，脚本会拒绝运行时提供方。
+
+**`asset_producer_model`** — `/gm-asset` 中负责单个素材生产单元的子 Agent 模型。Claude Code 项目通常可以设为 `sonnet`，需要更强视觉推理时再提高。
+
+
+默认配置大致如下：
+
+```yaml
+agent: claude-code
+
+# 可选的 godotmaker-cli pipeline 模型覆盖项。
+# pipeline:
+#   model: <agent-model-id>
+
+vqa_model: native
+vqa_fallback_model: native
+
+asset_image_model: native
+
+asset_producer_model: sonnet
+worker_model: sonnet
+verifier_model: sonnet
+reviewer_model: sonnet
+analyst_model: sonnet
+auditor_model: sonnet
+decomposer_model: sonnet
+```
+
+## 运行时原生图片生成
+
+`native` 不是 API 提供方，而是当前智能体运行时提供的能力。
+
+模板默认使用 native 读图和 native 图片生成。
+
+对于 Codex 项目，`asset_image_model: native` 映射到 Codex 原生图片生成，前提是当前宿主暴露了这个能力。对于 Claude Code 项目，`native` 需要 Claude 侧有原生生图工具。没有原生路径时，`/gm-asset` 必须停止并要求你改用 `codex` 或 API 后端。
+
+对于 OpenCode 项目，框架不使用 `native` 生图或 `native` VQA。运行完整流水线前，请把 `asset_image_model` 和 `vqa_model` 改成 `codex` 或 API 后端 selector。
+
+如果 Claude Code 项目希望使用 Codex 图片生成：
+
+```yaml
+asset_image_model: codex
+```
+
+这会选择 Codex 作为图片生成 provider。它需要 Codex CLI 位于 PATH 中，不需要图片 API key。
+
+## Provider 配置页面
+
+Coding-agent runtime：
+
+- [Claude Code](providers/agent-runtimes/claude-code.md)
+- [Codex](providers/agent-runtimes/codex.md)
+- [OpenCode](providers/agent-runtimes/opencode.md)
+- [Pi](providers/agent-runtimes/pi.md)
+
+图片和 VQA provider：
+
+- [native](providers/image-vqa/native.md)
+- [codex](providers/image-vqa/codex.md)
+- [gemini](providers/image-vqa/gemini.md)
+- [openai](providers/image-vqa/openai.md)
+- [grok](providers/image-vqa/grok.md)
+- [wan](providers/image-vqa/wan.md)
+
+## API Key
+
+带提供方前缀的选择器需要对应 API key：
+
+| Selector | 需要的 key |
+|---|---|
+| `gemini:<model>` | `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` |
+| `openai:<model>` | `OPENAI_API_KEY` |
+| `grok:<model>` | `XAI_API_KEY` |
+| `wan:<model>` | `DASHSCOPE_API_KEY` 与 `DASHSCOPE_REGION`（`beijing` 或 `singapore`） |
+
+资源生成不会在 key 缺失时静默切换提供方。VQA 只有在显式配置 `vqa_fallback_model` 时才会回退。
+
+## 如何修改配置
+
+打开 `.godotmaker/config.yaml`，修改冒号后的值即可。例如使用 Codex 图片生成：
+
+```yaml
+asset_image_model: codex
+```
+
+使用 OpenAI API 生成图片：
+
+```yaml
+asset_image_model: openai:gpt-image-2
+```
+
+使用阿里云百炼 Wan 2.7：
+
+```yaml
+asset_image_model: wan
+```
+
+请设置 `DASHSCOPE_API_KEY` 和 `DASHSCOPE_REGION`（`beijing` 或
+`singapore`）。可选的 `DASHSCOPE_BASE_URL` 必须与该地域匹配，并支持业务空间专属域名。模型限制和参考图规则见 [Wan](providers/image-vqa/wan.md)。
+
+切换项目默认 Agent runtime：
+
+```yaml
+agent: codex
+```
+
+如果启动时传了 `--agent`，本次运行会优先使用启动参数：
+
+```bash
+godotmaker-cli --agent claude-code
+godotmaker-cli --agent codex
+godotmaker-cli --agent opencode
+```
+
+覆盖自动 pipeline 阶段使用的所选 agent 模型时，请使用当前 `godotmaker-cli` /
+GodotMakerApp 文档中的具体模型 ID：
+
+```yaml
+agent: codex
+pipeline:
+  model: <agent-model-id>
+```
+
+下一次运行 `/gm-*` 命令时会读取新配置。已经运行中的命令不会自动感知修改，需要下一次会话或阶段调用才会生效。
+
+## 关于 hook config 文件
+
+GodotMaker 会通过所选 runner 的入口注册 hook 脚本：Claude Code 使用
+`.claude/settings.json`，Codex 使用 `.codex/hooks.json`，OpenCode 使用
+`.opencode/plugins/godotmaker-hooks.js`。这些文件由框架管理；如果升级后
+hook 不再触发，可以运行 `python tools/publish.py --force <project>` 重新发布所选 runner 的 hook 入口。

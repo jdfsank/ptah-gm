@@ -1,0 +1,17 @@
+请接手本目录的 GodotMaker non-pk + DNA Workbench 合并工作。先读 START-HERE.zh-CN.md、docs/MERGE-PLAN.zh-CN.md、docs/REMAINING-WORK.zh-CN.md、docs/ACCEPTANCE-MATRIX.zh-CN.md、docs/VERSIONS.json，再读 frontend/docs/VALIDATION-v6.md 和 chain-boundaries-v5.md。
+
+第一轮只做本地勘察和计划：运行包完整性验证；明确我当前真正要继续的工程目录，检查仓库 AGENTS.md、Git 状态、未提交改动、分支和版本。不要假定示例就是我的最新工程，不覆盖我的新改动，不直接替换为旧游戏。需要解开源包时使用 tools/unpack-sources.py，脚本会拒绝覆盖已有 sources。核对 Node/npm、Python/uv、Codex app-server/技能接口、Godot 4.6.3 和插件/锁文件兼容性；当前 bridge 使用 fcntl，先以 macOS/Linux 为目标。不要安装或升权限来掩盖缺失能力。
+
+明确源工程并建立可恢复 checkpoint 后，按最小顺序实施：local readiness 与 gm-build 显式技能调用；真实 workbench-targets.json 和 PLAN/spec 真 TTY 确认；合法 GM 逐文件产物许可和 Evaluator 测试基线；先一个已有参数小改动的真 Codex→GM→Godot 正式 check 闭环；之后完善逐项 request-target-task-assertion 证据/结果自动化和源码重新提取，最后开发新的 transition 运行时机制。遇到需用户确认、权限不足、版本不兼容、未知范围、映射缺失或证据缺失就准确 BLOCKED，继续可独立进行的只读工作。
+
+合并目标是把前端作为 gm-non-pk 工程的薄适配工作台。PLAN/GAP 和原 GM 角色是权威，不创建另一个任务数据库或知识图谱，不全量 React 重写。目标 resolver 要单一且版本化，贯通 UI scope/catalog 和 GM task/mechanic。snapshot 只是上下文；预览须冻结 notes、diff、执行意图、allow paths 和规范权威摘要，确认后发送完全相同 payload。
+
+本地采用 1B：同一真实工程、空闲同线程、loopback bridge、本地浏览器。线程 ID、项目路径和私有 state 路径必须本地解析和验证，保留原线程权限，禁止代答审批。toolOutput 可见或 skills/list 有条目不等于模型执行 gm-build。私有 Site 是演示，不能直接读写我的电脑。
+
+不能把 turn 完成、文件变化、global PASS 或旧任务 verified 当作逐目标通过。当前逐项语义证据仍 BLOCKED，正式结果 import 需停 bridge 后人工操作。禁止 smoke/play 替代正式 check。游戏资源必须干净导入，不使用旧 .godot 缓存冒充验证。
+
+严格保留 spec 实施前、run acceptance 验证后、resolve-feedback 修复后的按需真 TTY 人工门；不代输，不生成伪确认。反馈恰好 id/mechanics/platform/text/type/source_ref 六字段并引用真实 formal check run；按 implementation/experience/design_change/test_error/capability 分流，不伪造 test_error 来改测试。Evaluator 新功能测试需要独立已审基线或明确窄角色扩展，不能默认旧规则允许。
+
+transition 要按 JSON 房间/ECS 重建实现，去返方向独立；遮罩和计时独立常驻，covered 前不换房，placement+camera 后 reveal，reveal 完才解锁；none/unset 跳过效果。处理坏资源、重复输入、取消、timeout，不能永久黑屏。不要把 playing 之外 delta=0 的角色动画系统当遮罩时钟，不要宣称目前有完整回滚。新机制须新审规格，不借旧任意 mechanic 授权。
+
+先给出当前工程/版本差异、阻塞点、建议 checkpoint 和第一阶段文件级改动计划，再按确认与权限边界继续。每阶段列出改动、测试、证据与剩余 BLOCKED，保持新草稿，不用执行结果覆盖新编辑。此次不要求重新发布 Site。

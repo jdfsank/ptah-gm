@@ -1,0 +1,20 @@
+{
+  "name": "dna-velvet-workbench-concept",
+  "private": true,
+  "version": "0.6.0",
+  "scripts": {
+    "test": "node tools/write-adapter-baseline.cjs --check && node tests/dom-qa.cjs && node tests/semantic-qa.cjs && node tests/navigation-qa.cjs && node tests/workbench-qa.cjs && node tests/submission-contract-qa.cjs && node tests/submission-shell-qa.cjs && node tests/review-edge-qa.cjs && python3 -m unittest discover -s tests -p \"test*.py\" && node tests/browser-demo-contract-qa.cjs && node tests/browser-demo-qa.cjs && node tests/cross-contract-qa.cjs && node tests/transition-qa.cjs && node tests/transition-chain-qa.cjs && node tests/comment-coverage-qa.cjs && node tests/review-ui-v6.cjs",
+    "check": "node --check dist/app.js && node --check dist/demo-data.js && node --check dist/semantic-model.js && node --check dist/semantic-data.js && node --check src/browser-demo.js && node --check src/submission-contract.js",
+    "extract": "python3 tools/extract-velvet.py",
+    "build": "esbuild src/workbench.jsx --bundle --minify --outfile=dist/workbench.js && node tools/write-adapter-baseline.cjs",
+    "bridge": "uv run python bridge/server.py"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "30.1.2"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

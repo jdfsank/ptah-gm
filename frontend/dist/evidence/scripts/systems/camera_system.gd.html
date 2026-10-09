@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/camera_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/camera_system.gd</h1><p>只读源快照 · SHA-256 085fdeaaed731fad094120cecd413f081f031f8498c507ffdbbbf2fc4c4feabf</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name CameraSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var _positioned: bool = false</span>
+<span class="line" id="L5"><a href="#L5">   5</a> </span>
+<span class="line" id="L6"><a href="#L6">   6</a> func setup() -&gt; void:</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L10"><a href="#L10">  10</a> 	return q.with_all([C_CameraTarget, C_Transform]).enabled()</span>
+<span class="line" id="L11"><a href="#L11">  11</a> </span>
+<span class="line" id="L12"><a href="#L12">  12</a> func process(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	if not is_instance_valid(runtime.camera):</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 		return</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	for entity in entities:</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		if not entity.enabled:</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 			continue</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		var target: C_CameraTarget = entity.get_component(C_CameraTarget)</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		if not target.enabled:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 			continue</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if body == null or not body.ready or (motion != null and motion.placement_pending):</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			continue</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		var transform: C_Transform = entity.get_component(C_Transform)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		var bounds: Rect2 = runtime.room_bounds</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 		var half: Vector2 = Vector2(640, 360)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		var desired: Vector2 = transform.position + target.offset</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		desired.x = clampf(desired.x, bounds.position.x + half.x, maxf(bounds.position.x + half.x, bounds.end.x - half.x))</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		desired.y = clampf(desired.y, bounds.position.y + half.y, maxf(bounds.position.y + half.y, bounds.end.y - half.y))</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		var camera: Camera2D = runtime.camera</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		camera.limit_left = int(bounds.position.x)</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		camera.limit_top = int(bounds.position.y)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		camera.limit_right = int(bounds.end.x)</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		camera.limit_bottom = int(bounds.end.y)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		camera.position = desired if not _positioned else camera.position.lerp(desired, 1.0 - exp(-target.smoothing * delta))</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		camera.position.x = clampf(camera.position.x, bounds.position.x + half.x, maxf(bounds.position.x + half.x, bounds.end.x - half.x))</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		camera.position.y = clampf(camera.position.y, bounds.position.y + half.y, maxf(bounds.position.y + half.y, bounds.end.y - half.y))</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		camera.reset_smoothing()</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		_positioned = true</span>
+</pre>

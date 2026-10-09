@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/platform-strip/casino_platforms/casino_platforms.png",
+  "regions": [
+    {
+      "name": "platform_left",
+      "rect": [
+        0,
+        0,
+        160,
+        80
+      ],
+      "pivot": [
+        0.5,
+        1.0
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "platform_middle",
+      "rect": [
+        160,
+        0,
+        160,
+        80
+      ],
+      "pivot": [
+        0.5,
+        1.0
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "platform_right",
+      "rect": [
+        320,
+        0,
+        160,
+        80
+      ],
+      "pivot": [
+        0.5,
+        1.0
+      ],
+      "nine_slice": null
+    }
+  ]
+}

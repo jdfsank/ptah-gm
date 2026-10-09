@@ -1,0 +1,18 @@
+[project]
+name = "godotmaker"
+version = "1.1.0"
+description = "ECS-native text-to-game framework for Godot"
+license = {text = "BUSL-1.1"}
+requires-python = ">=3.10"
+authors = [
+    {name = "RandallLiuXin"},
+]
+urls.Homepage = "https://github.com/RandallLiuXin/GodotMaker"
+urls.Repository = "https://github.com/RandallLiuXin/GodotMaker"
+urls.Issues = "https://github.com/RandallLiuXin/GodotMaker/issues"
+
+[tool.pytest.ini_options]
+pythonpath = ["hooks"]
+markers = [
+    "network: tests that require network access (deselect with '-m not network')",
+]

@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GDD.md</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>GDD.md</h1><p>只读源快照 · SHA-256 9cbd69d655e88288022374c7c8836519b5a98c91da29581f72c299261e97a66a</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> # Game Design Document: Velvet Eclipse / 绯月赌城</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> ## 1. Game Overview</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> An original, reference-led gothic side-scrolling action-exploration game. A violet-haired sword hunter enters a cursed casino castle, finds the Moonstep relic, returns to a sealed upper route, and breaks the Royal Dealer&#x27;s spell.</span>
+<span class="line" id="L6"><a href="#L6">   6</a> </span>
+<span class="line" id="L7"><a href="#L7">   7</a> Target: Godot 4.6.3 WebAssembly/WebGL2, desktop browser keyboard. Source project remains runnable in the native engine. Target first-time session: 10–15 minutes (design goal, not yet measured).</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> ## 2. Core Gameplay Loop</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> Read a room, traverse its platforms, fight telegraphed enemies, discover a route or relic, and return through the connected castle. The first route reaches the Roulette Clocktower and awards double jump. Returning to the Grand Lobby opens an upper balcony leading through the save room to the Royal Dealer. Defeating the two-phase boss yields a clear ending.</span>
+<span class="line" id="L12"><a href="#L12">  12</a> </span>
+<span class="line" id="L13"><a href="#L13">  13</a> ## 3. Mechanics</span>
+<span class="line" id="L14"><a href="#L14">  14</a> </span>
+<span class="line" id="L15"><a href="#L15">  15</a> - Move with A/D or Left/Right; jump with Space or W. Coyote time and jump buffering support deliberate platforming.</span>
+<span class="line" id="L16"><a href="#L16">  16</a> - Sword with J, throwing magic card with K, dodge with Shift/L. Attacks have timing, visible effects, cooldown/resource limits, damage and recovery.</span>
+<span class="line" id="L17"><a href="#L17">  17</a> - Three enemy types: melee skeletal dealer, ranged spectral dealer, flying cursed card. All have distinct telegraphs, hit reactions and defeat feedback.</span>
+<span class="line" id="L18"><a href="#L18">  18</a> - Acquire the Moonstep relic through real exploration. Double jump then enables a previously unreachable route in the Grand Lobby; it is not merely a cosmetic lock/key.</span>
+<span class="line" id="L19"><a href="#L19">  19</a> - E interacts with doors, relic and checkpoint; all available interactions show a readable prompt.</span>
+<span class="line" id="L20"><a href="#L20">  20</a> - Checkpoint heals and saves room/relic state. Death offers a clear return to checkpoint. Browser reload can continue from a valid save. Corrupt/missing saves fail safely.</span>
+<span class="line" id="L21"><a href="#L21">  21</a> - A two-phase Royal Dealer boss uses telegraphed card fans and slam zones. Phase two visibly changes rhythm and arena lighting. Boss defeat leads to ending and restart.</span>
+<span class="line" id="L22"><a href="#L22">  22</a> - Escape pauses gameplay and all gameplay input, preserving menu input. M toggles discovered-room map.</span>
+<span class="line" id="L23"><a href="#L23">  23</a> </span>
+<span class="line" id="L24"><a href="#L24">  24</a> ## 4. World and Art Direction</span>
+<span class="line" id="L25"><a href="#L25">  25</a> </span>
+<span class="line" id="L26"><a href="#L26">  26</a> Five connected rooms: Grand Lobby (大厅), Card Banquet Gallery (牌宴回廊), Roulette Clocktower (轮盘钟楼), Quiet Save Room (静谧存档室), House Throne (庄家王座).</span>
+<span class="line" id="L27"><a href="#L27">  27</a> </span>
+<span class="line" id="L28"><a href="#L28">  28</a> Rich illustrated 2D raster assets, inspired by the eight supplied concepts: indigo stone, burgundy curtains, warm candlelight, fine aged-gold trim, purple moonlight, neon magenta playing cards. Use original generated art and actual animated SpriteFrames. The current asset skills produce illustrated/cel-shaded assets, not a claim of true pixel-art production or one-to-one concept rendering.</span>
+<span class="line" id="L29"><a href="#L29">  29</a> </span>
+<span class="line" id="L30"><a href="#L30">  30</a> Viewport 1280×720. Heroine standing height 92–108 px; dealers 105–130 px; boss 260–320 px. Platforms have clear lit tops and deep architectural support. Backdrops are non-colliding distant architecture with no baked-in gameplay actors/UI. Moving actors, platform surfaces, doors, relics and projectiles are independent resources. Reference screenshots are never a full-screen substitute for a scene.</span>
+<span class="line" id="L31"><a href="#L31">  31</a> </span>
+<span class="line" id="L32"><a href="#L32">  32</a> ## 5. Characters</span>
+<span class="line" id="L33"><a href="#L33">  33</a> </span>
+<span class="line" id="L34"><a href="#L34">  34</a> Heroine: silver-violet short hair, green eyes, dark fitted hunter costume, wine/violet cape or ribbons, gold-accented thin sword. Seven needed body actions: idle, run, jump, attack, cast, dodge, hurt. A fall may hold an appropriate jump pose. Death uses existing hurt pose plus scene treatment, not a claimed additional frame action.</span>
+<span class="line" id="L35"><a href="#L35">  35</a> </span>
+<span class="line" id="L36"><a href="#L36">  36</a> Dealers share a coherent animated skeletal family (idle/move/melee attack/cast), with silhouette-equipment/color differences separating melee and ranged behavior. Flying card is a rigid illustrated card token with flight/flip motion. Boss has genuine idle/attack frames plus independently animated magical hand/attack effects.</span>
+<span class="line" id="L37"><a href="#L37">  37</a> </span>
+<span class="line" id="L38"><a href="#L38">  38</a> ## 6. Room Progression</span>
+<span class="line" id="L39"><a href="#L39">  39</a> </span>
+<span class="line" id="L40"><a href="#L40">  40</a> Lobby -&gt; Gallery -&gt; Clocktower (Moonstep) -&gt; Gallery -&gt; Lobby upper balcony -&gt; Save Room -&gt; Throne. Returning between rooms preserves visited-room knowledge. The Clocktower teaches the new jump at its exit. The save room is safe and the final checkpoint is close to the boss. Each room has unique foreground composition and distinct lighting, even where the same distant architectural plate is reused.</span>
+<span class="line" id="L41"><a href="#L41">  41</a> </span>
+<span class="line" id="L42"><a href="#L42">  42</a> ## 7. UI and Feedback</span>
+<span class="line" id="L43"><a href="#L43">  43</a> </span>
+<span class="line" id="L44"><a href="#L44">  44</a> Readable title/start/continue screen, control guide, health and card-energy HUD, objective text, ability badge, compact room map, interaction prompts, pause overlay, death/retry and ending. Gold/purple frames and card-suit motifs reinforce the references. No dense unreadable miniature text. Damage has flash and short invulnerability; sword impacts, projectile impacts and landing feedback have bounded lifetimes.</span>
+<span class="line" id="L45"><a href="#L45">  45</a> </span>
+<span class="line" id="L46"><a href="#L46">  46</a> ## 8. Audio</span>
+<span class="line" id="L47"><a href="#L47">  47</a> </span>
+<span class="line" id="L48"><a href="#L48">  48</a> No supplied audio files. Music/recorded SFX are deferred per the framework asset rule; the release must remain understandable through visuals. No unsupported audio quality claim.</span>
+<span class="line" id="L49"><a href="#L49">  49</a> </span>
+<span class="line" id="L50"><a href="#L50">  50</a> ## 9. Scope and Approval</span>
+<span class="line" id="L51"><a href="#L51">  51</a> </span>
+<span class="line" id="L52"><a href="#L52">  52</a> Source: user request “参考这些照片，使用这个系统制作一个恶魔城游戏”, eight uploaded references, and the scope/dependency question quoted in docs/USER-APPROVAL.md.</span>
+<span class="line" id="L53"><a href="#L53">  53</a> </span>
+<span class="line" id="L54"><a href="#L54">  54</a> User reply on 2026-10-06: “许可，构建wasm”. This explicitly approves the five-room v0.1.0 scope and fixed official dependencies and requires a WebAssembly build. Provenance is a host-supplied exact chat transcript, not local TTY confirmation or final game acceptance.</span>
+<span class="line" id="L55"><a href="#L55">  55</a> </span>
+<span class="line" id="L56"><a href="#L56">  56</a> Not in scope: real-money gambling, payments, store/equipment economy, 25 costumes, online service, long campaign, mobile/touch/controller certification, hosting/publication/push. No changes to the source GodotMaker system unless a genuine blocking bug is separately identified.</span>
+</pre>

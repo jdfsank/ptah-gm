@@ -1,0 +1,43 @@
+{
+  "type": "jsdom navigation contracts",
+  "checks": [
+    {
+      "name": "Primary navigation is scene overview, composition and connections only",
+      "status": "pass"
+    },
+    {
+      "name": "Exact room+draft ID mapping preserves colon spawn IDs and catalog identities",
+      "status": "pass"
+    },
+    {
+      "name": "Instance target synchronizes canvas, DNA, breadcrumbs and event target",
+      "status": "pass"
+    },
+    {
+      "name": "Shared definition has source/draft/generated references and exact return journey",
+      "status": "pass"
+    },
+    {
+      "name": "Name and exact catalog-ID search navigate without creating objects",
+      "status": "pass"
+    },
+    {
+      "name": "Background notes navigation shares selected scene and Art lens",
+      "status": "pass"
+    },
+    {
+      "name": "Unknown stale target cannot mutate draft or replace selection",
+      "status": "pass"
+    },
+    {
+      "name": "Baseline remains immutable after domain editing",
+      "status": "pass"
+    },
+    {
+      "name": "Browser Back/Forward restores the same target without changing draft",
+      "status": "pass"
+    }
+  ],
+  "summary": "9/9 passed",
+  "limitations": "No rendered browser or Godot execution claim."
+}

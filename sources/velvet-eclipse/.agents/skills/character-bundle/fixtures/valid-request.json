@@ -1,0 +1,25 @@
+{
+  "asset_type": "character-bundle",
+  "asset_id": "player",
+  "brief": "A hand-drawn cel-shaded side-view knight with a readable idle and a sword attack on a transparent background.",
+  "references": [
+    { "role": "canonical", "path": "res://references/player_canonical.png" }
+  ],
+  "provider": "native",
+  "spec": {
+    "visual_style": "hand-drawn cel-shaded fantasy",
+    "frame_canvas_px": 256,
+    "actions": [
+      {
+        "name": "idle",
+        "intent": "A calm full-body stance with a subtle breathing and weight-shift cycle.",
+        "loop": true
+      },
+      {
+        "name": "attack",
+        "intent": "A side-view sword strike with anticipation, a readable hit pose, and recovery.",
+        "loop": false
+      }
+    ]
+  }
+}

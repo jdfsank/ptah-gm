@@ -1,0 +1,79 @@
+{
+  "_comment": "Godot version -> compatible addon versions. Agent MUST download the version listed here.",
+  "_format": "Each addon entry has: repo (GitHub), tag (git tag to download), install_path (where to copy in project), autoload (project.godot autoload entry if needed), plugin (whether to enable in [editor_plugins])",
+  "_update_guide": "When a new Godot or addon version is released, add/update the mapping below and test compatibility.",
+
+  "godot_versions": {
+    "4.3": {
+      "gecs": {
+        "repo": "csprance/gecs",
+        "tag": "v7.1.0",
+        "install_path": "addons/gecs",
+        "plugin": true,
+        "notes": "ECS framework. Enable in Project Settings -> Plugins."
+      },
+      "gdunit4": {
+        "repo": "MikeSchulze/gdUnit4",
+        "tag": "v5.1.1",
+        "install_path": "addons/gdUnit4",
+        "plugin": true,
+        "notes": "v5.x series for Godot 4.3/4.4. v6.x requires Godot 4.5+."
+      },
+      "godot_e2e": {
+        "repo": "RandallLiuXin/godot-e2e",
+        "tag": "v1.1.0",
+        "install_path": "addons/godot_e2e",
+        "plugin": true,
+        "notes": "E2E testing. Enable in Project Settings -> Plugins. Plugin auto-registers AutomationServer autoload."
+      }
+    },
+
+    "4.4": {
+      "gecs": {
+        "repo": "csprance/gecs",
+        "tag": "v7.1.0",
+        "install_path": "addons/gecs",
+        "plugin": true,
+        "notes": "ECS framework. Enable in Project Settings -> Plugins."
+      },
+      "gdunit4": {
+        "repo": "MikeSchulze/gdUnit4",
+        "tag": "v5.1.1",
+        "install_path": "addons/gdUnit4",
+        "plugin": true,
+        "notes": "v5.x series for Godot 4.3/4.4. v6.x requires Godot 4.5+."
+      },
+      "godot_e2e": {
+        "repo": "RandallLiuXin/godot-e2e",
+        "tag": "v1.1.0",
+        "install_path": "addons/godot_e2e",
+        "plugin": true,
+        "notes": "E2E testing. Enable in Project Settings -> Plugins. Plugin auto-registers AutomationServer autoload."
+      }
+    },
+
+    "4.5": {
+      "gecs": {
+        "repo": "csprance/gecs",
+        "tag": "v7.1.0",
+        "install_path": "addons/gecs",
+        "plugin": true,
+        "notes": "ECS framework. Enable in Project Settings -> Plugins."
+      },
+      "gdunit4": {
+        "repo": "MikeSchulze/gdUnit4",
+        "tag": "v6.1.0",
+        "install_path": "addons/gdUnit4",
+        "plugin": true,
+        "notes": "v6.x series for Godot 4.5+."
+      },
+      "godot_e2e": {
+        "repo": "RandallLiuXin/godot-e2e",
+        "tag": "v1.3.0",
+        "install_path": "addons/godot_e2e",
+        "plugin": true,
+        "notes": "E2E testing. v1.3.0 is used for Godot 4.5+; 4.3/4.4 stay on v1.1.0. Enable in Project Settings -> Plugins. Plugin auto-registers AutomationServer autoload."
+      }
+    }
+  }
+}

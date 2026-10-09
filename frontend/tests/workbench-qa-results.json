@@ -1,0 +1,63 @@
+{
+  "type": "Built React workbench and real domain-script integration in jsdom with mocked fetch",
+  "checks": [
+    {
+      "name": "Idle, typed edits, navigation, notes and theme controls never POST or poll a model",
+      "status": "pass"
+    },
+    {
+      "name": "Scope selector covers each scene/background/instance, all 21 definitions and all 38 behaviors",
+      "status": "pass"
+    },
+    {
+      "name": "Notes stay scoped through switches, panel close, domain edits and page reload",
+      "status": "pass"
+    },
+    {
+      "name": "Explicit Submit freezes one authenticated snapshot with thread/base revision and blocks double clicks",
+      "status": "pass"
+    },
+    {
+      "name": "Empty unchanged draft is rejected locally; typed-only changes can be explicitly submitted",
+      "status": "pass"
+    },
+    {
+      "name": "Offline startup keeps browser editing usable and explicit refresh restores the connection",
+      "status": "pass"
+    },
+    {
+      "name": "Uncertain POST blocks retries until refresh verifies no receipt; refresh never auto-resubmits",
+      "status": "pass"
+    },
+    {
+      "name": "A lost POST response recovers the accepted exact-ID receipt without resubmission",
+      "status": "pass"
+    },
+    {
+      "name": "Changing durable store or thread cannot clear an unresolved envelope; restoring the original mapping can",
+      "status": "pass"
+    },
+    {
+      "name": "Unavailable recovery storage prevents POST instead of losing the immutable recovery envelope",
+      "status": "pass"
+    },
+    {
+      "name": "Stale source baseline disables submission until a refreshed adapter match is verified",
+      "status": "pass"
+    },
+    {
+      "name": "Polling interruption keeps a known receipt visible and refresh can recover without duplicate POST",
+      "status": "pass"
+    },
+    {
+      "name": "HTTP conflict reconciles to another-tab receipt and uses its updated base revision only on the next Submit",
+      "status": "pass"
+    },
+    {
+      "name": "Reload restores an active receipt, polls to failure and preserves notes without issuing any POST",
+      "status": "pass"
+    }
+  ],
+  "summary": "14/14 passed",
+  "limitations": "No rendered-browser visual/accessibility claim, real network, Codex inference, or source-writeback claim."
+}

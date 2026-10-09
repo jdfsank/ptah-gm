@@ -1,0 +1,84 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/boss_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/boss_system.gd</h1><p>只读源快照 · SHA-256 38b1f6701506d7a08163d2e442ba73932142e678996efc2e1f15eb2aacd39b7a</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name BossSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> func setup() -&gt; void:</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	return q.with_all([C_Boss, C_Health, C_Transform]).enabled()</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func process(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	for entity in entities:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		if not entity.enabled:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 			continue</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		var boss: C_Boss = entity.get_component(C_Boss)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		var health: C_Health = entity.get_component(C_Health)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var combat: C_Combat = entity.get_component(C_Combat)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		boss.arena_active = runtime.session.mode == &quot;playing&quot; and runtime.session.room_id == &quot;house_throne&quot; and entity.get_component(C_RoomMember).room_id == &quot;house_throne&quot; and not health.dead</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		if not boss.arena_active:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 			combat.requested_attack = &quot;&quot;</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 			continue</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		var player_position: Vector2 = runtime.player.get_component(C_Transform).position</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 		var position: Vector2 = entity.get_component(C_Transform).position</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		motion.facing = -1 if player_position.x &lt; position.x else 1</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if health.current &lt;= health.maximum / 2 and not boss.phase_changed:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			boss.phase = 2</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 			boss.phase_changed = true</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 			boss.state = &quot;phase_change&quot;</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 			boss.time_left = 1.4</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 			combat.state = &quot;idle&quot;</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 			combat.requested_attack = &quot;&quot;</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 			runtime.discard_transients()</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 			runtime.session.message = &quot;第二阶段 · 绯月狂宴&quot;</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			for background in runtime.world.query.with_all([C_Visual, C_RoomMember]).enabled().execute():</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 				if background.enabled and background.get_component(C_Visual).asset_id == &quot;bg_throne&quot;:</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 					background.get_component(C_Visual).tint = Color(0.88, 0.38, 0.66, 1.0)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 			_warning(entity, &quot;phase_warning&quot;, position + Vector2(0, -145), Vector2(380, 290), 1.4)</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 			continue</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		boss.time_left = maxf(0.0, boss.time_left - delta)</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 		if boss.time_left &gt; 0.0:</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 			continue</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 		match boss.state:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 			&quot;idle&quot;, &quot;recovery&quot;, &quot;phase_change&quot;:</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 				if boss.phase == 2 and boss.attack_index % 3 == 2:</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 					_begin_slam(entity, player_position)</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 				elif boss.attack_index % 2 == 0:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 					boss.state = &quot;fan_warning&quot;</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 					boss.time_left = 0.65 if boss.phase == 1 else 0.55</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 					_warning(entity, &quot;fan_warning&quot;, position + Vector2(0, -100), Vector2(220, 140), boss.time_left + 0.35)</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 				else:</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 					_begin_slam(entity, player_position)</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 			&quot;fan_warning&quot;:</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 				combat.requested_attack = &quot;boss_fan&quot;</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 				boss.state = &quot;fan_attack&quot;</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 				boss.time_left = 0.75</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 			&quot;slam_warning&quot;:</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 				combat.requested_attack = &quot;boss_slam&quot;</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 				boss.state = &quot;slam_attack&quot;</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 				boss.time_left = 0.75</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 			&quot;fan_attack&quot;:</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 				if boss.phase == 2:</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 					_begin_slam(entity, player_position)</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 				else:</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 					_recover(boss)</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			&quot;slam_attack&quot;:</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 				_recover(boss)</span>
+<span class="line" id="L68"><a href="#L68">  68</a> </span>
+<span class="line" id="L69"><a href="#L69">  69</a> func _recover(boss: C_Boss) -&gt; void:</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 	boss.state = &quot;recovery&quot;</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 	boss.time_left = 2.0 if boss.phase == 1 else 1.45</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 	boss.attack_index += 1</span>
+<span class="line" id="L73"><a href="#L73">  73</a> </span>
+<span class="line" id="L74"><a href="#L74">  74</a> func _begin_slam(entity: Entity, target: Vector2) -&gt; void:</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 	var boss: C_Boss = entity.get_component(C_Boss)</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 	boss.slam_center = Vector2(clampf(target.x, 120.0, 1480.0), 592.0)</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 	boss.state = &quot;slam_warning&quot;</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 	boss.time_left = 0.90 if boss.phase == 1 else 0.75</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 	_warning(entity, &quot;slam_warning&quot;, boss.slam_center, Vector2(220, 56), boss.time_left + 0.35)</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 	runtime.request_spawn(&quot;effect&quot;, &quot;house_throne&quot;, {&quot;position&quot;: boss.slam_center + Vector2(0, -215), &quot;kind&quot;: &quot;ghost_hand&quot;, &quot;duration&quot;: boss.time_left + 0.65, &quot;size&quot;: Vector2(180, 240), &quot;color&quot;: Color(0.8, 0.68, 1.0, 0.9), &quot;owner_id&quot;: entity.id})</span>
+<span class="line" id="L81"><a href="#L81">  81</a> </span>
+<span class="line" id="L82"><a href="#L82">  82</a> func _warning(entity: Entity, kind: String, position: Vector2, size: Vector2, duration: float) -&gt; void:</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 	runtime.request_spawn(&quot;effect&quot;, &quot;house_throne&quot;, {&quot;position&quot;: position, &quot;kind&quot;: kind, &quot;duration&quot;: duration, &quot;size&quot;: size, &quot;color&quot;: Color(1.0, 0.48, 0.68, 1.0) if kind != &quot;phase_warning&quot; else Color(0.7, 0.4, 1.0, 1.0), &quot;owner_id&quot;: entity.id})</span>
+</pre>

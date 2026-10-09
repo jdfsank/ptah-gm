@@ -1,0 +1,29 @@
+{
+  "scaffold": {
+    "files": ["project.godot"]
+  },
+  "gdd": {
+    "files": ["GDD.md", "PLAN.md", "STRUCTURE.md", "DESIGN.md", "ASSETS.md", "SCENES.md", "TOC.md", "ROADMAP.md"]
+  },
+  "asset": {},
+  "build": {
+    "checks": ["plan_all_verified"]
+  },
+  "verify": {
+    "files": [".godotmaker/verify_report.json"],
+    "checks": ["verify_report_pass"]
+  },
+  "evaluate": {
+    "files": [".godotmaker/evaluation.json"],
+    "checks": ["evaluation_playable_unit"]
+  },
+  "fixgap": {
+    "checks": ["gap_archived"]
+  },
+  "accept": {},
+  "finalize": {
+    "files": [".godotmaker/final_report.json"],
+    "checks": ["tag_archived"]
+  },
+  "rescue": {}
+}

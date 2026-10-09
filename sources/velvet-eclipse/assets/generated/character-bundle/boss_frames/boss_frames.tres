@@ -1,0 +1,44 @@
+[gd_resource type="SpriteFrames" load_steps=13 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_01.png" id="1_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_02.png" id="2_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_03.png" id="3_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_04.png" id="4_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_05.png" id="5_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_idle_idle_06.png" id="6_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_01.png" id="7_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_02.png" id="8_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_03.png" id="9_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_04.png" id="10_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_05.png" id="11_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/boss_frames/boss_frames_attack_attack_06.png" id="12_texture"]
+
+[resource]
+animations = [
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("1_texture")},
+{"duration": 1.0, "texture": ExtResource("2_texture")},
+{"duration": 1.0, "texture": ExtResource("3_texture")},
+{"duration": 1.0, "texture": ExtResource("4_texture")},
+{"duration": 1.0, "texture": ExtResource("5_texture")},
+{"duration": 1.0, "texture": ExtResource("6_texture")}
+],
+"loop": true,
+"name": &"idle",
+"speed": 6.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("7_texture")},
+{"duration": 1.5, "texture": ExtResource("8_texture")},
+{"duration": 1.0, "texture": ExtResource("9_texture")},
+{"duration": 1.0, "texture": ExtResource("10_texture")},
+{"duration": 1.0, "texture": ExtResource("11_texture")},
+{"duration": 1.5, "texture": ExtResource("12_texture")}
+],
+"loop": false,
+"name": &"attack",
+"speed": 10.0
+}
+]

@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "id": "roulette_clocktower",
+  "name": "轮盘钟楼",
+  "bounds": [
+    0,
+    -480,
+    2240,
+    1200
+  ],
+  "background": "bg_tower",
+  "light": [
+    0.55,
+    0.64,
+    0.9,
+    1
+  ],
+  "spawns": {
+    "start": [
+      180,
+      620
+    ],
+    "from_gallery": [
+      180,
+      620
+    ]
+  },
+  "platforms": [
+    {
+      "id": "floor",
+      "rect": [
+        0,
+        620,
+        2240,
+        80
+      ]
+    },
+    {
+      "id": "step_one",
+      "rect": [
+        400,
+        530,
+        320,
+        80
+      ]
+    },
+    {
+      "id": "step_two",
+      "rect": [
+        800,
+        440,
+        320,
+        80
+      ]
+    },
+    {
+      "id": "relic_landing",
+      "rect": [
+        1200,
+        350,
+        480,
+        80
+      ]
+    },
+    {
+      "id": "moonstep_practice",
+      "rect": [
+        1760,
+        160,
+        320,
+        80
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "great_roulette",
+      "asset_id": "roulette",
+      "position": [
+        1080,
+        100
+      ],
+      "size": [
+        260,
+        260
+      ],
+      "z": -5
+    },
+    {
+      "id": "upper_rail",
+      "asset_id": "railing",
+      "position": [
+        1430,
+        312
+      ],
+      "size": [
+        256,
+        96
+      ],
+      "z": -5
+    },
+    {
+      "id": "tower_candle_1",
+      "asset_id": "candle",
+      "position": [
+        510,
+        502
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "tower_candle_2",
+      "asset_id": "candle",
+      "position": [
+        940,
+        412
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "tower_candle_3",
+      "asset_id": "candle",
+      "position": [
+        1570,
+        322
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    }
+  ],
+  "enemies": [
+    {
+      "id": "tower_card",
+      "kind": "flying",
+      "position": [
+        970,
+        220
+      ],
+      "patrol_radius": 100
+    }
+  ],
+  "doors": [
+    {
+      "id": "to_gallery",
+      "position": [
+        110,
+        620
+      ],
+      "target_room": "card_banquet_gallery",
+      "target_spawn": "from_clocktower",
+      "prompt": "返回牌宴回廊"
+    },
+    {
+      "id": "practice_return",
+      "position": [
+        1920,
+        160
+      ],
+      "target_room": "card_banquet_gallery",
+      "target_spawn": "from_clocktower",
+      "prompt": "月步试炼完成 · 返回回廊"
+    }
+  ],
+  "relic": {
+    "id": "moonstep",
+    "position": [
+      1440,
+      350
+    ],
+    "prompt": "获得月步 · 空中再按 Space/W"
+  },
+  "checkpoint": null,
+  "boss": null
+}

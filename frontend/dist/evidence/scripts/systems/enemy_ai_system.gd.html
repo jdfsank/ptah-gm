@@ -1,0 +1,71 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/enemy_ai_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/enemy_ai_system.gd</h1><p>只读源快照 · SHA-256 cfdb3f314cd6d090dfa222a1363c8e04b048063a6c51ebd8537bfbe8ab46c236</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name EnemyAISystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> func setup() -&gt; void:</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	return q.with_all([C_EnemyAI, C_Transform, C_Health]).enabled()</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func process(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	for entity in entities:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		if not entity.enabled:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 			continue</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		var ai: C_EnemyAI = entity.get_component(C_EnemyAI)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		var health: C_Health = entity.get_component(C_Health)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var input: C_Input = entity.get_component(C_Input)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		input.sword_pressed = false</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		input.card_pressed = false</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		input.axis = 0.0</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 		motion.desired_velocity = Vector2.ZERO</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if health.dead or health.hurt_left &gt; 0.0 or motion.placement_pending:</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			continue</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		var target: Entity = runtime.world.entity_id_registry.get(ai.target_id)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if not is_instance_valid(target) or not target.enabled or target.get_component(C_Health).dead:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			continue</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		if target.get_component(C_RoomMember).room_id != entity.get_component(C_RoomMember).room_id:</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 			continue</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		ai.time_left = maxf(0.0, ai.time_left - delta)</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		var position: Vector2 = entity.get_component(C_Transform).position</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		var target_position: Vector2 = target.get_component(C_Transform).position</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		var offset: Vector2 = target_position - position</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		if ai.kind == &quot;flying&quot;:</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			offset.y -= 48.0</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		if ai.state in [&quot;spawning&quot;, &quot;recover&quot;]:</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 			if ai.time_left &lt;= 0.0:</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 				ai.state = &quot;idle&quot;</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 			continue</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		if ai.state == &quot;telegraph&quot;:</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			if ai.time_left &lt;= 0.0:</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 				if ai.kind == &quot;ranged&quot;:</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 					input.card_pressed = true</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 				else:</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 					input.sword_pressed = true</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 				ai.state = &quot;lunge&quot; if ai.kind == &quot;flying&quot; else &quot;recover&quot;</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 				ai.time_left = 0.32 if ai.kind == &quot;flying&quot; else 1.05</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 			continue</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 		if ai.state == &quot;lunge&quot;:</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 			motion.desired_velocity = Vector2(motion.facing * 360.0, 0.0)</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 			if ai.time_left &lt;= 0.0:</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 				ai.state = &quot;recover&quot;</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 				ai.time_left = 0.9</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 			continue</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 		if offset.length() &gt; ai.aggro_range:</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 			ai.state = &quot;idle&quot;</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 			continue</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 		input.axis = signf(offset.x)</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 		if ai.kind == &quot;ranged&quot; and absf(offset.x) &lt; 220.0:</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 			ai.state = &quot;retreat&quot;</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 			motion.desired_velocity.x = -signf(offset.x) * motion.speed</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 			continue</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 		var in_range: bool = absf(offset.x) &lt;= ai.attack_range and absf(offset.y) &lt; 75.0</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 		if in_range:</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 			ai.state = &quot;telegraph&quot;</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			ai.time_left = 0.65 if ai.kind == &quot;ranged&quot; else 0.5</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 			runtime.request_spawn(&quot;effect&quot;, entity.get_component(C_RoomMember).room_id, {&quot;kind&quot;: &quot;telegraph&quot;, &quot;position&quot;: position + Vector2(0, -55), &quot;size&quot;: Vector2(85, 100), &quot;color&quot;: Color(1, 0.35, 0.48, 0.85), &quot;duration&quot;: ai.time_left, &quot;owner_id&quot;: entity.id})</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		else:</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 			ai.state = &quot;approach&quot;</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 			motion.desired_velocity = offset.normalized() * motion.speed if ai.kind == &quot;flying&quot; else Vector2(signf(offset.x) * motion.speed, 0)</span>
+</pre>

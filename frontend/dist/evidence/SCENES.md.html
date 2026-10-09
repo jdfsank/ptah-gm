@@ -1,0 +1,467 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SCENES.md</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>SCENES.md</h1><p>只读源快照 · SHA-256 2648d853c44128f36e7eb8949370ff4d3d8e7855955f22d43830da1830a6f8cb</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> # Scene Descriptions: Velvet Eclipse / 绯月赌城</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> **Tag:** v0.1.0</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> PLAN.md supplies every task, mechanic, scene path and resource mapping; STRUCTURE.md supplies the room schema and ECS ownership. All scene/resource paths below are planned end-of-tag contracts unless already present, not a readiness claim. Resolution reference for every scene: 1280×720, with a 32 px outer UI safe margin. Native and actual Web output must preserve readable framing.</span>
+<span class="line" id="L6"><a href="#L6">   6</a> </span>
+<span class="line" id="L7"><a href="#L7">   7</a> The five rooms are JSON compositions inside `scenes/game_world.tscn`, not new gameplay controller scenes. Coordinates in Elements describe viewport composition, not physics guarantees. Choose room dimensions and final ledge coordinates using measured movement envelopes: the unchanged Lobby upper gap must exceed every permitted pre-relic jump/dodge trajectory but remain reachable with a normal second jump. Bind visible art independently of collision.</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> Source-only anchors use the exact existing paths below/under individual scenes. They are never runtime textures or completed screen-reference results; no additional screen-reference generation is needed. Screenshot criteria describe visible states; mechanics, timing, reachability, pause and persistence still require PLAN execution evidence.</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> ## Scene: Main Bootstrap</span>
+<span class="line" id="L12"><a href="#L12">  12</a> - **Path / composition:** `scenes/main.tscn`</span>
+<span class="line" id="L13"><a href="#L13">  13</a> - **Type:** menu host; **Layout:** full viewport</span>
+<span class="line" id="L14"><a href="#L14">  14</a> - **Background:** No additional artwork; hosts title/world/UI.</span>
+<span class="line" id="L15"><a href="#L15">  15</a> - **Mood:** Immediate clear entry.</span>
+<span class="line" id="L16"><a href="#L16">  16</a> </span>
+<span class="line" id="L17"><a href="#L17">  17</a> ### Elements</span>
+<span class="line" id="L18"><a href="#L18">  18</a> </span>
+<span class="line" id="L19"><a href="#L19">  19</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L20"><a href="#L20">  20</a> |---|---|---|---|</span>
+<span class="line" id="L21"><a href="#L21">  21</a> | Title/world host | full viewport | 100%w × 100%h | Owns wiring, not an extra playable room. |</span>
+<span class="line" id="L22"><a href="#L22">  22</a> </span>
+<span class="line" id="L23"><a href="#L23">  23</a> ### Asset bindings</span>
+<span class="line" id="L24"><a href="#L24">  24</a> </span>
+<span class="line" id="L25"><a href="#L25">  25</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L26"><a href="#L26">  26</a> |---|---|---|---|</span>
+<span class="line" id="L27"><a href="#L27">  27</a> | Host | procedural; child-scene bindings below | 1280×720 | No additional asset row or duplicate World |</span>
+<span class="line" id="L28"><a href="#L28">  28</a> </span>
+<span class="line" id="L29"><a href="#L29">  29</a> ### Acceptance criteria</span>
+<span class="line" id="L30"><a href="#L30">  30</a> </span>
+<span class="line" id="L31"><a href="#L31">  31</a> - [v0.1.0-M7] Final release launch visibly reaches Title Screen; no blank/error scene, unrequested debug UI or simultaneous modal screens.</span>
+<span class="line" id="L32"><a href="#L32">  32</a> </span>
+<span class="line" id="L33"><a href="#L33">  33</a> ### Transitions</span>
+<span class="line" id="L34"><a href="#L34">  34</a> - Boot → Title Screen; ordinary Start/Continue requests → GameWorld.</span>
+<span class="line" id="L35"><a href="#L35">  35</a> </span>
+<span class="line" id="L36"><a href="#L36">  36</a> ## Scene: Title Screen</span>
+<span class="line" id="L37"><a href="#L37">  37</a> - **Path / composition:** `scenes/ui/title_screen.tscn`</span>
+<span class="line" id="L38"><a href="#L38">  38</a> - **Type:** menu; **Layout:** vertical-center</span>
+<span class="line" id="L39"><a href="#L39">  39</a> - **Background:** Dark indigo procedural surface with gold/purple framing; no portrait.</span>
+<span class="line" id="L40"><a href="#L40">  40</a> - **Mood:** Moonlit and welcoming.</span>
+<span class="line" id="L41"><a href="#L41">  41</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L42"><a href="#L42">  42</a> </span>
+<span class="line" id="L43"><a href="#L43">  43</a> ### Elements</span>
+<span class="line" id="L44"><a href="#L44">  44</a> </span>
+<span class="line" id="L45"><a href="#L45">  45</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L46"><a href="#L46">  46</a> |---|---|---|---|</span>
+<span class="line" id="L47"><a href="#L47">  47</a> | Title | upper-center | 70%w × 18%h | 绯月赌城, optional Velvet Eclipse subtitle. |</span>
+<span class="line" id="L48"><a href="#L48">  48</a> | Actions | center | 30%w × 25%h | 开始游戏 / 继续游戏; visible selected and disabled states. |</span>
+<span class="line" id="L49"><a href="#L49">  49</a> | Controls / browser focus | bottom-center | 85%w × 17%h | Chinese concise controls and keyboard-focus hint. |</span>
+<span class="line" id="L50"><a href="#L50">  50</a> </span>
+<span class="line" id="L51"><a href="#L51">  51</a> ### Asset bindings</span>
+<span class="line" id="L52"><a href="#L52">  52</a> </span>
+<span class="line" id="L53"><a href="#L53">  53</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L54"><a href="#L54">  54</a> |---|---|---|---|</span>
+<span class="line" id="L55"><a href="#L55">  55</a> | Background | procedural | 1280×720 | Dark indigo surface; no extra raster UI requirement |</span>
+<span class="line" id="L56"><a href="#L56">  56</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L57"><a href="#L57">  57</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L58"><a href="#L58">  58</a> </span>
+<span class="line" id="L59"><a href="#L59">  59</a> ### Acceptance criteria</span>
+<span class="line" id="L60"><a href="#L60">  60</a> </span>
+<span class="line" id="L61"><a href="#L61">  61</a> - [v0.1.0-M7] Title and Start are fully readable; selected action is distinct.</span>
+<span class="line" id="L62"><a href="#L62">  62</a> - [v0.1.0-M5] Continue is visibly disabled when save is missing/corrupt/unsupported; a safe Start path and honest notice remain.</span>
+<span class="line" id="L63"><a href="#L63">  63</a> - No heroine portrait, inventory, shop or costume menu is present.</span>
+<span class="line" id="L64"><a href="#L64">  64</a> </span>
+<span class="line" id="L65"><a href="#L65">  65</a> ### Transitions</span>
+<span class="line" id="L66"><a href="#L66">  66</a> - Start → Lobby fresh run; Continue → validated checkpoint room; failed load → Title with notice.</span>
+<span class="line" id="L67"><a href="#L67">  67</a> </span>
+<span class="line" id="L68"><a href="#L68">  68</a> ## Scene: GameWorld</span>
+<span class="line" id="L69"><a href="#L69">  69</a> - **Path / composition:** `scenes/game_world.tscn`</span>
+<span class="line" id="L70"><a href="#L70">  70</a> - **Type:** gameplay host; **Layout:** freeform world + edge-anchored HUD</span>
+<span class="line" id="L71"><a href="#L71">  71</a> - **Background:** Current room background behind independent ECS materialization.</span>
+<span class="line" id="L72"><a href="#L72">  72</a> - **Mood:** Readable side-on action.</span>
+<span class="line" id="L73"><a href="#L73">  73</a> </span>
+<span class="line" id="L74"><a href="#L74">  74</a> ### Elements</span>
+<span class="line" id="L75"><a href="#L75">  75</a> </span>
+<span class="line" id="L76"><a href="#L76">  76</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L77"><a href="#L77">  77</a> |---|---|---|---|</span>
+<span class="line" id="L78"><a href="#L78">  78</a> | Room layers | full viewport | 100%w × 100%h | Distant plate → props/terrain → actors/effects; room-bound camera. |</span>
+<span class="line" id="L79"><a href="#L79">  79</a> | HUD | screen edges | safe margins | CanvasLayer remains separate from camera. |</span>
+<span class="line" id="L80"><a href="#L80">  80</a> </span>
+<span class="line" id="L81"><a href="#L81">  81</a> ### Asset bindings</span>
+<span class="line" id="L82"><a href="#L82">  82</a> </span>
+<span class="line" id="L83"><a href="#L83">  83</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L84"><a href="#L84">  84</a> |---|---|---|---|</span>
+<span class="line" id="L85"><a href="#L85">  85</a> | Room content | Bindings in each of five composition sections below | 1280×720 camera view | All visible objects resolve to those local tables |</span>
+<span class="line" id="L86"><a href="#L86">  86</a> | HUD projection | Bindings in Gameplay HUD below | Screen-space | No duplicate HUD/world or unplanned art |</span>
+<span class="line" id="L87"><a href="#L87">  87</a> </span>
+<span class="line" id="L88"><a href="#L88">  88</a> ### Acceptance criteria</span>
+<span class="line" id="L89"><a href="#L89">  89</a> </span>
+<span class="line" id="L90"><a href="#L90">  90</a> - [v0.1.0-M1] Feet meet the lit solid surface; camera shows no area outside current room bounds.</span>
+<span class="line" id="L91"><a href="#L91">  91</a> - [v0.1.0-M4] Exactly one current room composition and room name are displayed; distant art never contains duplicate actors.</span>
+<span class="line" id="L92"><a href="#L92">  92</a> - [v0.1.0-M7] HUD remains screen-anchored; gameplay is not a full-screen concept image.</span>
+<span class="line" id="L93"><a href="#L93">  93</a> </span>
+<span class="line" id="L94"><a href="#L94">  94</a> ### Transitions</span>
+<span class="line" id="L95"><a href="#L95">  95</a> - Room E interactions → connected room composition; Escape → Pause; M → Map; player death → Death; legitimate boss defeat → Ending.</span>
+<span class="line" id="L96"><a href="#L96">  96</a> </span>
+<span class="line" id="L97"><a href="#L97">  97</a> ## Scene: Grand Lobby / 大厅</span>
+<span class="line" id="L98"><a href="#L98">  98</a> - **Path / composition:** `data/rooms/grand_lobby.json`</span>
+<span class="line" id="L99"><a href="#L99">  99</a> - **Type:** gameplay; **Layout:** broad lower corridor + visible upper balcony</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> - **Background:** bg_lobby; cool indigo/moonlight with warm lower candles.</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> - **Mood:** Grand entrance with a visible future route.</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/7F9F5E38-C424-49BC-AF6B-F70A5BFC768E.PNG`</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> </span>
+<span class="line" id="L104"><a href="#L104"> 104</a> ### Elements</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> </span>
+<span class="line" id="L106"><a href="#L106"> 106</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> |---|---|---|---|</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> | Player / initial safe ground | lower-left | body 92–108 px | First landing area clear of immediate enemy contact. |</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> | Upper balcony / Save entrance | upper-middle or upper-right | repeatable terrain; arch 240×360 | Clearly visible but geometrically unreachable before Moonstep. |</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> | Gallery route / melee encounter | lower-right; enemy beyond initial safety | door surround and dealer scale | E exit remains reachable with ordinary first jump. |</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> | Foreground layers | sides and overhead | curtain/chandelier/railing contract | Open center keeps the balcony easy to identify. |</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> </span>
+<span class="line" id="L113"><a href="#L113"> 113</a> ### Asset bindings</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> </span>
+<span class="line" id="L115"><a href="#L115"> 115</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> |---|---|---|---|</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> | Backdrop | `bg_lobby / assets/generated/background-map/bg_lobby/bg_lobby.png` | 1280×720 | Distant architecture only |</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> | Heroine | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres` | 92–108 px body; 12.8–15% view height | Feet-aligned genuine action frames; full silhouette visible |</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> | Floors / ledges | `platform_left / assets/generated/platform-strip/casino_platforms/platform_left.tres`; `platform_middle / assets/generated/platform-strip/casino_platforms/platform_middle.tres`; `platform_right / assets/generated/platform-strip/casino_platforms/platform_right.tres` | 160×80 px repeated segments | Lit tops coincide with collision; no stretched prop substitute |</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> | Door surround | `arch / assets/generated/scene-prop-set/casino_props/arch.tres` | 240×360 px | Independent noncolliding art; E trigger/highlight separate |</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> | Curtains | `curtain / assets/generated/scene-prop-set/casino_props/curtain.tres` | 260×420 px | Independent framing outside the playable corridor |</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> | Chandeliers | `chandelier / assets/generated/scene-prop-set/casino_props/chandelier.tres` | 200×180 px | Independent overhead dressing |</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> | Railing | `railing / assets/generated/scene-prop-set/casino_props/railing.tres` | 256×96 px | Layer behind actor; no false landing surface |</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> | Chips / candles | `chip / assets/generated/compact-prop-pack/casino_small_props/chip.tres`; `candle / assets/generated/compact-prop-pack/casino_small_props/candle.tres` | 24×12 / 24×56 px | Decorative only; no pickups/currency |</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> | Melee/ranged dealers | `dealer_frames / assets/generated/character-bundle/dealer_frames/dealer_frames.tres` | 105–130 px body; 14.6–18.1% view height | Distinct role equipment/silhouette and spectral treatment; real attack/cast poses |</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> | Player/hostile projectiles | `player_card / assets/generated/compact-prop-pack/casino_small_props/player_card.tres`; `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 24×36 / 28×42 px | Separate visible objects; spawned only by actual attacks |</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> | Combat / landing / interaction feedback | procedural; UI text | Bounded local effects; 20–28 px prompts | Slash/impact/hurt/defeat expire; eligible E prompt and transition fade only |</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> </span>
+<span class="line" id="L129"><a href="#L129"> 129</a> ### Acceptance criteria</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> </span>
+<span class="line" id="L131"><a href="#L131"> 131</a> - [v0.1.0-M1] Initial frame shows a complete heroine on a clear lower platform and readable route ahead.</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> - [v0.1.0-M4] High balcony and its independent arch are visibly higher than the ordinary lower route; no decorative bridge appears to bypass it.</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> - [v0.1.0-M3] The first dealer is beyond safe spawn, visible ahead or deliberately off-screen to the right; no boss or relic is present.</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> - [v0.1.0-M7] Room label 大厅 and initial movement/jump guidance appear without covering landing tops; Moonstep badge is absent in a fresh run.</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> </span>
+<span class="line" id="L136"><a href="#L136"> 136</a> ### Transitions</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> - Lower exit ↔ Gallery; upper balcony exit ↔ Quiet Save Room; return from Gallery preserves geometry/discovery.</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> </span>
+<span class="line" id="L139"><a href="#L139"> 139</a> ## Scene: Card Banquet Gallery / 牌宴回廊</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> - **Path / composition:** `data/rooms/card_banquet_gallery.json`</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> - **Type:** gameplay; **Layout:** horizontal combat lanes with separated ledges</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> - **Background:** Shared bg_lobby; burgundy curtain rhythm, clustered chandeliers and rails.</span>
+<span class="line" id="L143"><a href="#L143"> 143</a> - **Mood:** Ornate, hostile banquet passage.</span>
+<span class="line" id="L144"><a href="#L144"> 144</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E2A8941A-8B11-4F84-88DB-541A3D301892.PNG`</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> </span>
+<span class="line" id="L146"><a href="#L146"> 146</a> ### Elements</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> </span>
+<span class="line" id="L148"><a href="#L148"> 148</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L149"><a href="#L149"> 149</a> |---|---|---|---|</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> | Player entry | lower-left | body contract | Safe arrival from Lobby. |</span>
+<span class="line" id="L151"><a href="#L151"> 151</a> | Melee/ranged combat | middle/right on separate platforms | dealer contract | Roles readable before their attack windows. |</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> | Flying card | open upper-mid flight lane | 46×68 px | Silhouette distinct from projectiles; not decoration. |</span>
+<span class="line" id="L153"><a href="#L153"> 153</a> | Doors | left/right ends | arch contract | Lobby return and Tower exit; no room menu shortcuts. |</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> </span>
+<span class="line" id="L155"><a href="#L155"> 155</a> ### Asset bindings</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> </span>
+<span class="line" id="L157"><a href="#L157"> 157</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L158"><a href="#L158"> 158</a> |---|---|---|---|</span>
+<span class="line" id="L159"><a href="#L159"> 159</a> | Backdrop | `bg_lobby / assets/generated/background-map/bg_lobby/bg_lobby.png` | 1280×720 | Shared plate differentiated by foreground/light |</span>
+<span class="line" id="L160"><a href="#L160"> 160</a> | Heroine | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres` | 92–108 px body; 12.8–15% view height | Feet-aligned genuine action frames; full silhouette visible |</span>
+<span class="line" id="L161"><a href="#L161"> 161</a> | Floors / ledges | `platform_left / assets/generated/platform-strip/casino_platforms/platform_left.tres`; `platform_middle / assets/generated/platform-strip/casino_platforms/platform_middle.tres`; `platform_right / assets/generated/platform-strip/casino_platforms/platform_right.tres` | 160×80 px repeated segments | Lit tops coincide with collision; no stretched prop substitute |</span>
+<span class="line" id="L162"><a href="#L162"> 162</a> | Door surround | `arch / assets/generated/scene-prop-set/casino_props/arch.tres` | 240×360 px | Independent noncolliding art; E trigger/highlight separate |</span>
+<span class="line" id="L163"><a href="#L163"> 163</a> | Curtains | `curtain / assets/generated/scene-prop-set/casino_props/curtain.tres` | 260×420 px | Independent framing outside the playable corridor |</span>
+<span class="line" id="L164"><a href="#L164"> 164</a> | Chandeliers | `chandelier / assets/generated/scene-prop-set/casino_props/chandelier.tres` | 200×180 px | Independent overhead dressing |</span>
+<span class="line" id="L165"><a href="#L165"> 165</a> | Railing | `railing / assets/generated/scene-prop-set/casino_props/railing.tres` | 256×96 px | Layer behind actor; no false landing surface |</span>
+<span class="line" id="L166"><a href="#L166"> 166</a> | Chips / candles | `chip / assets/generated/compact-prop-pack/casino_small_props/chip.tres`; `candle / assets/generated/compact-prop-pack/casino_small_props/candle.tres` | 24×12 / 24×56 px | Decorative only; no pickups/currency |</span>
+<span class="line" id="L167"><a href="#L167"> 167</a> | Melee/ranged dealers | `dealer_frames / assets/generated/character-bundle/dealer_frames/dealer_frames.tres` | 105–130 px body; 14.6–18.1% view height | Distinct role equipment/silhouette and spectral treatment; real attack/cast poses |</span>
+<span class="line" id="L168"><a href="#L168"> 168</a> | Flying cursed card | `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 46×68 px; 9.4% view height | Rigid flight/flip actor, distinct from smaller projectiles |</span>
+<span class="line" id="L169"><a href="#L169"> 169</a> | Player/hostile projectiles | `player_card / assets/generated/compact-prop-pack/casino_small_props/player_card.tres`; `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 24×36 / 28×42 px | Separate visible objects; spawned only by actual attacks |</span>
+<span class="line" id="L170"><a href="#L170"> 170</a> | Combat / landing / interaction feedback | procedural; UI text | Bounded local effects; 20–28 px prompts | Slash/impact/hurt/defeat expire; eligible E prompt and transition fade only |</span>
+<span class="line" id="L171"><a href="#L171"> 171</a> </span>
+<span class="line" id="L172"><a href="#L172"> 172</a> ### Acceptance criteria</span>
+<span class="line" id="L173"><a href="#L173"> 173</a> </span>
+<span class="line" id="L174"><a href="#L174"> 174</a> - [v0.1.0-M3] Encounter captures show melee, ranged and flying-card forms distinctly; not three recolored identical actors.</span>
+<span class="line" id="L175"><a href="#L175"> 175</a> - [v0.1.0-M2] At combat capture, attack pose and local effect are separate from the backdrop and HUD health/energy remains visible.</span>
+<span class="line" id="L176"><a href="#L176"> 176</a> - [v0.1.0-M4] Curtain/chandelier/rail arrangement differs from Lobby; room label is 牌宴回廊.</span>
+<span class="line" id="L177"><a href="#L177"> 177</a> - Spawn frame may keep later enemies off-screen to the right, but entry landing and first encounter lane remain unobstructed.</span>
+<span class="line" id="L178"><a href="#L178"> 178</a> </span>
+<span class="line" id="L179"><a href="#L179"> 179</a> ### Transitions</span>
+<span class="line" id="L180"><a href="#L180"> 180</a> - Left exit ↔ Lobby; right exit ↔ Roulette Clocktower.</span>
+<span class="line" id="L181"><a href="#L181"> 181</a> </span>
+<span class="line" id="L182"><a href="#L182"> 182</a> ## Scene: Roulette Clocktower / 轮盘钟楼</span>
+<span class="line" id="L183"><a href="#L183"> 183</a> - **Path / composition:** `data/rooms/roulette_clocktower.json`</span>
+<span class="line" id="L184"><a href="#L184"> 184</a> - **Type:** gameplay; **Layout:** rising staggered platforms around roulette motif</span>
+<span class="line" id="L185"><a href="#L185"> 185</a> - **Background:** bg_tower; blue-purple height with gold roulette and warm candles.</span>
+<span class="line" id="L186"><a href="#L186"> 186</a> - **Mood:** Vertical discovery and a clear reward.</span>
+<span class="line" id="L187"><a href="#L187"> 187</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/282B3BB0-116D-4D36-81DB-FAE4161498F3.PNG`</span>
+<span class="line" id="L188"><a href="#L188"> 188</a> </span>
+<span class="line" id="L189"><a href="#L189"> 189</a> ### Elements</span>
+<span class="line" id="L190"><a href="#L190"> 190</a> </span>
+<span class="line" id="L191"><a href="#L191"> 191</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L192"><a href="#L192"> 192</a> |---|---|---|---|</span>
+<span class="line" id="L193"><a href="#L193"> 193</a> | Entry / ascent | lower-left toward upper-middle | reachable first-jump ledges | Pre-relic climb is genuinely possible. |</span>
+<span class="line" id="L194"><a href="#L194"> 194</a> | Roulette feature | mid/back layer | 260×260 px | Independent decorative wheel, not a moving-platform or gambling mechanic. |</span>
+<span class="line" id="L195"><a href="#L195"> 195</a> | Moonstep relic | upper landing | 48×48 px | Approachable E prompt after traversal. |</span>
+<span class="line" id="L196"><a href="#L196"> 196</a> | Exit teaching ledge | return path near relic | measured double-jump gap | After pickup, a safe visible landing demonstrates new reach. |</span>
+<span class="line" id="L197"><a href="#L197"> 197</a> </span>
+<span class="line" id="L198"><a href="#L198"> 198</a> ### Asset bindings</span>
+<span class="line" id="L199"><a href="#L199"> 199</a> </span>
+<span class="line" id="L200"><a href="#L200"> 200</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L201"><a href="#L201"> 201</a> |---|---|---|---|</span>
+<span class="line" id="L202"><a href="#L202"> 202</a> | Backdrop | `bg_tower / assets/generated/background-map/bg_tower/bg_tower.png` | 1280×720 | Distant clocktower architecture |</span>
+<span class="line" id="L203"><a href="#L203"> 203</a> | Heroine | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres` | 92–108 px body; 12.8–15% view height | Feet-aligned genuine action frames; full silhouette visible |</span>
+<span class="line" id="L204"><a href="#L204"> 204</a> | Floors / ledges | `platform_left / assets/generated/platform-strip/casino_platforms/platform_left.tres`; `platform_middle / assets/generated/platform-strip/casino_platforms/platform_middle.tres`; `platform_right / assets/generated/platform-strip/casino_platforms/platform_right.tres` | 160×80 px repeated segments | Lit tops coincide with collision; no stretched prop substitute |</span>
+<span class="line" id="L205"><a href="#L205"> 205</a> | Door surround | `arch / assets/generated/scene-prop-set/casino_props/arch.tres` | 240×360 px | Independent noncolliding art; E trigger/highlight separate |</span>
+<span class="line" id="L206"><a href="#L206"> 206</a> | Railing | `railing / assets/generated/scene-prop-set/casino_props/railing.tres` | 256×96 px | Layer behind actor; no false landing surface |</span>
+<span class="line" id="L207"><a href="#L207"> 207</a> | Chips / candles | `chip / assets/generated/compact-prop-pack/casino_small_props/chip.tres`; `candle / assets/generated/compact-prop-pack/casino_small_props/candle.tres` | 24×12 / 24×56 px | Decorative only; no pickups/currency |</span>
+<span class="line" id="L208"><a href="#L208"> 208</a> | Melee/ranged dealers | `dealer_frames / assets/generated/character-bundle/dealer_frames/dealer_frames.tres` | 105–130 px body; 14.6–18.1% view height | Distinct role equipment/silhouette and spectral treatment; real attack/cast poses |</span>
+<span class="line" id="L209"><a href="#L209"> 209</a> | Flying cursed card | `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 46×68 px; 9.4% view height | Rigid flight/flip actor, distinct from smaller projectiles |</span>
+<span class="line" id="L210"><a href="#L210"> 210</a> | Player/hostile projectiles | `player_card / assets/generated/compact-prop-pack/casino_small_props/player_card.tres`; `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 24×36 / 28×42 px | Separate visible objects; spawned only by actual attacks |</span>
+<span class="line" id="L211"><a href="#L211"> 211</a> | Roulette feature | `roulette / assets/generated/scene-prop-set/casino_props/roulette.tres` | 260×260 | Decorative independent prop, collision elsewhere |</span>
+<span class="line" id="L212"><a href="#L212"> 212</a> | Moonstep | `moonstep / assets/generated/compact-prop-pack/casino_small_props/moonstep.tres` | 48×48 | World relic separate from HUD badge; disappears after valid pickup |</span>
+<span class="line" id="L213"><a href="#L213"> 213</a> | Combat / landing / interaction feedback | procedural; UI text | Bounded local effects; 20–28 px prompts | Slash/impact/hurt/defeat expire; eligible E prompt and transition fade only |</span>
+<span class="line" id="L214"><a href="#L214"> 214</a> </span>
+<span class="line" id="L215"><a href="#L215"> 215</a> ### Acceptance criteria</span>
+<span class="line" id="L216"><a href="#L216"> 216</a> </span>
+<span class="line" id="L217"><a href="#L217"> 217</a> - [v0.1.0-M4] Spawn shows upward stepping platforms and the roulette motif; the upper relic may be intentionally off-screen until ascent.</span>
+<span class="line" id="L218"><a href="#L218"> 218</a> - [v0.1.0-M4] Relic capture shows the separate luminous object and eligible E prompt; post-pickup capture removes it and displays Moonstep badge.</span>
+<span class="line" id="L219"><a href="#L219"> 219</a> - [v0.1.0-M1] Landing tops remain clearly lit throughout vertical camera travel; no fake platform silhouette baked into the plate.</span>
+<span class="line" id="L220"><a href="#L220"> 220</a> - [v0.1.0-M7] Room label 轮盘钟楼 and return objective are readable; the new-jump explanation states a second airborne Space/W press.</span>
+<span class="line" id="L221"><a href="#L221"> 221</a> </span>
+<span class="line" id="L222"><a href="#L222"> 222</a> ### Transitions</span>
+<span class="line" id="L223"><a href="#L223"> 223</a> - Door ↔ Gallery; relic pickup updates current room/HUD; ordinary backtrack → Lobby upper route.</span>
+<span class="line" id="L224"><a href="#L224"> 224</a> </span>
+<span class="line" id="L225"><a href="#L225"> 225</a> ## Scene: Quiet Save Room / 静谧存档室</span>
+<span class="line" id="L226"><a href="#L226"> 226</a> - **Path / composition:** `data/rooms/quiet_save_room.json`</span>
+<span class="line" id="L227"><a href="#L227"> 227</a> - **Type:** gameplay; **Layout:** quiet symmetric shrine center with open walkable floor</span>
+<span class="line" id="L228"><a href="#L228"> 228</a> - **Background:** Shared bg_lobby; subdued purple, concentrated warm shrine/candle pools.</span>
+<span class="line" id="L229"><a href="#L229"> 229</a> - **Mood:** Safe breathing space.</span>
+<span class="line" id="L230"><a href="#L230"> 230</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L231"><a href="#L231"> 231</a> </span>
+<span class="line" id="L232"><a href="#L232"> 232</a> ### Elements</span>
+<span class="line" id="L233"><a href="#L233"> 233</a> </span>
+<span class="line" id="L234"><a href="#L234"> 234</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L235"><a href="#L235"> 235</a> |---|---|---|---|</span>
+<span class="line" id="L236"><a href="#L236"> 236</a> | Shrine | center near floor | 180×180 px | Primary independent focal object. |</span>
+<span class="line" id="L237"><a href="#L237"> 237</a> | Arrival / checkpoint spawn | lower-left of shrine | safe player footprint | No enemies, projectiles or damaging zones. |</span>
+<span class="line" id="L238"><a href="#L238"> 238</a> | Door pair | left/right sides | arch 240×360 px | Lobby upper return and Throne approach. |</span>
+<span class="line" id="L239"><a href="#L239"> 239</a> | Save notice | near shrine / HUD notice area | 20–28 px text | Pending, success and failure are visually distinct. |</span>
+<span class="line" id="L240"><a href="#L240"> 240</a> </span>
+<span class="line" id="L241"><a href="#L241"> 241</a> ### Asset bindings</span>
+<span class="line" id="L242"><a href="#L242"> 242</a> </span>
+<span class="line" id="L243"><a href="#L243"> 243</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L244"><a href="#L244"> 244</a> |---|---|---|---|</span>
+<span class="line" id="L245"><a href="#L245"> 245</a> | Backdrop | `bg_lobby / assets/generated/background-map/bg_lobby/bg_lobby.png` | 1280×720 | Different sparse arrangement/light from Lobby/Gallery |</span>
+<span class="line" id="L246"><a href="#L246"> 246</a> | Heroine | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres` | 92–108 px body; 12.8–15% view height | Feet-aligned genuine action frames; full silhouette visible |</span>
+<span class="line" id="L247"><a href="#L247"> 247</a> | Floors / ledges | `platform_left / assets/generated/platform-strip/casino_platforms/platform_left.tres`; `platform_middle / assets/generated/platform-strip/casino_platforms/platform_middle.tres`; `platform_right / assets/generated/platform-strip/casino_platforms/platform_right.tres` | 160×80 px repeated segments | Lit tops coincide with collision; no stretched prop substitute |</span>
+<span class="line" id="L248"><a href="#L248"> 248</a> | Door surround | `arch / assets/generated/scene-prop-set/casino_props/arch.tres` | 240×360 px | Independent noncolliding art; E trigger/highlight separate |</span>
+<span class="line" id="L249"><a href="#L249"> 249</a> | Curtains | `curtain / assets/generated/scene-prop-set/casino_props/curtain.tres` | 260×420 px | Independent framing outside the playable corridor |</span>
+<span class="line" id="L250"><a href="#L250"> 250</a> | Chandeliers | `chandelier / assets/generated/scene-prop-set/casino_props/chandelier.tres` | 200×180 px | Independent overhead dressing |</span>
+<span class="line" id="L251"><a href="#L251"> 251</a> | Chips / candles | `chip / assets/generated/compact-prop-pack/casino_small_props/chip.tres`; `candle / assets/generated/compact-prop-pack/casino_small_props/candle.tres` | 24×12 / 24×56 px | Decorative only; no pickups/currency |</span>
+<span class="line" id="L252"><a href="#L252"> 252</a> | Shrine | `shrine / assets/generated/scene-prop-set/casino_props/shrine.tres` | 180×180 | Independent illustrated checkpoint |</span>
+<span class="line" id="L253"><a href="#L253"> 253</a> | Combat / landing / interaction feedback | procedural; UI text | Bounded local effects; 20–28 px prompts | Slash/impact/hurt/defeat expire; eligible E prompt and transition fade only |</span>
+<span class="line" id="L254"><a href="#L254"> 254</a> </span>
+<span class="line" id="L255"><a href="#L255"> 255</a> ### Acceptance criteria</span>
+<span class="line" id="L256"><a href="#L256"> 256</a> </span>
+<span class="line" id="L257"><a href="#L257"> 257</a> - [v0.1.0-M5] Spawn frame shows shrine, safe ground and no hostile entity; checkpoint position is not inside a prop or doorway.</span>
+<span class="line" id="L258"><a href="#L258"> 258</a> - [v0.1.0-M5] Interaction capture shows a readable E save/heal prompt; success capture shows restored health and confirmed save text, while pending/failure are never labeled saved.</span>
+<span class="line" id="L259"><a href="#L259"> 259</a> - [v0.1.0-M4] Room label 静谧存档室, sparse shrine composition and two exits distinguish this room from the shared-backdrop rooms.</span>
+<span class="line" id="L260"><a href="#L260"> 260</a> </span>
+<span class="line" id="L261"><a href="#L261"> 261</a> ### Transitions</span>
+<span class="line" id="L262"><a href="#L262"> 262</a> - Left exit ↔ Lobby upper balcony; right exit ↔ House Throne; shrine E → validated save/heal without a room change.</span>
+<span class="line" id="L263"><a href="#L263"> 263</a> </span>
+<span class="line" id="L264"><a href="#L264"> 264</a> ## Scene: House Throne / 庄家王座</span>
+<span class="line" id="L265"><a href="#L265"> 265</a> - **Path / composition:** `data/rooms/house_throne.json`</span>
+<span class="line" id="L266"><a href="#L266"> 266</a> - **Type:** gameplay; **Layout:** wide readable arena; boss right, heroine left</span>
+<span class="line" id="L267"><a href="#L267"> 267</a> - **Background:** bg_throne; regal purple/gold; phase-two light shift.</span>
+<span class="line" id="L268"><a href="#L268"> 268</a> - **Mood:** Final confrontation.</span>
+<span class="line" id="L269"><a href="#L269"> 269</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/D50535A2-C0BD-41B0-BDC5-27E6510686B5.PNG`</span>
+<span class="line" id="L270"><a href="#L270"> 270</a> </span>
+<span class="line" id="L271"><a href="#L271"> 271</a> ### Elements</span>
+<span class="line" id="L272"><a href="#L272"> 272</a> </span>
+<span class="line" id="L273"><a href="#L273"> 273</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L274"><a href="#L274"> 274</a> |---|---|---|---|</span>
+<span class="line" id="L275"><a href="#L275"> 275</a> | Heroine entry | lower-left | 92–108 px body | Safe initial separation from boss. |</span>
+<span class="line" id="L276"><a href="#L276"> 276</a> | Royal Dealer | right-middle above arena floor | 260–320 px body | Complete regal silhouette, no head/feet clipping. |</span>
+<span class="line" id="L277"><a href="#L277"> 277</a> | Attack lane / slam warning | center and floor | matches true hit region | Clear space for cards and dodges. |</span>
+<span class="line" id="L278"><a href="#L278"> 278</a> | Boss bar | lower-center screen space | about 60%w × 4%h | Name/phase/health without hiding landing edges. |</span>
+<span class="line" id="L279"><a href="#L279"> 279</a> </span>
+<span class="line" id="L280"><a href="#L280"> 280</a> ### Asset bindings</span>
+<span class="line" id="L281"><a href="#L281"> 281</a> </span>
+<span class="line" id="L282"><a href="#L282"> 282</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L283"><a href="#L283"> 283</a> |---|---|---|---|</span>
+<span class="line" id="L284"><a href="#L284"> 284</a> | Backdrop | `bg_throne / assets/generated/background-map/bg_throne/bg_throne.png` | 1280×720 | No baked boss or ghost hand |</span>
+<span class="line" id="L285"><a href="#L285"> 285</a> | Heroine | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres` | 92–108 px body; 12.8–15% view height | Feet-aligned genuine action frames; full silhouette visible |</span>
+<span class="line" id="L286"><a href="#L286"> 286</a> | Floors / ledges | `platform_left / assets/generated/platform-strip/casino_platforms/platform_left.tres`; `platform_middle / assets/generated/platform-strip/casino_platforms/platform_middle.tres`; `platform_right / assets/generated/platform-strip/casino_platforms/platform_right.tres` | 160×80 px repeated segments | Lit tops coincide with collision; no stretched prop substitute |</span>
+<span class="line" id="L287"><a href="#L287"> 287</a> | Door surround | `arch / assets/generated/scene-prop-set/casino_props/arch.tres` | 240×360 px | Independent noncolliding art; E trigger/highlight separate |</span>
+<span class="line" id="L288"><a href="#L288"> 288</a> | Curtains | `curtain / assets/generated/scene-prop-set/casino_props/curtain.tres` | 260×420 px | Independent framing outside the playable corridor |</span>
+<span class="line" id="L289"><a href="#L289"> 289</a> | Chandeliers | `chandelier / assets/generated/scene-prop-set/casino_props/chandelier.tres` | 200×180 px | Independent overhead dressing |</span>
+<span class="line" id="L290"><a href="#L290"> 290</a> | Railing | `railing / assets/generated/scene-prop-set/casino_props/railing.tres` | 256×96 px | Layer behind actor; no false landing surface |</span>
+<span class="line" id="L291"><a href="#L291"> 291</a> | Chips / candles | `chip / assets/generated/compact-prop-pack/casino_small_props/chip.tres`; `candle / assets/generated/compact-prop-pack/casino_small_props/candle.tres` | 24×12 / 24×56 px | Decorative only; no pickups/currency |</span>
+<span class="line" id="L292"><a href="#L292"> 292</a> | Player/hostile projectiles | `player_card / assets/generated/compact-prop-pack/casino_small_props/player_card.tres`; `enemy_card / assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres` | 24×36 / 28×42 px | Separate visible objects; spawned only by actual attacks |</span>
+<span class="line" id="L293"><a href="#L293"> 293</a> | Royal Dealer | `boss_frames / assets/generated/character-bundle/boss_frames/boss_frames.tres` | 260–320 px; 36.1–44.4% view height | Genuine idle/attack body frames |</span>
+<span class="line" id="L294"><a href="#L294"> 294</a> | Ghost hand | `ghost_hand / assets/generated/fx-bundle/ghost_hand/ghost_hand.png` | 180×240 px | Independent static source with timed rigid motion/fade |</span>
+<span class="line" id="L295"><a href="#L295"> 295</a> | Warnings / phase glow | procedural | Slam warning matches hit area; bounded card-fan warning | Precedes damage; phase two visibly changes light |</span>
+<span class="line" id="L296"><a href="#L296"> 296</a> | Combat / landing / interaction feedback | procedural; UI text | Bounded local effects; 20–28 px prompts | Slash/impact/hurt/defeat expire; eligible E prompt and transition fade only |</span>
+<span class="line" id="L297"><a href="#L297"> 297</a> </span>
+<span class="line" id="L298"><a href="#L298"> 298</a> ### Acceptance criteria</span>
+<span class="line" id="L299"><a href="#L299"> 299</a> </span>
+<span class="line" id="L300"><a href="#L300"> 300</a> - [v0.1.0-M6] Entry shows full heroine and boss at their contract scales with readable arena and boss health bar.</span>
+<span class="line" id="L301"><a href="#L301"> 301</a> - [v0.1.0-M6] Warning-state capture distinguishes floor slam region or fan windup from damaging cards; ghost hand is independently visible during its effect state.</span>
+<span class="line" id="L302"><a href="#L302"> 302</a> - [v0.1.0-M6] Phase-two capture visibly changes arena lighting while keeping both actor silhouettes and warning contrast.</span>
+<span class="line" id="L303"><a href="#L303"> 303</a> - [v0.1.0-M7] Boss bar and room label 庄家王座 do not cover the heroine or landing edge; no normal enemies obscure the final fight.</span>
+<span class="line" id="L304"><a href="#L304"> 304</a> </span>
+<span class="line" id="L305"><a href="#L305"> 305</a> ### Transitions</span>
+<span class="line" id="L306"><a href="#L306"> 306</a> - Entry connection ↔ Quiet Save Room as permitted by live encounter state; ordinary boss defeat → Ending; player death → Death.</span>
+<span class="line" id="L307"><a href="#L307"> 307</a> </span>
+<span class="line" id="L308"><a href="#L308"> 308</a> ## Scene: Gameplay HUD</span>
+<span class="line" id="L309"><a href="#L309"> 309</a> - **Path / composition:** `scenes/ui/hud.tscn`</span>
+<span class="line" id="L310"><a href="#L310"> 310</a> - **Type:** hud; **Layout:** edge-anchored</span>
+<span class="line" id="L311"><a href="#L311"> 311</a> - **Background:** Transparent world view with compact dark/gold panels.</span>
+<span class="line" id="L312"><a href="#L312"> 312</a> - **Mood:** Clear and restrained.</span>
+<span class="line" id="L313"><a href="#L313"> 313</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L314"><a href="#L314"> 314</a> </span>
+<span class="line" id="L315"><a href="#L315"> 315</a> ### Elements</span>
+<span class="line" id="L316"><a href="#L316"> 316</a> </span>
+<span class="line" id="L317"><a href="#L317"> 317</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L318"><a href="#L318"> 318</a> |---|---|---|---|</span>
+<span class="line" id="L319"><a href="#L319"> 319</a> | Health / energy | top-left | ~28%w × 11%h | Heart emblem, health bar/value and separate energy bar/value. |</span>
+<span class="line" id="L320"><a href="#L320"> 320</a> | Room / objective | top-center to top-right | ~58%w × 10%h | Short Chinese labels; wrap safely. |</span>
+<span class="line" id="L321"><a href="#L321"> 321</a> | Moonstep badge | near resource panel | 30×30 px | Hidden until ownership is true. |</span>
+<span class="line" id="L322"><a href="#L322"> 322</a> | Prompt / onboarding / notice | near interaction or bottom safe area | 20–28 px text | One eligible prompt; control bindings match input. |</span>
+<span class="line" id="L323"><a href="#L323"> 323</a> | Boss health | bottom-center only in Throne encounter | ~60%w × 4%h | 庄家 health/phase from authoritative state. |</span>
+<span class="line" id="L324"><a href="#L324"> 324</a> </span>
+<span class="line" id="L325"><a href="#L325"> 325</a> ### Asset bindings</span>
+<span class="line" id="L326"><a href="#L326"> 326</a> </span>
+<span class="line" id="L327"><a href="#L327"> 327</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L328"><a href="#L328"> 328</a> |---|---|---|---|</span>
+<span class="line" id="L329"><a href="#L329"> 329</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L330"><a href="#L330"> 330</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L331"><a href="#L331"> 331</a> | Health emblem / Moonstep badge | `heart_gem / assets/generated/compact-prop-pack/casino_small_props/heart_gem.tres`; `moonstep / assets/generated/compact-prop-pack/casino_small_props/moonstep.tres` | 28×28 / 30×30 px | No portrait; reflects real state |</span>
+<span class="line" id="L332"><a href="#L332"> 332</a> | Interaction / feedback labels | UI text; procedural highlight | 20–28 px; bounded screen-safe position | E, objective, onboarding, saved/pending/failed messages stay readable |</span>
+<span class="line" id="L333"><a href="#L333"> 333</a> </span>
+<span class="line" id="L334"><a href="#L334"> 334</a> ### Acceptance criteria</span>
+<span class="line" id="L335"><a href="#L335"> 335</a> </span>
+<span class="line" id="L336"><a href="#L336"> 336</a> - [v0.1.0-M7] Health, energy, objective and current room name are visible; no clipped Chinese or miniature unreadable labels.</span>
+<span class="line" id="L337"><a href="#L337"> 337</a> - [v0.1.0-M2] Combat captures visibly show corresponding health/energy changes; empty energy remains legible.</span>
+<span class="line" id="L338"><a href="#L338"> 338</a> - [v0.1.0-M4] Fresh run has no Moonstep badge; acquired state shows it and updates objective.</span>
+<span class="line" id="L339"><a href="#L339"> 339</a> - [v0.1.0-M5] Failed/pending/saved notices are distinct; [v0.1.0-M6] boss bar appears only for the live encounter.</span>
+<span class="line" id="L340"><a href="#L340"> 340</a> </span>
+<span class="line" id="L341"><a href="#L341"> 341</a> ### Transitions</span>
+<span class="line" id="L342"><a href="#L342"> 342</a> - Escape → Pause; M → Map; nearby E prompt → ordinary interaction request; death/ending → corresponding modal.</span>
+<span class="line" id="L343"><a href="#L343"> 343</a> </span>
+<span class="line" id="L344"><a href="#L344"> 344</a> ## Scene: Pause Overlay</span>
+<span class="line" id="L345"><a href="#L345"> 345</a> - **Path / composition:** `scenes/ui/pause_overlay.tscn`</span>
+<span class="line" id="L346"><a href="#L346"> 346</a> - **Type:** overlay; **Layout:** vertical-center</span>
+<span class="line" id="L347"><a href="#L347"> 347</a> - **Background:** Dimmed frozen current room/HUD.</span>
+<span class="line" id="L348"><a href="#L348"> 348</a> - **Mood:** Calm interruption.</span>
+<span class="line" id="L349"><a href="#L349"> 349</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L350"><a href="#L350"> 350</a> </span>
+<span class="line" id="L351"><a href="#L351"> 351</a> ### Elements</span>
+<span class="line" id="L352"><a href="#L352"> 352</a> </span>
+<span class="line" id="L353"><a href="#L353"> 353</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L354"><a href="#L354"> 354</a> |---|---|---|---|</span>
+<span class="line" id="L355"><a href="#L355"> 355</a> | Pause panel | center | 38%w × 56%h | 暂停, 继续, 返回标题 and concise controls. |</span>
+<span class="line" id="L356"><a href="#L356"> 356</a> | Selection | inside panel | readable button bounds | Keyboard focus remains visible. |</span>
+<span class="line" id="L357"><a href="#L357"> 357</a> </span>
+<span class="line" id="L358"><a href="#L358"> 358</a> ### Asset bindings</span>
+<span class="line" id="L359"><a href="#L359"> 359</a> </span>
+<span class="line" id="L360"><a href="#L360"> 360</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L361"><a href="#L361"> 361</a> |---|---|---|---|</span>
+<span class="line" id="L362"><a href="#L362"> 362</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L363"><a href="#L363"> 363</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L364"><a href="#L364"> 364</a> | Veil | procedural | 100%w × 100%h | World remains identifiable under dimming |</span>
+<span class="line" id="L365"><a href="#L365"> 365</a> </span>
+<span class="line" id="L366"><a href="#L366"> 366</a> ### Acceptance criteria</span>
+<span class="line" id="L367"><a href="#L367"> 367</a> </span>
+<span class="line" id="L368"><a href="#L368"> 368</a> - [v0.1.0-M7] 暂停 and highlighted Continue appear above a recognizable frozen room; no overlapping map/death/ending panel.</span>
+<span class="line" id="L369"><a href="#L369"> 369</a> - Instructions show actual A/D or arrows, Space/W, J, K, Shift/L, E and M bindings; consecutive captures, not a single screenshot, prove freeze.</span>
+<span class="line" id="L370"><a href="#L370"> 370</a> </span>
+<span class="line" id="L371"><a href="#L371"> 371</a> ### Transitions</span>
+<span class="line" id="L372"><a href="#L372"> 372</a> - Continue / Escape → same playing state with fresh-input requirement; Return to title → Title Screen.</span>
+<span class="line" id="L373"><a href="#L373"> 373</a> </span>
+<span class="line" id="L374"><a href="#L374"> 374</a> ## Scene: Discovered-Room Map</span>
+<span class="line" id="L375"><a href="#L375"> 375</a> - **Path / composition:** `scenes/ui/map_overlay.tscn`</span>
+<span class="line" id="L376"><a href="#L376"> 376</a> - **Type:** overlay; **Layout:** centered schematic</span>
+<span class="line" id="L377"><a href="#L377"> 377</a> - **Background:** Dimmed frozen room; dark gold/purple map panel.</span>
+<span class="line" id="L378"><a href="#L378"> 378</a> - **Mood:** Readable exploration record.</span>
+<span class="line" id="L379"><a href="#L379"> 379</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L380"><a href="#L380"> 380</a> </span>
+<span class="line" id="L381"><a href="#L381"> 381</a> ### Elements</span>
+<span class="line" id="L382"><a href="#L382"> 382</a> </span>
+<span class="line" id="L383"><a href="#L383"> 383</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L384"><a href="#L384"> 384</a> |---|---|---|---|</span>
+<span class="line" id="L385"><a href="#L385"> 385</a> | Map panel | center | 76%w × 68%h | Only discovered-room rectangles and known connections. |</span>
+<span class="line" id="L386"><a href="#L386"> 386</a> | Current room | within schematic | clear highlight | Label and emphasis, not color alone. |</span>
+<span class="line" id="L387"><a href="#L387"> 387</a> | Close hint | panel bottom | 20–28 px | M / Escape 关闭. |</span>
+<span class="line" id="L388"><a href="#L388"> 388</a> </span>
+<span class="line" id="L389"><a href="#L389"> 389</a> ### Asset bindings</span>
+<span class="line" id="L390"><a href="#L390"> 390</a> </span>
+<span class="line" id="L391"><a href="#L391"> 391</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L392"><a href="#L392"> 392</a> |---|---|---|---|</span>
+<span class="line" id="L393"><a href="#L393"> 393</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L394"><a href="#L394"> 394</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L395"><a href="#L395"> 395</a> | Map rooms / connectors / current marker | procedural | Room boxes ~140×64 px; bounded within panel | No baked reference minimap; discovered subset of actual five-room graph |</span>
+<span class="line" id="L396"><a href="#L396"> 396</a> </span>
+<span class="line" id="L397"><a href="#L397"> 397</a> ### Acceptance criteria</span>
+<span class="line" id="L398"><a href="#L398"> 398</a> </span>
+<span class="line" id="L399"><a href="#L399"> 399</a> - [v0.1.0-M7] Fresh-run map shows Lobby and current marker, without undiscovered named rooms or the reference map.</span>
+<span class="line" id="L400"><a href="#L400"> 400</a> - [v0.1.0-M4] Progressed map reflects visited rooms and their actual connections; labels fit boxes without overlap.</span>
+<span class="line" id="L401"><a href="#L401"> 401</a> - Map and HUD do not present contradictory current-room labels; modal appearance is distinct from Pause.</span>
+<span class="line" id="L402"><a href="#L402"> 402</a> </span>
+<span class="line" id="L403"><a href="#L403"> 403</a> ### Transitions</span>
+<span class="line" id="L404"><a href="#L404"> 404</a> - M / Escape → same playing state; map is read-only, no teleport interaction.</span>
+<span class="line" id="L405"><a href="#L405"> 405</a> </span>
+<span class="line" id="L406"><a href="#L406"> 406</a> ## Scene: Death Screen</span>
+<span class="line" id="L407"><a href="#L407"> 407</a> - **Path / composition:** `scenes/ui/death_screen.tscn`</span>
+<span class="line" id="L408"><a href="#L408"> 408</a> - **Type:** overlay; **Layout:** vertical-center</span>
+<span class="line" id="L409"><a href="#L409"> 409</a> - **Background:** Darkened frozen room; existing heroine hurt pose plus fade, no new death animation claim.</span>
+<span class="line" id="L410"><a href="#L410"> 410</a> - **Mood:** Clear recoverable failure.</span>
+<span class="line" id="L411"><a href="#L411"> 411</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/E897F5B8-404F-4E59-B758-4D054CBA2F38.PNG`</span>
+<span class="line" id="L412"><a href="#L412"> 412</a> </span>
+<span class="line" id="L413"><a href="#L413"> 413</a> ### Elements</span>
+<span class="line" id="L414"><a href="#L414"> 414</a> </span>
+<span class="line" id="L415"><a href="#L415"> 415</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L416"><a href="#L416"> 416</a> |---|---|---|---|</span>
+<span class="line" id="L417"><a href="#L417"> 417</a> | Failure title | upper-center | 55%w × 14%h | 本局未终 or clear equivalent death wording. |</span>
+<span class="line" id="L418"><a href="#L418"> 418</a> | Retry / title actions | center | 34%w × 22%h | 返回存档点 / 返回标题. |</span>
+<span class="line" id="L419"><a href="#L419"> 419</a> | Checkpoint label | below actions | 60%w × 10%h | Actual safe checkpoint; initial Lobby when no shrine save. |</span>
+<span class="line" id="L420"><a href="#L420"> 420</a> </span>
+<span class="line" id="L421"><a href="#L421"> 421</a> ### Asset bindings</span>
+<span class="line" id="L422"><a href="#L422"> 422</a> </span>
+<span class="line" id="L423"><a href="#L423"> 423</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L424"><a href="#L424"> 424</a> |---|---|---|---|</span>
+<span class="line" id="L425"><a href="#L425"> 425</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L426"><a href="#L426"> 426</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L427"><a href="#L427"> 427</a> | World / heroine treatment | `heroine_frames / assets/generated/character-bundle/heroine_frames/heroine_frames.tres`; procedural fade | Existing 92–108 px body behind veil | Reuse hurt pose, no claimed separate death bundle |</span>
+<span class="line" id="L428"><a href="#L428"> 428</a> </span>
+<span class="line" id="L429"><a href="#L429"> 429</a> ### Acceptance criteria</span>
+<span class="line" id="L430"><a href="#L430"> 430</a> </span>
+<span class="line" id="L431"><a href="#L431"> 431</a> - [v0.1.0-M5] Clear death message, Retry and Return to title appear; checkpoint label is readable and truthful.</span>
+<span class="line" id="L432"><a href="#L432"> 432</a> - [v0.1.0-M7] One selected actionable control remains visible; no active combat/menu mixture or false save confirmation.</span>
+<span class="line" id="L433"><a href="#L433"> 433</a> </span>
+<span class="line" id="L434"><a href="#L434"> 434</a> ### Transitions</span>
+<span class="line" id="L435"><a href="#L435"> 435</a> - Retry → validated checkpoint with full health/fresh encounters; Return to title → Title Screen.</span>
+<span class="line" id="L436"><a href="#L436"> 436</a> </span>
+<span class="line" id="L437"><a href="#L437"> 437</a> ## Scene: Ending Screen</span>
+<span class="line" id="L438"><a href="#L438"> 438</a> - **Path / composition:** `scenes/ui/ending_screen.tscn`</span>
+<span class="line" id="L439"><a href="#L439"> 439</a> - **Type:** overlay; **Layout:** vertical-center</span>
+<span class="line" id="L440"><a href="#L440"> 440</a> - **Background:** Throne distant plate or frozen cleared arena with procedural veil.</span>
+<span class="line" id="L441"><a href="#L441"> 441</a> - **Mood:** Release after victory.</span>
+<span class="line" id="L442"><a href="#L442"> 442</a> - **Source-only visual anchor:** `/workspace/scratch/36a9e7700087/references/D50535A2-C0BD-41B0-BDC5-27E6510686B5.PNG`</span>
+<span class="line" id="L443"><a href="#L443"> 443</a> </span>
+<span class="line" id="L444"><a href="#L444"> 444</a> ### Elements</span>
+<span class="line" id="L445"><a href="#L445"> 445</a> </span>
+<span class="line" id="L446"><a href="#L446"> 446</a> | Element | Position | Size | Description |</span>
+<span class="line" id="L447"><a href="#L447"> 447</a> |---|---|---|---|</span>
+<span class="line" id="L448"><a href="#L448"> 448</a> | Ending title / message | upper-center | 70%w × 30%h | 庄家已败; brief Chinese curse-broken resolution. |</span>
+<span class="line" id="L449"><a href="#L449"> 449</a> | Restart / title | lower-center | 34%w × 22%h | 重新开始 / 返回标题; unambiguous selection. |</span>
+<span class="line" id="L450"><a href="#L450"> 450</a> </span>
+<span class="line" id="L451"><a href="#L451"> 451</a> ### Asset bindings</span>
+<span class="line" id="L452"><a href="#L452"> 452</a> </span>
+<span class="line" id="L453"><a href="#L453"> 453</a> | Element | Asset Row / Path | Runtime Size | Visual Contract |</span>
+<span class="line" id="L454"><a href="#L454"> 454</a> |---|---|---|---|</span>
+<span class="line" id="L455"><a href="#L455"> 455</a> | Backdrop | `bg_throne / assets/generated/background-map/bg_throne/bg_throne.png` | 1280×720 | No new cinematic/portrait resource |</span>
+<span class="line" id="L456"><a href="#L456"> 456</a> | Frames / bars / controls | procedural `resources/ui/casino_theme.tres`; UI text | 1280×720 safe area; 20–28 px body | Gold/purple style, visible selection and disabled state |</span>
+<span class="line" id="L457"><a href="#L457"> 457</a> | Chinese labels | `ui_cjk_font / assets/fonts/NotoSansCJK-Regular.ttc` | 20–28 px body; 40–64 px title | Complete Chinese glyph coverage native and Web |</span>
+<span class="line" id="L458"><a href="#L458"> 458</a> </span>
+<span class="line" id="L459"><a href="#L459"> 459</a> ### Acceptance criteria</span>
+<span class="line" id="L460"><a href="#L460"> 460</a> </span>
+<span class="line" id="L461"><a href="#L461"> 461</a> - [v0.1.0-M6] Victory resolution is legible; hostile boss/attacks are absent from the cleared end state.</span>
+<span class="line" id="L462"><a href="#L462"> 462</a> - [v0.1.0-M7] Restart and Return to title are readable and reachable; no extra shop, credits asset or new content is implied.</span>
+<span class="line" id="L463"><a href="#L463"> 463</a> - A screenshot establishes visible ending only; PLAN ordinary-combat evidence establishes that legitimate boss defeat caused it.</span>
+<span class="line" id="L464"><a href="#L464"> 464</a> </span>
+<span class="line" id="L465"><a href="#L465"> 465</a> ### Transitions</span>
+<span class="line" id="L466"><a href="#L466"> 466</a> - Restart → fresh Lobby run without Moonstep; Return to title → Title Screen.</span>
+</pre>

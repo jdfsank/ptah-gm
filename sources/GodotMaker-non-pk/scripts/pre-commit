@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Pre-commit hook: lint staged Python files + scan for secrets
+# Installed by scripts/install-hooks.sh
+#
+# Order: ruff first (fastest signal on the most common failure), then
+# gitleaks (secret scan). Both run only on staged content, so the hook
+# stays sub-second.
+#
+# To skip in an emergency: git commit --no-verify
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+run_python() {
+    if command -v python &> /dev/null; then
+        python "$@"
+    elif command -v python3 &> /dev/null; then
+        python3 "$@"
+    else
+        echo "[pre-commit] Python not found; cannot run $1"
+        exit 1
+    fi
+}
+
+# 1. ruff on staged Python files only.
+# Why staged-only (vs full repo `ruff check .` like pre-push runs):
+#   - keeps the hook fast on every commit;
+#   - does not penalize an unrelated commit when an old lint error sits
+#     on a file you did not touch.
+# pre-push still runs `ruff check .` on the full repo as a safety net.
+if command -v ruff &> /dev/null; then
+    staged_py=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+    if [ -n "$staged_py" ]; then
+        echo "[pre-commit] Running ruff on staged Python files..."
+        # shellcheck disable=SC2086
+        ruff check $staged_py
+    fi
+else
+    echo "[pre-commit] WARNING: ruff not found. Install: pip install ruff"
+    echo "[pre-commit] Skipping lint."
+fi
+
+# 2. User-facing docs must update their Chinese mirrors.
+echo "[pre-commit] Checking doc i18n mirrors..."
+run_python tools/check_doc_i18n.py --staged
+
+# 3. gitleaks on staged changes.
+if ! command -v gitleaks &> /dev/null; then
+    echo "[pre-commit] WARNING: gitleaks not found. Install it: https://github.com/gitleaks-io/gitleaks"
+    echo "[pre-commit] Skipping secret scan."
+    exit 0
+fi
+
+echo "[pre-commit] Running gitleaks on staged changes..."
+gitleaks protect --staged --config .gitleaks.toml --verbose
+
+echo "[pre-commit] No secrets detected."

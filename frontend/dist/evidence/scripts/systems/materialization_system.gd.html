@@ -1,0 +1,193 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/materialization_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/materialization_system.gd</h1><p>只读源快照 · SHA-256 9afbb3bcbe2f77f59aa9a27cc0c38f4b323e7ae04cd943ed6f4de755189819fa</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name MaterializationSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var materialization_count: int = 0</span>
+<span class="line" id="L5"><a href="#L5">   5</a> </span>
+<span class="line" id="L6"><a href="#L6">   6</a> func setup() -&gt; void:</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L10"><a href="#L10">  10</a> 	return q.with_all([C_Transform, C_RoomMember]).with_any([C_Body, C_Visual]).enabled()</span>
+<span class="line" id="L11"><a href="#L11">  11</a> </span>
+<span class="line" id="L12"><a href="#L12">  12</a> func process(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	if not runtime.in_safe_flush:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 		runtime.schedule_flush()</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		return</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	if not is_instance_valid(runtime.camera):</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var camera := Camera2D.new()</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		camera.name = &quot;RoomCamera&quot;</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		camera.position_smoothing_enabled = false</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		runtime.add_child(camera)</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 		runtime.camera = camera</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	for entity in entities:</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 		if not entity.enabled:</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			continue</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		var visual: C_Visual = entity.get_component(C_Visual)</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 		if (body != null and body.ready and is_instance_valid(body.root)) or (body == null and visual != null and is_instance_valid(visual.node)):</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 			continue</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		var resource: Resource = null</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 		if visual != null and visual.kind != &quot;effect&quot;:</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 			resource = runtime.resources.resolve(visual.asset_id)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 			if resource == null:</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 				runtime.fail(runtime.resources.last_error)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 				continue</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		var root: Node2D</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		match body.kind if body != null else &quot;none&quot;:</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 			&quot;character&quot;:</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 				root = CharacterBody2D.new()</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 				root.floor_snap_length = 8.0</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 				root.safe_margin = 0.05</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			&quot;static&quot;:</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 				root = StaticBody2D.new()</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 			_:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 				root = Node2D.new()</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 		root.name = &quot;Body&quot; if body != null and body.kind != &quot;none&quot; else &quot;VisualRoot&quot;</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 		root.visible = false</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		if root is CollisionObject2D:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 			root.collision_layer = 0</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 			root.collision_mask = 0</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 			var shape := CollisionShape2D.new()</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 			shape.name = &quot;Collision&quot;</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 			var rectangle := RectangleShape2D.new()</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 			rectangle.size = body.size</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 			shape.shape = rectangle</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 			shape.position = body.offset</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 			shape.disabled = true</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 			root.add_child(shape)</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 			body.shape = shape</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 		entity.add_child(root)</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 		if body != null:</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 			body.root = root</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 		if visual != null:</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 			if not _make_visual(root, visual, resource):</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 				root.queue_free()</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 				if body != null:</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 					body.root = null</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 				continue</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 		var interaction: C_Interaction = entity.get_component(C_Interaction)</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 		if interaction != null:</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 			var prompt := Label.new()</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 			prompt.name = &quot;InteractionPrompt&quot;</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 			prompt.text = &quot;E · &quot; + interaction.prompt</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 			prompt.add_theme_font_override(&quot;font&quot;, runtime.resources.resolve(&quot;ui_cjk_font&quot;))</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 			prompt.add_theme_font_size_override(&quot;font_size&quot;, 23)</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 			prompt.add_theme_color_override(&quot;font_color&quot;, Color(1.0, 0.90, 0.57))</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 			prompt.add_theme_color_override(&quot;font_outline_color&quot;, Color(0.06, 0.02, 0.12))</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 			prompt.add_theme_constant_override(&quot;outline_size&quot;, 8)</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 			prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 			prompt.position = Vector2(-280, -150)</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 			prompt.size = Vector2(560, 50)</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 			prompt.z_index = 40</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 			prompt.visible = false</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 			root.add_child(prompt)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 		if entity.get_component(C_Boss) != null:</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 			var bar := ProgressBar.new()</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 			bar.name = &quot;BossHealth&quot;</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 			bar.position = Vector2(-240, -330)</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 			bar.size = Vector2(480, 18)</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 			bar.show_percentage = false</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 			root.add_child(bar)</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 			var title := Label.new()</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 			title.name = &quot;BossTitle&quot;</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 			title.position = Vector2(-260, -370)</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 			title.size = Vector2(520, 36)</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 			title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 			title.add_theme_font_override(&quot;font&quot;, runtime.resources.resolve(&quot;ui_cjk_font&quot;))</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 			title.add_theme_font_size_override(&quot;font_size&quot;, 24)</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 			title.add_theme_constant_override(&quot;outline_size&quot;, 6)</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 			root.add_child(title)</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 		if body != null:</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 			body.ready = true</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 		materialization_count += 1</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> </span>
+<span class="line" id="L105"><a href="#L105"> 105</a> func _make_visual(root: Node2D, visual: C_Visual, resource: Resource) -&gt; bool:</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 	var node: Node2D</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 	if visual.kind == &quot;animated&quot;:</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 		if not resource is SpriteFrames:</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 			runtime.fail(&quot;Animated visual requires SpriteFrames: &quot; + visual.asset_id)</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 			return false</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 		var sprite := AnimatedSprite2D.new()</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 		sprite.sprite_frames = resource</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 		sprite.scale = Vector2.ONE * (0.49 if visual.asset_id == &quot;heroine_frames&quot; else 1.0)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 		sprite.offset = visual.offset</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 		if visual.asset_id == &quot;dealer_frames&quot; and visual.tint.a &lt; 1.0:</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 			var equipment := Sprite2D.new()</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> 			equipment.name = &quot;SpectralCard&quot;</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 			equipment.texture = runtime.resources.resolve(&quot;enemy_card&quot;)</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 			equipment.scale = Vector2(28, 42) / equipment.texture.get_size()</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 			equipment.position = Vector2(32, -64)</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 			equipment.modulate = Color(0.65, 0.9, 1.0)</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 			root.add_child(equipment)</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 		node = sprite</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 	elif visual.kind == &quot;effect&quot;:</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 		var line := Line2D.new()</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 		line.width = 3.0</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 		line.antialiased = true</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 		var effect: C_Effect = root.get_parent().get_component(C_Effect)</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 		var points := PackedVector2Array()</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 		if effect.kind == &quot;slash&quot;:</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> 			for i in 17:</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 				var angle: float = lerpf(-1.35, 1.35, float(i) / 16.0)</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 				points.append(Vector2(cos(angle), sin(angle)) * effect.size * 0.5)</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 		elif effect.kind == &quot;slam_warning&quot;:</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 			var half: Vector2 = effect.size * 0.5</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 			points = PackedVector2Array([Vector2(-half.x, -half.y), Vector2(half.x, -half.y), half, Vector2(-half.x, half.y), -half])</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 		elif effect.kind == &quot;telegraph&quot; or effect.kind.ends_with(&quot;warning&quot;):</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 			for i in 25:</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> 				var angle: float = TAU * float(i) / 24.0</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> 				points.append(Vector2(cos(angle), sin(angle)) * effect.size * 0.5)</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 		else:</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> 			for i in 17:</span>
+<span class="line" id="L143"><a href="#L143"> 143</a> 				var angle: float = TAU * float(i) / 16.0</span>
+<span class="line" id="L144"><a href="#L144"> 144</a> 				var radius: float = 0.5 if i % 2 == 0 else 0.18</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> 				points.append(Vector2(cos(angle), sin(angle)) * effect.size * radius)</span>
+<span class="line" id="L146"><a href="#L146"> 146</a> 		if effect.kind.ends_with(&quot;warning&quot;):</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> 			var warning := Label.new()</span>
+<span class="line" id="L148"><a href="#L148"> 148</a> 			warning.name = &quot;AttackWarning&quot;</span>
+<span class="line" id="L149"><a href="#L149"> 149</a> 			warning.z_index = 40</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> 			warning.text = &quot;落掌 · 跃起或闪避&quot; if effect.kind == &quot;slam_warning&quot; else (&quot;卡牌扇 · 准备闪避&quot; if effect.kind == &quot;fan_warning&quot; else &quot;绯月狂宴 · 第二阶段&quot;)</span>
+<span class="line" id="L151"><a href="#L151"> 151</a> 			warning.position = Vector2(-190, -90)</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> 			warning.size = Vector2(380, 40)</span>
+<span class="line" id="L153"><a href="#L153"> 153</a> 			warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> 			warning.add_theme_font_override(&quot;font&quot;, runtime.resources.resolve(&quot;ui_cjk_font&quot;))</span>
+<span class="line" id="L155"><a href="#L155"> 155</a> 			warning.add_theme_font_size_override(&quot;font_size&quot;, 24)</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> 			warning.add_theme_constant_override(&quot;outline_size&quot;, 8)</span>
+<span class="line" id="L157"><a href="#L157"> 157</a> 			root.add_child(warning)</span>
+<span class="line" id="L158"><a href="#L158"> 158</a> 		line.points = points</span>
+<span class="line" id="L159"><a href="#L159"> 159</a> 		node = line</span>
+<span class="line" id="L160"><a href="#L160"> 160</a> 	elif visual.kind == &quot;platform&quot;:</span>
+<span class="line" id="L161"><a href="#L161"> 161</a> 		var strip := Node2D.new()</span>
+<span class="line" id="L162"><a href="#L162"> 162</a> 		var count: int = int(visual.draw_size.x / 160.0)</span>
+<span class="line" id="L163"><a href="#L163"> 163</a> 		for index in count:</span>
+<span class="line" id="L164"><a href="#L164"> 164</a> 			var asset: String = &quot;platform_left&quot; if index == 0 else (&quot;platform_right&quot; if index == count - 1 else &quot;platform_middle&quot;)</span>
+<span class="line" id="L165"><a href="#L165"> 165</a> 			var texture: Resource = runtime.resources.resolve(asset)</span>
+<span class="line" id="L166"><a href="#L166"> 166</a> 			if not texture is AtlasTexture:</span>
+<span class="line" id="L167"><a href="#L167"> 167</a> 				strip.free()</span>
+<span class="line" id="L168"><a href="#L168"> 168</a> 				runtime.fail(&quot;Platform requires AtlasTexture: &quot; + asset)</span>
+<span class="line" id="L169"><a href="#L169"> 169</a> 				return false</span>
+<span class="line" id="L170"><a href="#L170"> 170</a> 			var segment := Sprite2D.new()</span>
+<span class="line" id="L171"><a href="#L171"> 171</a> 			segment.name = &quot;Segment%02d&quot; % index</span>
+<span class="line" id="L172"><a href="#L172"> 172</a> 			segment.texture = texture</span>
+<span class="line" id="L173"><a href="#L173"> 173</a> 			segment.centered = false</span>
+<span class="line" id="L174"><a href="#L174"> 174</a> 			segment.position = Vector2(index * 160, -6)</span>
+<span class="line" id="L175"><a href="#L175"> 175</a> 			strip.add_child(segment)</span>
+<span class="line" id="L176"><a href="#L176"> 176</a> 		node = strip</span>
+<span class="line" id="L177"><a href="#L177"> 177</a> 	else:</span>
+<span class="line" id="L178"><a href="#L178"> 178</a> 		if not resource is Texture2D:</span>
+<span class="line" id="L179"><a href="#L179"> 179</a> 			runtime.fail(&quot;Sprite visual requires Texture2D: &quot; + visual.asset_id)</span>
+<span class="line" id="L180"><a href="#L180"> 180</a> 			return false</span>
+<span class="line" id="L181"><a href="#L181"> 181</a> 		var sprite := Sprite2D.new()</span>
+<span class="line" id="L182"><a href="#L182"> 182</a> 		sprite.texture = resource</span>
+<span class="line" id="L183"><a href="#L183"> 183</a> 		if visual.draw_size != Vector2.ZERO:</span>
+<span class="line" id="L184"><a href="#L184"> 184</a> 			sprite.scale = visual.draw_size / sprite.texture.get_size()</span>
+<span class="line" id="L185"><a href="#L185"> 185</a> 		sprite.position = visual.offset</span>
+<span class="line" id="L186"><a href="#L186"> 186</a> 		node = sprite</span>
+<span class="line" id="L187"><a href="#L187"> 187</a> 	node.name = &quot;Visual&quot;</span>
+<span class="line" id="L188"><a href="#L188"> 188</a> 	node.z_index = visual.z_index</span>
+<span class="line" id="L189"><a href="#L189"> 189</a> 	node.modulate = visual.tint</span>
+<span class="line" id="L190"><a href="#L190"> 190</a> 	root.add_child(node)</span>
+<span class="line" id="L191"><a href="#L191"> 191</a> 	visual.node = node</span>
+<span class="line" id="L192"><a href="#L192"> 192</a> 	return true</span>
+</pre>

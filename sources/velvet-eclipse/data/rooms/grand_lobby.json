@@ -1,0 +1,433 @@
+{
+  "version": 1,
+  "id": "grand_lobby",
+  "name": "大厅",
+  "bounds": [
+    0,
+    0,
+    2400,
+    720
+  ],
+  "background": "bg_lobby",
+  "light": [
+    0.65,
+    0.67,
+    0.79,
+    1
+  ],
+  "spawns": {
+    "start": [
+      260,
+      620
+    ],
+    "from_gallery": [
+      2220,
+      620
+    ],
+    "from_save": [
+      1380,
+      430
+    ]
+  },
+  "platforms": [
+    {
+      "id": "floor",
+      "rect": [
+        0,
+        620,
+        2400,
+        80
+      ]
+    },
+    {
+      "id": "upper_balcony",
+      "rect": [
+        1120,
+        430,
+        480,
+        80
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "entry_arch",
+      "asset_id": "arch",
+      "position": [
+        145,
+        440
+      ],
+      "size": [
+        240,
+        360
+      ],
+      "z": -5
+    },
+    {
+      "id": "curtain_0",
+      "asset_id": "curtain",
+      "position": [
+        30,
+        208
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_1",
+      "asset_id": "curtain",
+      "position": [
+        950,
+        208
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_2",
+      "asset_id": "curtain",
+      "position": [
+        1780,
+        208
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_3",
+      "asset_id": "curtain",
+      "position": [
+        2385,
+        208
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "chandelier_0",
+      "asset_id": "chandelier",
+      "position": [
+        550,
+        115
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -8
+    },
+    {
+      "id": "chandelier_1",
+      "asset_id": "chandelier",
+      "position": [
+        1770,
+        115
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -8
+    },
+    {
+      "id": "rail_0",
+      "asset_id": "railing",
+      "position": [
+        548,
+        580
+      ],
+      "size": [
+        256,
+        80
+      ],
+      "z": -3
+    },
+    {
+      "id": "rail_1",
+      "asset_id": "railing",
+      "position": [
+        804,
+        580
+      ],
+      "size": [
+        256,
+        80
+      ],
+      "z": -3
+    },
+    {
+      "id": "rail_2",
+      "asset_id": "railing",
+      "position": [
+        1840,
+        580
+      ],
+      "size": [
+        256,
+        80
+      ],
+      "z": -3
+    },
+    {
+      "id": "rail_3",
+      "asset_id": "railing",
+      "position": [
+        2096,
+        580
+      ],
+      "size": [
+        256,
+        80
+      ],
+      "z": -3
+    },
+    {
+      "id": "balcony_rail",
+      "asset_id": "railing",
+      "position": [
+        1248,
+        390
+      ],
+      "size": [
+        256,
+        80
+      ],
+      "z": -3
+    },
+    {
+      "id": "candle_0",
+      "asset_id": "candle",
+      "position": [
+        85,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_1",
+      "asset_id": "candle",
+      "position": [
+        395,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_2",
+      "asset_id": "candle",
+      "position": [
+        845,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_3",
+      "asset_id": "candle",
+      "position": [
+        1090,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_4",
+      "asset_id": "candle",
+      "position": [
+        1650,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_5",
+      "asset_id": "candle",
+      "position": [
+        2065,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "candle_6",
+      "asset_id": "candle",
+      "position": [
+        2350,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "upper_candle_0",
+      "asset_id": "candle",
+      "position": [
+        1200,
+        402
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "upper_candle_1",
+      "asset_id": "candle",
+      "position": [
+        1510,
+        402
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "chips_0",
+      "asset_id": "chip",
+      "position": [
+        430,
+        614
+      ],
+      "size": [
+        24,
+        12
+      ],
+      "z": 16
+    },
+    {
+      "id": "chips_1",
+      "asset_id": "chip",
+      "position": [
+        720,
+        614
+      ],
+      "size": [
+        24,
+        12
+      ],
+      "z": 16
+    },
+    {
+      "id": "chips_2",
+      "asset_id": "chip",
+      "position": [
+        1730,
+        614
+      ],
+      "size": [
+        24,
+        12
+      ],
+      "z": 16
+    },
+    {
+      "id": "chips_3",
+      "asset_id": "chip",
+      "position": [
+        2040,
+        614
+      ],
+      "size": [
+        24,
+        12
+      ],
+      "z": 16
+    }
+  ],
+  "enemies": [
+    {
+      "id": "skeletal_dealer",
+      "kind": "melee",
+      "position": [
+        830,
+        620
+      ],
+      "patrol_radius": 180
+    },
+    {
+      "id": "spectral_dealer",
+      "kind": "ranged",
+      "position": [
+        1510,
+        620
+      ],
+      "patrol_radius": 180
+    },
+    {
+      "id": "flying_card",
+      "kind": "flying",
+      "position": [
+        2070,
+        550
+      ],
+      "patrol_radius": 150
+    }
+  ],
+  "doors": [
+    {
+      "id": "to_gallery",
+      "position": [
+        2290,
+        620
+      ],
+      "target_room": "card_banquet_gallery",
+      "target_spawn": "from_lobby",
+      "prompt": "进入牌宴回廊"
+    },
+    {
+      "id": "to_save",
+      "position": [
+        1390,
+        430
+      ],
+      "target_room": "quiet_save_room",
+      "target_spawn": "from_lobby",
+      "prompt": "进入静谧存档室"
+    }
+  ],
+  "relic": null,
+  "checkpoint": null,
+  "boss": null
+}

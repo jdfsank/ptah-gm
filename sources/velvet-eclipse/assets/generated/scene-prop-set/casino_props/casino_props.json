@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/scene-prop-set/casino_props/casino_props.png",
+  "regions": [
+    {
+      "name": "arch",
+      "rect": [
+        0,
+        0,
+        256,
+        384
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "chandelier",
+      "rect": [
+        576,
+        0,
+        224,
+        192
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "curtain",
+      "rect": [
+        272,
+        0,
+        288,
+        448
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "railing",
+      "rect": [
+        576,
+        208,
+        288,
+        112
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "roulette",
+      "rect": [
+        0,
+        464,
+        288,
+        288
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "shrine",
+      "rect": [
+        304,
+        464,
+        192,
+        192
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    }
+  ]
+}

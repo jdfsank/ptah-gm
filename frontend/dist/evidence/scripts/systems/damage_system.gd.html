@@ -1,0 +1,133 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/damage_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/damage_system.gd</h1><p>只读源快照 · SHA-256 a6d24294bf87d18b3b78e3f423e07ba9c47a81e60bbf421b2d133faedecdb93a</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name DamageSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var _contact_tick: int = -1</span>
+<span class="line" id="L5"><a href="#L5">   5</a> var _contacts: Dictionary = {}</span>
+<span class="line" id="L6"><a href="#L6">   6</a> </span>
+<span class="line" id="L7"><a href="#L7">   7</a> func setup() -&gt; void:</span>
+<span class="line" id="L8"><a href="#L8">   8</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L9"><a href="#L9">   9</a> </span>
+<span class="line" id="L10"><a href="#L10">  10</a> func sub_systems() -&gt; Array[Array]:</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	return [[q.with_all([C_Health, C_Transform, C_Body]).enabled(), _health], [q.with_all([C_Hitbox, C_Transform]).enabled(), _hitboxes], [q.with_all([C_Projectile, C_Transform, C_Body]).enabled(), _projectiles]]</span>
+<span class="line" id="L12"><a href="#L12">  12</a> </span>
+<span class="line" id="L13"><a href="#L13">  13</a> func _health(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 	for entity in entities:</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		if not entity.enabled:</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 			continue</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var health: C_Health = entity.get_component(C_Health)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		health.hurt_left = maxf(0.0, health.hurt_left - delta)</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		health.invulnerable_left = maxf(0.0, health.invulnerable_left - delta)</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		if health.heal_requested:</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 			health.current = health.maximum</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 			health.dead = false</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 			health.hurt_left = 0.0</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			health.invulnerable_left = 0.0</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 			health.heal_requested = false</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if health.dead and health.hurt_left &lt;= 0.0 and entity.id != runtime.session.player_id:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			runtime.request_removal(entity.id)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> </span>
+<span class="line" id="L29"><a href="#L29">  29</a> func _hitboxes(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	if runtime.session.mode != &quot;playing&quot;:</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		return</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 	var targets: Array = runtime.world.query.with_all([C_Health, C_Transform, C_Body, C_RoomMember]).enabled().execute()</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 	for entity in entities:</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		if not entity.enabled:</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 			continue</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		var hitbox: C_Hitbox = entity.get_component(C_Hitbox)</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		if hitbox.active_left &lt;= 0.0 or not _owner_can_hit(hitbox.owner_id):</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 			continue</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		var position: Vector2 = entity.get_component(C_Transform).position</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		var rectangle := Rect2(position - hitbox.size * 0.5, hitbox.size)</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 		for target in targets:</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 			if not _eligible(entity, target, hitbox.owner_id, hitbox.team) or target.id in hitbox.hit_ids:</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 				continue</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 			if rectangle.intersects(_body_rect(target)) and _apply_hit(target, hitbox.damage):</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 				hitbox.hit_ids.append(target.id)</span>
+<span class="line" id="L46"><a href="#L46">  46</a> </span>
+<span class="line" id="L47"><a href="#L47">  47</a> func _projectiles(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 	if runtime.session.mode != &quot;playing&quot;:</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 		return</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 	if _contact_tick != runtime.tick_index:</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 		_contact_tick = runtime.tick_index</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 		_contacts = runtime.take_projectile_contacts()</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 	var targets: Array = runtime.world.query.with_all([C_Health, C_Transform, C_Body, C_RoomMember]).enabled().execute()</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 	for entity in entities:</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 		if not entity.enabled:</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 			continue</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 		var projectile: C_Projectile = entity.get_component(C_Projectile)</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 		var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 		var motion: C_Motion = entity.get_component(C_Motion)</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 		if projectile.consumed or not body.ready or motion.placement_pending:</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 			continue</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 		var end: Vector2 = entity.get_component(C_Transform).position</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 		var nearest: Entity = null</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 		var nearest_t: float = INF</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 		for target in targets:</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 			if not _eligible(entity, target, projectile.owner_id, projectile.team):</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 				continue</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 			var rect: Rect2 = _body_rect(target).grow_individual(body.size.x * 0.5 + 0.15, body.size.y * 0.5 + 0.15, body.size.x * 0.5 + 0.15, body.size.y * 0.5 + 0.15)</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 			var fraction: float = _sweep_fraction(projectile.previous_position, end, rect)</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 			if fraction &gt;= 0.0 and fraction &lt; nearest_t:</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 				nearest = target</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 				nearest_t = fraction</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 		if nearest == null and _contacts.has(entity.id):</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 			var contacted: Entity = runtime.world.entity_id_registry.get(_contacts[entity.id])</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 			if is_instance_valid(contacted) and contacted.get_component(C_Health) != null and _eligible(entity, contacted, projectile.owner_id, projectile.team):</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 				nearest = contacted</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 		if nearest != null:</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 			_apply_hit(nearest, projectile.damage)</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 			projectile.consumed = true</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 		elif _contacts.has(entity.id):</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 			projectile.consumed = true</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 		if projectile.consumed:</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 			runtime.request_spawn(&quot;effect&quot;, entity.get_component(C_RoomMember).room_id, {&quot;position&quot;: end, &quot;kind&quot;: &quot;impact&quot;, &quot;duration&quot;: 0.18, &quot;color&quot;: Color(0.7, 0.8, 1.0), &quot;size&quot;: Vector2(28, 28)})</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 			runtime.request_removal(entity.id)</span>
+<span class="line" id="L85"><a href="#L85">  85</a> </span>
+<span class="line" id="L86"><a href="#L86">  86</a> func _eligible(source: Entity, target: Entity, owner_id: String, team: String) -&gt; bool:</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 	if not target.enabled or target.id == owner_id:</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 		return false</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 	var health: C_Health = target.get_component(C_Health)</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 	var body: C_Body = target.get_component(C_Body)</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 	return not health.dead and health.team != team and body.ready and source.get_component(C_RoomMember).room_id == target.get_component(C_RoomMember).room_id</span>
+<span class="line" id="L92"><a href="#L92">  92</a> </span>
+<span class="line" id="L93"><a href="#L93">  93</a> func _owner_can_hit(owner_id: String) -&gt; bool:</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 	var owner: Entity = runtime.world.entity_id_registry.get(owner_id)</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 	if not is_instance_valid(owner) or not owner.enabled:</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 		return false</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 	var health: C_Health = owner.get_component(C_Health)</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 	return health == null or (not health.dead and (health.hurt_left &lt;= 0.0 or owner.get_component(C_Boss) != null))</span>
+<span class="line" id="L99"><a href="#L99">  99</a> </span>
+<span class="line" id="L100"><a href="#L100"> 100</a> func _body_rect(entity: Entity) -&gt; Rect2:</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> 	var body: C_Body = entity.get_component(C_Body)</span>
+<span class="line" id="L102"><a href="#L102"> 102</a> 	return Rect2(entity.get_component(C_Transform).position + body.offset - body.size * 0.5, body.size)</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> </span>
+<span class="line" id="L104"><a href="#L104"> 104</a> func _apply_hit(target: Entity, amount: int) -&gt; bool:</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 	var health: C_Health = target.get_component(C_Health)</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 	var combat: C_Combat = target.get_component(C_Combat)</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 	if health.dead or health.invulnerable_left &gt; 0.0 or (combat != null and combat.dodge_invulnerable):</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 		return false</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> 	health.current = maxi(0, health.current - maxi(amount, 0))</span>
+<span class="line" id="L110"><a href="#L110"> 110</a> 	health.hurt_left = 0.28</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 	health.invulnerable_left = 0.45 if health.team == &quot;player&quot; else 0.16</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 	health.dead = health.current &lt;= 0</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 	var body: C_Body = target.get_component(C_Body)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 	runtime.request_spawn(&quot;effect&quot;, target.get_component(C_RoomMember).room_id, {&quot;position&quot;: target.get_component(C_Transform).position + body.offset, &quot;kind&quot;: &quot;defeat&quot; if health.dead else &quot;impact&quot;, &quot;duration&quot;: 0.38 if health.dead else 0.2, &quot;size&quot;: Vector2(86, 86) if health.dead else Vector2(36, 36), &quot;color&quot;: Color(1, 0.73, 0.4) if health.dead else Color(1, 0.85, 0.8)})</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 	return true</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> </span>
+<span class="line" id="L117"><a href="#L117"> 117</a> func _sweep_fraction(start: Vector2, end: Vector2, rectangle: Rect2) -&gt; float:</span>
+<span class="line" id="L118"><a href="#L118"> 118</a> 	var low: float = 0.0</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 	var high: float = 1.0</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 	var displacement: Vector2 = end - start</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 	for axis in 2:</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 		if absf(displacement[axis]) &lt; 0.00001:</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> 			if start[axis] &lt; rectangle.position[axis] or start[axis] &gt; rectangle.end[axis]:</span>
+<span class="line" id="L124"><a href="#L124"> 124</a> 				return -1.0</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 		else:</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 			var a: float = (rectangle.position[axis] - start[axis]) / displacement[axis]</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 			var b: float = (rectangle.end[axis] - start[axis]) / displacement[axis]</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 			low = maxf(low, minf(a, b))</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 			high = minf(high, maxf(a, b))</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 			if low &gt; high:</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> 				return -1.0</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 	return low</span>
+</pre>

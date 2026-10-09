@@ -1,0 +1,30 @@
+# Godot
+.godot/
+*.import
+*.staging-*
+export_presets.cfg
+reports/
+
+# GodotMaker tooling
+.claude/
+
+# Build artifacts
+*.translation
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+*.swp
+*~
+
+.godotmaker/runs/
+.godotmaker/scratch/
+.godotmaker/verify_report.json
+
+__pycache__/
+*.pyc
+build/

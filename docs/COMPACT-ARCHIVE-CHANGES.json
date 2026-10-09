@@ -1,0 +1,33 @@
+{
+  "originalArchive": "GodotMaker-non-pk-c16d4bb.zip",
+  "originalBytes": 61169997,
+  "originalSha256": "1d92637321f3d53f357f4cd3862b331556e0a4aba9355ad4609f7f996aa6b3a5",
+  "compactArchive": "GodotMaker-non-pk-c16d4bb-code.zip",
+  "excluded": [
+    {
+      "path": "GodotMaker-non-pk/docs/assets/demo_01.gif",
+      "bytes": 6149511,
+      "sha256": "ca0baa1b0e1da4d3c2a0a0b8ee55e185dc86a4cd8ade6bdb188b3787c19f2712",
+      "reason": "Documentation demonstration GIF; no runtime/source/test/license dependency"
+    },
+    {
+      "path": "GodotMaker-non-pk/docs/assets/demo_02.gif",
+      "bytes": 28231816,
+      "sha256": "33175dc32039ee7ac373be36f5374e8f056cc252985d09cccbb792043231a23d",
+      "reason": "Documentation demonstration GIF; no runtime/source/test/license dependency"
+    },
+    {
+      "path": "GodotMaker-non-pk/docs/assets/demo_03.gif",
+      "bytes": 23056090,
+      "sha256": "5c9fd81965d08a63f01eb1a43d37b8f58e052572bbdae6563a43e2cca46d832b",
+      "reason": "Documentation demonstration GIF; no runtime/source/test/license dependency"
+    },
+    {
+      "path": "GodotMaker-non-pk/docs/assets/phantom-camera-godot-demo.gif",
+      "bytes": 2184621,
+      "sha256": "b91d8568f64a965ee2cac14a0a6d963a1358b147941ffaee85cdd5e3b944588e",
+      "reason": "Documentation demonstration GIF; no runtime/source/test/license dependency"
+    }
+  ],
+  "preserved": "All framework source, skills, tests, configurations, licenses and non-GIF assets. Entire Godot game source archive unchanged. All reference inputs and frontend history unchanged."
+}

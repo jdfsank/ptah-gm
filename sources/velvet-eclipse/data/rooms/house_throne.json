@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "id": "house_throne",
+  "name": "庄家王座",
+  "bounds": [
+    0,
+    0,
+    1600,
+    720
+  ],
+  "background": "bg_throne",
+  "light": [
+    0.75,
+    0.65,
+    0.86,
+    1
+  ],
+  "spawns": {
+    "start": [
+      240,
+      620
+    ],
+    "from_save": [
+      240,
+      620
+    ]
+  },
+  "platforms": [
+    {
+      "id": "floor",
+      "rect": [
+        0,
+        620,
+        1600,
+        80
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "throne_curtain_left",
+      "asset_id": "curtain",
+      "position": [
+        140,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -5
+    },
+    {
+      "id": "throne_curtain_right",
+      "asset_id": "curtain",
+      "position": [
+        1460,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -5
+    },
+    {
+      "id": "throne_chandelier",
+      "asset_id": "chandelier",
+      "position": [
+        800,
+        90
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -5
+    },
+    {
+      "id": "throne_rail_left",
+      "asset_id": "railing",
+      "position": [
+        470,
+        574
+      ],
+      "size": [
+        256,
+        96
+      ],
+      "z": -5
+    },
+    {
+      "id": "throne_rail_right",
+      "asset_id": "railing",
+      "position": [
+        1280,
+        574
+      ],
+      "size": [
+        256,
+        96
+      ],
+      "z": -5
+    },
+    {
+      "id": "throne_candle_left",
+      "asset_id": "candle",
+      "position": [
+        450,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    },
+    {
+      "id": "throne_candle_right",
+      "asset_id": "candle",
+      "position": [
+        1380,
+        592
+      ],
+      "size": [
+        24,
+        56
+      ],
+      "z": 15
+    }
+  ],
+  "enemies": [],
+  "doors": [
+    {
+      "id": "to_save",
+      "position": [
+        90,
+        620
+      ],
+      "target_room": "quiet_save_room",
+      "target_spawn": "from_throne",
+      "prompt": "退回静谧存档室"
+    }
+  ],
+  "relic": null,
+  "checkpoint": null,
+  "boss": {
+    "id": "royal_dealer",
+    "position": [
+      1160,
+      620
+    ],
+    "arena": [
+      0,
+      0,
+      1600,
+      720
+    ]
+  }
+}

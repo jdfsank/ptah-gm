@@ -1,0 +1,1471 @@
+"""Fail-closed standalone execution tests for the formerly prose-only families."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import importlib.util
+import struct
+import sys
+import zlib
+from pathlib import Path
+
+import pytest
+from PIL import Image
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [
+    str(REPO_ROOT / "skills" / "assets" / "_shared"),
+    str(REPO_ROOT / "tools"),
+]
+
+from missing_family_standalone_validation import (  # noqa: E402
+    MissingFamilySkillError,
+    compile_and_validate,
+)
+from asset_image_finalize import finalize_image_asset  # noqa: E402
+from asset_sheet_process import process_sheet  # noqa: E402
+from asset_validation import ProbeReport, ProbeResult  # noqa: E402
+from asset_result_registration import register_result  # noqa: E402
+import missing_family_standalone_validation as runner  # noqa: E402
+
+
+def _background_result(
+    *, asset_type: str = "background-map", godot_type: str = "Texture2D"
+) -> dict:
+    return {
+        "asset_type": asset_type,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": "sky",
+                "path": "res://assets/generated/background-map/sky/sky.png",
+                "godot_type": godot_type,
+            }
+        ],
+        "sources": [
+            {
+                "path": "res://assets/generated/background-map/sky/sky.png",
+                "layout": "single",
+            }
+        ],
+        "previews": [],
+        "validation": {
+            "passed": True,
+            "levels": {"L0": True, "L1": True, "L2": True, "L3": True, "L4": True},
+        },
+    }
+
+
+def _source_adapter(family: str):
+    path = REPO_ROOT / "skills" / "assets" / family / "standalone_validation.py"
+    spec = importlib.util.spec_from_file_location(f"{family}_adapter", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_final_validation_mapping_preserves_string_fallback_notes():
+    result = _background_result()
+    result["validation"]["notes"] = "Fixed-grid fallback used for attack; review action report warnings."
+
+    actual = runner._mapped(result, {level: True for level in ("L0", "L1", "L2", "L3", "L4")})
+
+    assert actual["validation"]["notes"] == result["validation"]["notes"]
+
+
+def test_skill_local_adapters_reject_a_legal_request_for_another_family(tmp_path):
+    request = {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."}
+    for family in (
+        "platform-strip", "screen-reference", "character-bundle", "fx-bundle",
+        "compact-prop-pack", "scene-prop-set",
+    ):
+        with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+            _source_adapter(family).compile_and_validate(
+                request, _background_result(), project_root=tmp_path, godot_path="fake"
+            )
+
+    platform_request = {
+        "asset_type": "platform-strip", "asset_id": "bridge", "brief": "A bridge.",
+        "spec": {
+            "kind": "single",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
+    }
+    platform_result = {
+        "asset_type": "platform-strip",
+        "outputs": [{"role": "runtime", "name": "middle", "path": "res://assets/generated/platform-strip/bridge/middle.png", "godot_type": "Texture2D"}],
+        "sources": [{"path": "res://assets/generated/platform-strip/bridge/middle.png", "layout": "single"}],
+        "previews": [], "validation": {"passed": False},
+    }
+    with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+        _source_adapter("background-map").compile_and_validate(
+            platform_request, platform_result, project_root=tmp_path, godot_path="fake"
+        )
+
+
+def test_background_runner_does_not_trust_a_forged_successful_validation(tmp_path):
+    actual = compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="godot",
+    )
+    assert actual["validation"]["passed"] is False
+    assert actual["validation"]["levels"] == {
+        "L0": True,
+        "L1": False,
+        "L2": False,
+        "L3": False,
+        "L4": False,
+    }
+
+
+def test_background_runner_preserves_a_no_output_provider_or_reference_stop(tmp_path):
+    result = {
+        "asset_type": "background-map",
+        "outputs": [],
+        "sources": [],
+        "previews": [],
+        "validation": {"passed": False, "notes": "style reference is unreadable"},
+    }
+
+    actual = compile_and_validate(
+        {
+            "asset_type": "background-map",
+            "asset_id": "sky",
+            "brief": "A blue sky.",
+            "references": [{"role": "style", "path": "res://references/missing.png"}],
+            "provider": "codex",
+        },
+        result,
+        project_root=tmp_path,
+        godot_path="godot",
+    )
+
+    assert actual["outputs"] == []
+    assert actual["sources"] == []
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "style reference is unreadable",
+    }
+
+
+def test_background_runner_rejects_an_unexplained_no_output_stop(tmp_path):
+    result = {
+        "asset_type": "background-map",
+        "outputs": [],
+        "sources": [],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    with pytest.raises(MissingFamilySkillError, match="must include a validation note"):
+        compile_and_validate(
+            {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+            result,
+            project_root=tmp_path,
+            godot_path="godot",
+        )
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        pytest.param(
+            _background_result(asset_type="platform-strip"), id="wrong-family"
+        ),
+        pytest.param(
+            _background_result(godot_type="AtlasTexture"), id="wrong-godot-type"
+        ),
+    ],
+)
+def test_background_runner_fails_closed_before_l1_for_wrong_public_binding(
+    tmp_path, result
+):
+    with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+        compile_and_validate(
+            {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+            result,
+            project_root=tmp_path,
+            godot_path="godot",
+        )
+
+
+def test_platform_atlas_requires_every_declared_logical_output(tmp_path):
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": "bridge",
+        "brief": "A bridge.",
+        "spec": {
+            "kind": "atlas",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
+    }
+    result = {
+        "asset_type": "platform-strip",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": "left",
+                "path": "res://assets/generated/platform-strip/bridge/left.tres",
+                "godot_type": "AtlasTexture",
+            }
+        ],
+        "sources": [
+            {
+                "path": "res://assets/generated/platform-strip/bridge/bridge.png",
+                "layout": "region_atlas",
+            }
+        ],
+        "previews": [],
+        "validation": {"passed": True},
+    }
+    with pytest.raises(MissingFamilySkillError, match="every declared segment"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="godot")
+
+
+def test_platform_strip_rejects_an_unreadable_optional_reference_at_l1(tmp_path):
+    root = "res://assets/generated/platform-strip/bridge"
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": "bridge",
+        "brief": "A bridge.",
+        "references": [{"role": "style", "path": "references/missing.png"}],
+        "spec": {
+            "kind": "single",
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
+    }
+    result = {
+        "asset_type": "platform-strip",
+        "outputs": [
+            {"role": "runtime", "name": name, "path": f"{root}/{name}.png", "godot_type": "Texture2D"}
+            for name in ("left", "middle", "right")
+        ],
+        "sources": [{"path": f"{root}/{name}.png", "layout": "single"} for name in ("left", "middle", "right")],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/bridge_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (24, 8), (1, 2, 3, 255)).save(raw_source)
+
+    actual = compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+    assert actual["validation"]["levels"] == {"L0": True, "L1": False, "L2": False, "L3": False, "L4": False}
+    assert "platform-strip reference style" in actual["validation"]["notes"]
+
+
+@pytest.mark.parametrize(
+    "mutation", ["extra_column", "extra_row", "gap", "slot_order", "role_order"]
+)
+def test_platform_strip_requires_a_closed_horizontal_slot_row(tmp_path, mutation):
+    segments = [
+        {"name": "left", "role": "left_cap", "slot": [0, 0]},
+        {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+        {"name": "right", "role": "right_cap", "slot": [2, 0]},
+    ]
+    grid = {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8}
+    if mutation == "extra_column":
+        grid["columns"] = 4
+    elif mutation == "extra_row":
+        grid["rows"] = 2
+    elif mutation == "gap":
+        segments[1]["slot"] = [2, 0]
+        segments[2]["slot"] = [3, 0]
+        grid["columns"] = 4
+    elif mutation == "slot_order":
+        segments[0]["slot"] = [1, 0]
+        segments[1]["slot"] = [0, 0]
+    else:
+        segments[0]["role"] = "repeat_middle"
+        segments[1]["role"] = "left_cap"
+
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": "bridge",
+        "brief": "A bridge.",
+        "spec": {"kind": "single", "grid": grid, "segments": segments},
+    }
+    result = {
+        "asset_type": "platform-strip",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": "left",
+                "path": "res://assets/generated/platform-strip/bridge/left.png",
+                "godot_type": "Texture2D",
+            }
+        ],
+        "sources": [
+            {
+                "path": "res://assets/generated/platform-strip/bridge/left.png",
+                "layout": "single",
+            }
+        ],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    with pytest.raises(MissingFamilySkillError, match="continuous left_cap/repeat_middle/right_cap"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_platform_strip_splits_before_per_cell_finalization(tmp_path):
+    source = tmp_path / "provider-sheet.png"
+    colors = {
+        "left": (255, 0, 0, 255),
+        "middle": (0, 255, 0, 255),
+        "right": (0, 0, 255, 255),
+    }
+    image = Image.new("RGBA", (31, 10), (255, 0, 255, 255))
+    for index, color in enumerate(colors.values()):
+        for x in range(index * 10 + 1, index * 10 + 9):
+            for y in range(1, 9):
+                image.putpixel((x, y), color)
+    image.save(source)
+
+    sliced_dir = tmp_path / "sliced"
+    report = process_sheet(
+        source,
+        sliced_dir,
+        grid="3x1",
+        names="left,middle,right",
+        background="magenta",
+        snap_mode="grid",
+        preserve_cell_bounds=True,
+    )
+    assert report["accepted_count"] == 3
+
+    for name, color in colors.items():
+        cropped_dir = tmp_path / "cropped" / name
+        crop_report = process_sheet(
+            sliced_dir / f"{name}.png",
+            cropped_dir,
+            grid="1x1",
+            names=name,
+            snap_mode="grid",
+        )
+        assert crop_report["accepted_count"] == 1
+        finalized = tmp_path / "normalized" / f"{name}.png"
+        finalize_image_asset(
+            cropped_dir / f"{name}.png",
+            finalized,
+            resize="20x20",
+            archive_original=False,
+        )
+        with Image.open(finalized) as output:
+            rgba = output.convert("RGBA")
+            try:
+                pixels = set(rgba.get_flattened_data())
+            finally:
+                rgba.close()
+        assert color in pixels
+        assert not any(other in pixels for other_name, other in colors.items() if other_name != name)
+
+
+def test_screen_reference_completes_at_l1_without_invoking_runtime_ladder(tmp_path):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/title_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(raw_source)
+    result = compile_and_validate(
+        {
+            "asset_type": "screen-reference",
+            "asset_id": "title",
+            "brief": "A title scene.",
+        },
+        {
+            "asset_type": "screen-reference",
+            "outputs": [
+                {"role": "reference", "name": "title", "path": "references/title.png"}
+            ],
+            "sources": [
+                {
+                    "path": ".godotmaker/asset-generation/sources/title_source.png",
+                    "layout": "single",
+                }
+            ],
+            "previews": [],
+            "validation": {"passed": False},
+        },
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+    assert result["validation"] == {"passed": True, "levels": {"L0": True, "L1": True}}
+
+
+def _screen_reference_request() -> dict:
+    return {
+        "asset_type": "screen-reference",
+        "asset_id": "title",
+        "brief": "A title scene.",
+    }
+
+
+def _screen_reference_result() -> dict:
+    return {
+        "asset_type": "screen-reference",
+        "outputs": [
+            {"role": "reference", "name": "title", "path": "references/title.png"}
+        ],
+        "sources": [
+            {
+                "path": ".godotmaker/asset-generation/sources/title_source.png",
+                "layout": "single",
+            }
+        ],
+        "previews": [],
+        "validation": {"passed": True},
+    }
+
+
+def test_screen_reference_rejects_a_missing_deterministic_raw_source(tmp_path):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": (
+            "raw screen-reference source is not a non-empty file: "
+            ".godotmaker/asset-generation/sources/title_source.png"
+        ),
+    }
+
+
+def _png_chunk(kind: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + kind
+        + data
+        + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+    )
+
+
+def _zero_width_png() -> bytes:
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(b"IHDR", struct.pack(">IIBBBBB", 0, 1, 8, 6, 0, 0, 0)),
+            _png_chunk(b"IDAT", zlib.compress(b"")),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+def _decompression_bomb_png() -> bytes:
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(
+                b"IHDR", struct.pack(">IIBBBBB", 30000, 30000, 8, 6, 0, 0, 0)
+            ),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02",
+            id="truncated-ihdr",
+        ),
+        pytest.param(b"not a png", id="non-png"),
+        pytest.param(_zero_width_png(), id="zero-width"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
+    ],
+)
+def test_screen_reference_rejects_undecodable_pngs(tmp_path, payload):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    reference.write_bytes(payload)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "reference image is not a decodable PNG: references/title.png",
+    }
+    assert str(tmp_path) not in actual["validation"]["notes"]
+
+
+def test_screen_reference_rejects_png_with_bad_idat_crc(tmp_path):
+    reference = tmp_path / "references" / "title.png"
+    reference.parent.mkdir()
+    Image.new("RGBA", (2, 2), (1, 2, 3, 255)).save(reference)
+    payload = bytearray(reference.read_bytes())
+    idat = payload.index(b"IDAT")
+    payload[idat + 4] ^= 1
+    reference.write_bytes(payload)
+
+    actual = compile_and_validate(
+        _screen_reference_request(),
+        _screen_reference_result(),
+        project_root=tmp_path,
+        godot_path="not-used",
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {"L0": True, "L1": False},
+        "notes": "reference image is not a decodable PNG: references/title.png",
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(b"not a png", id="non-png"),
+        pytest.param(_decompression_bomb_png(), id="decompression-bomb"),
+    ],
+)
+def test_prop_atlas_rejects_bad_png_with_a_stable_source_path(tmp_path, payload):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request)
+    atlas = tmp_path / "assets/generated/compact-prop-pack/market/market.png"
+    atlas.write_bytes(payload)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="not-used"
+    )
+
+    assert actual["validation"] == {
+        "passed": False,
+        "levels": {level: level == "L0" for level in ("L0", "L1", "L2", "L3", "L4")},
+        "notes": (
+            "delivered atlas is not a decodable PNG: "
+            "res://assets/generated/compact-prop-pack/market/market.png"
+        ),
+    }
+
+
+def test_background_executes_l2_to_l4_with_a_real_png_and_probe(monkeypatch, tmp_path):
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+
+    class Probe:
+        def __init__(self, _path):
+            pass
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "fake",
+                (
+                    ProbeResult(
+                        requests[0].res_path,
+                        "Texture2D",
+                        True,
+                        "CompressedTexture2D",
+                        True,
+                        structure={"texture2d": {"width": 2, "height": 3}},
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+    actual = compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="fake",
+    )
+    assert actual["validation"]["levels"] == {
+        level: True for level in ("L0", "L1", "L2", "L3", "L4")
+    }
+
+
+class _PassingTexture2DProbe:
+    def __init__(self, _path):
+        pass
+
+    def probe(self, _root, requests):
+        return ProbeReport(
+            "fake",
+            (
+                ProbeResult(
+                    requests[0].res_path,
+                    "Texture2D",
+                    True,
+                    "CompressedTexture2D",
+                    True,
+                    structure={"texture2d": {"width": 2, "height": 3}},
+                ),
+            ),
+        )
+
+
+def test_background_records_the_bytes_a_passing_ladder_examined(monkeypatch, tmp_path):
+    """Registration has no other way to tell the validated build from a retry's.
+
+    The stable path is derived from `asset_id`, so a regeneration overwrites the
+    exact PNG a passing result names. The record is what the entry builder
+    recomputes from disk before it writes `ready`.
+    """
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+    monkeypatch.setattr(runner, "GodotProbe", _PassingTexture2DProbe)
+
+    actual = _source_adapter("background-map").compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="fake",
+    )
+
+    assert actual["validation"]["passed"] is True
+    record = json.loads(
+        (
+            tmp_path / ".godotmaker/asset-generation/reports/sky_validation.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert record == {
+        "version": 1,
+        "production_family": "background-map",
+        "asset_id": "sky",
+        "artifact": {
+            "path": "res://assets/generated/background-map/sky/sky.png",
+            "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+        },
+    }
+
+
+def test_background_records_nothing_when_the_ladder_does_not_pass(monkeypatch, tmp_path):
+    """A failed run must not leave a record that would let the bytes register."""
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+
+    class Probe:
+        def __init__(self, _path):
+            pass
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "fake",
+                (
+                    ProbeResult(
+                        requests[0].res_path,
+                        "Texture2D",
+                        False,
+                        None,
+                        False,
+                        error="Godot could not import the image",
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+
+    actual = _source_adapter("background-map").compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="fake",
+    )
+
+    assert actual["validation"]["passed"] is False
+    assert not (
+        tmp_path / ".godotmaker/asset-generation/reports/sky_validation.json"
+    ).exists()
+
+
+def test_standalone_validation_prefers_the_pinned_eval_godot(monkeypatch, tmp_path):
+    source = tmp_path / "assets/generated/background-map/sky/sky.png"
+    source.parent.mkdir(parents=True)
+    Image.new("RGBA", (2, 3), (1, 2, 3, 255)).save(source)
+    seen_paths: list[str] = []
+
+    class Probe:
+        def __init__(self, path):
+            seen_paths.append(path)
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "pinned-eval-godot",
+                (
+                    ProbeResult(
+                        requests[0].res_path,
+                        "Texture2D",
+                        True,
+                        "CompressedTexture2D",
+                        True,
+                        structure={"texture2d": {"width": 2, "height": 3}},
+                    ),
+                ),
+            )
+
+    monkeypatch.setenv("GM_EVAL_GODOT_PATH", "pinned-eval-godot")
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+    actual = compile_and_validate(
+        {"asset_type": "background-map", "asset_id": "sky", "brief": "A blue sky."},
+        _background_result(),
+        project_root=tmp_path,
+        godot_path="godot",
+    )
+
+    assert seen_paths == ["pinned-eval-godot"]
+    assert actual["validation"]["passed"] is True
+
+
+@pytest.mark.parametrize("source", [None, 5], ids=["missing", "wrong-type"])
+def test_prop_slot_errors_fail_closed_at_l0(tmp_path, source):
+    slot = {"name": "coin", "rect": [0, 0, 1, 1]}
+    if source is not None:
+        slot["source"] = source
+    request = {
+        "asset_type": "compact-prop-pack",
+        "asset_id": "props",
+        "brief": "props",
+        "spec": {"version": 1, "atlas": {"width": 1, "height": 1}, "slots": [slot]},
+    }
+    result = {
+        "asset_type": "compact-prop-pack",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": "coin",
+                "path": "res://assets/generated/compact-prop-pack/props/coin.tres",
+                "godot_type": "AtlasTexture",
+            }
+        ],
+        "sources": [
+            {
+                "path": "res://assets/generated/compact-prop-pack/props/props.png",
+                "layout": "region_atlas",
+            }
+        ],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+    with pytest.raises(MissingFamilySkillError, match="L0 standalone contract failed"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+@pytest.mark.parametrize("family", ["compact-prop-pack", "scene-prop-set"])
+@pytest.mark.parametrize(
+    ("slots", "message"),
+    [
+        pytest.param(
+            [
+                {"name": "left", "rect": [0, 0, 4, 4], "source": "left.png"},
+                {"name": "right", "rect": [4, 0, 4, 4], "source": "right.png"},
+            ],
+            None,
+            id="edge-touching-is-valid",
+        ),
+        pytest.param(
+            [
+                {"name": "left", "rect": [0, 0, 6, 6], "source": "left.png"},
+                {"name": "right", "rect": [4, 4, 4, 4], "source": "right.png"},
+            ],
+            "overlaps another declared slot",
+            id="partial-overlap",
+        ),
+        pytest.param(
+            [
+                {"name": "outer", "rect": [0, 0, 8, 8], "source": "outer.png"},
+                {"name": "inner", "rect": [2, 2, 2, 2], "source": "inner.png"},
+            ],
+            "overlaps another declared slot",
+            id="complete-containment",
+        ),
+        pytest.param(
+            [
+                {"name": "first", "rect": [0, 0, 4, 4], "source": "first.png"},
+                {"name": "second", "rect": [0, 0, 4, 4], "source": "second.png"},
+            ],
+            "overlaps another declared slot",
+            id="identical-rectangles",
+        ),
+        pytest.param(
+            [
+                {"name": "top_left", "rect": [0, 0, 4, 4], "source": "top_left.png"},
+                {"name": "top_right", "rect": [4, 0, 4, 4], "source": "top_right.png"},
+                {"name": "bottom", "rect": [0, 4, 8, 4], "source": "bottom.png"},
+            ],
+            None,
+            id="valid-multi-slot-layout",
+        ),
+        pytest.param(
+            [{"name": "outside", "rect": [6, 0, 3, 2], "source": "outside.png"}],
+            "outside the declared atlas bounds",
+            id="outside-atlas-bounds",
+        ),
+        pytest.param(
+            [{"name": "CON", "rect": [0, 0, 4, 4], "source": "con.png"}],
+            "Windows reserved device name",
+            id="unsafe-logical-name",
+        ),
+    ],
+)
+def test_prop_fixed_slot_geometry_fails_closed_at_l0(tmp_path, family, slots, message):
+    root = f"res://assets/generated/{family}/props"
+    request = {
+        "asset_type": family,
+        "asset_id": "props",
+        "brief": "props",
+        "spec": {"version": 1, "atlas": {"width": 8, "height": 8}, "slots": slots},
+    }
+    result = {
+        "asset_type": family,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": slot["name"],
+                "path": f"{root}/{slot['name']}.tres",
+                "godot_type": "AtlasTexture",
+            }
+            for slot in slots
+        ],
+        "sources": [{"path": f"{root}/props.png", "layout": "region_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+
+    if message is None:
+        actual = compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="fake"
+        )
+        assert actual["validation"]["levels"]["L0"] is True
+    else:
+        with pytest.raises(MissingFamilySkillError, match=message):
+            compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_prop_runner_never_rebuilds_or_overwrites_the_delivered_atlas(tmp_path):
+    output = tmp_path / "assets/generated/compact-prop-pack/props"
+    output.mkdir(parents=True)
+    atlas = output / "props.png"
+    Image.new("RGBA", (1, 1), (0, 0, 255, 255)).save(atlas)
+    metadata = output / "props.json"
+    metadata.write_text("not metadata", encoding="utf-8")
+    before = (atlas.read_bytes(), metadata.read_bytes())
+    request = {
+        "asset_type": "compact-prop-pack",
+        "asset_id": "props",
+        "brief": "props",
+        "spec": {
+            "version": 1,
+            "atlas": {"width": 1, "height": 1},
+            "slots": [
+                {"name": "coin", "rect": [0, 0, 1, 1], "source": "sources/coin.png"}
+            ],
+        },
+    }
+    result = {
+        "asset_type": "compact-prop-pack",
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": "coin",
+                "path": "res://assets/generated/compact-prop-pack/props/coin.tres",
+                "godot_type": "AtlasTexture",
+            }
+        ],
+        "sources": [
+            {
+                "path": "res://assets/generated/compact-prop-pack/props/props.png",
+                "layout": "region_atlas",
+            }
+        ],
+        "previews": [],
+        "validation": {"passed": True},
+    }
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+    assert actual["validation"]["levels"]["L1"] is False
+    assert (atlas.read_bytes(), metadata.read_bytes()) == before
+
+
+def test_animated_bundle_checks_each_declared_sheet_at_l1(tmp_path):
+    request = json.loads(
+        (
+            REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json"
+        ).read_text(encoding="utf-8")
+    )
+    result = json.loads(
+        (
+            REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json"
+        ).read_text(encoding="utf-8")
+    )
+    output = tmp_path / "assets/generated/character-bundle/player"
+    output.mkdir(parents=True)
+    for path in ("player_idle_sheet.png", "preview_idle.png"):
+        (output / path).write_bytes(b"x")
+    for action in request["spec"]["actions"]:
+        for frame in action["frame_names"]:
+            (output / f"player_{action['name']}_{frame}.png").write_bytes(b"x")
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+    assert actual["validation"]["levels"]["L1"] is False
+
+
+def test_character_without_user_canonical_must_deliver_its_generated_anchor(tmp_path):
+    request = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    request.pop("references")
+    result = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    with pytest.raises(MissingFamilySkillError, match="generated canonical image"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_character_with_user_canonical_cannot_publish_a_duplicate_anchor(tmp_path):
+    request = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-resolved-request.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result = json.loads(
+        (REPO_ROOT / "skills/assets/character-bundle/fixtures/valid-result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result["outputs"].append(
+        {
+            "role": "reference",
+            "name": "canonical",
+            "path": "res://assets/generated/character-bundle/player/player_canonical.png",
+            "godot_type": "Texture2D",
+        }
+    )
+
+    with pytest.raises(MissingFamilySkillError, match="must not replace"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def test_character_high_level_request_resolves_its_archived_compiler_request(tmp_path):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    resolved = json.loads((fixtures / "valid-resolved-request.json").read_text(encoding="utf-8"))
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+    plans = tmp_path / ".godotmaker/asset-generation/plans"
+    plans.mkdir(parents=True)
+    (plans / "player_resolved_request.json").write_text(
+        json.dumps(resolved), encoding="utf-8"
+    )
+    output = tmp_path / "assets/generated/character-bundle/player"
+    output.mkdir(parents=True)
+    for source in result["sources"]:
+        (output / Path(source["path"]).name).write_bytes(b"x")
+    for preview in result["previews"]:
+        (output / Path(preview["path"]).name).write_bytes(b"x")
+    for action in resolved["spec"]["actions"]:
+        for frame in action["frame_names"]:
+            (output / f"player_{action['name']}_{frame}.png").write_bytes(b"x")
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"]["L0"] is True
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        pytest.param(
+            lambda resolved: resolved["spec"].update(frame_canvas_px=512),
+            "retain public frame_canvas_px",
+            id="frame-canvas",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(loop=True),
+            "retain explicit public action loop",
+            id="explicit-loop",
+        ),
+        pytest.param(
+            lambda resolved: resolved["spec"]["actions"][1].update(
+                intent="A different attack."
+            ),
+            "retain public action name and intent",
+            id="intent",
+        ),
+    ],
+)
+def test_character_high_level_request_rejects_a_mismatched_resolved_request(
+    tmp_path, mutate, message
+):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    resolved = json.loads(
+        (fixtures / "valid-resolved-request.json").read_text(encoding="utf-8")
+    )
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+    mutate(resolved)
+    plans = tmp_path / ".godotmaker/asset-generation/plans"
+    plans.mkdir(parents=True)
+    (plans / "player_resolved_request.json").write_text(
+        json.dumps(resolved), encoding="utf-8"
+    )
+
+    with pytest.raises(MissingFamilySkillError, match=message):
+        compile_and_validate(
+            request, result, project_root=tmp_path, godot_path="fake"
+        )
+
+
+def test_character_high_level_request_requires_its_archived_resolved_request(tmp_path):
+    fixtures = REPO_ROOT / "skills/assets/character-bundle/fixtures"
+    request = json.loads((fixtures / "valid-request.json").read_text(encoding="utf-8"))
+    result = json.loads((fixtures / "valid-result.json").read_text(encoding="utf-8"))
+
+    with pytest.raises(MissingFamilySkillError, match="archived resolved request"):
+        compile_and_validate(request, result, project_root=tmp_path, godot_path="fake")
+
+
+def _set_good_probe(monkeypatch, structures):
+    class Probe:
+        def __init__(self, _path):
+            pass
+
+        def probe(self, _root, requests):
+            return ProbeReport(
+                "fake",
+                tuple(
+                    ProbeResult(
+                        item.res_path,
+                        item.expected_type,
+                        True,
+                        item.expected_type,
+                        True,
+                        structure=structures[item.res_path],
+                    )
+                    for item in requests
+                ),
+            )
+
+    monkeypatch.setattr(runner, "GodotProbe", Probe)
+
+
+def _prop_handoff(family: str, asset_id: str = "market") -> tuple[dict, dict]:
+    root = f"res://assets/generated/{family}/{asset_id}"
+    slots = [
+        {"name": "coin", "rect": [0, 0, 16, 16], "source": "sources/coin.png"},
+        {"name": "chest", "rect": [16, 0, 16, 16], "source": "sources/chest.png"},
+    ]
+    request = {
+        "asset_type": family,
+        "asset_id": asset_id,
+        "brief": "Two compact props.",
+        "spec": {"version": 1, "atlas": {"width": 32, "height": 16}, "slots": slots},
+    }
+    result = {
+        "asset_type": family,
+        "outputs": [
+            {
+                "role": "runtime",
+                "name": slot["name"],
+                "path": f"{root}/{slot['name']}.tres",
+                "godot_type": "AtlasTexture",
+            }
+            for slot in slots
+        ],
+        "sources": [{"path": f"{root}/{asset_id}.png", "layout": "region_atlas"}],
+        "previews": [],
+        "validation": {"passed": False},
+    }
+    return request, result
+
+
+def _write_prop_delivery(
+    root: Path, request: dict, *, extra_region: bool = False
+) -> None:
+    family, asset_id = request["asset_type"], request["asset_id"]
+    output = root / "assets" / "generated" / family / asset_id
+    output.mkdir(parents=True)
+    atlas = request["spec"]["atlas"]
+    atlas_image = Image.new("RGBA", (atlas["width"], atlas["height"]), (0, 0, 0, 0))
+    for slot in request["spec"]["slots"]:
+        x, y, width, height = slot["rect"]
+        atlas_image.putpixel((x + width // 2, y + height // 2), (1, 2, 3, 255))
+    atlas_image.save(output / f"{asset_id}.png")
+    regions = [
+        {
+            "name": slot["name"],
+            "rect": slot["rect"],
+            "pivot": [0.5, 0.5],
+            "nine_slice": None,
+        }
+        for slot in request["spec"]["slots"]
+    ]
+    if extra_region:
+        regions.append(
+            {
+                "name": "ghost",
+                "rect": [0, 0, 1, 1],
+                "pivot": [0.5, 0.5],
+                "nine_slice": None,
+            }
+        )
+    (output / f"{asset_id}.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "atlas_path": f"res://assets/generated/{family}/{asset_id}/{asset_id}.png",
+                "regions": regions,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _register_validated_outputs(tmp_path: Path, request: dict, result: dict) -> dict:
+    """Exercise direct registration with the exact request that passed L0-L4."""
+    names = [output["name"] for output in result["outputs"]]
+    assets_md = tmp_path / "ASSETS.md"
+    rows = "\n".join(
+        f"| {index} | v0.1.0 | {name} | prop | 64x64 | family={request['asset_type']} | - | - | MISSING |"
+        for index, name in enumerate(names, 1)
+    )
+    assets_md.write_text(
+        "# Assets\n\n"
+        "| # | Tag | Name | Type | Size | Generation Params | Runtime Type | Runtime Path | Status |\n"
+        "|---|-----|------|------|------|-------------------|--------------|--------------|--------|\n"
+        + rows + "\n",
+        encoding="utf-8",
+    )
+    request_path, result_path = tmp_path / "request.json", tmp_path / "result.json"
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    result_path.write_text(json.dumps(result), encoding="utf-8")
+    return register_result(
+        assets_md, result_path, tag="v0.1.0", request_path=request_path, loader=lambda *_: None
+    )
+
+
+@pytest.mark.parametrize("family", ["compact-prop-pack", "scene-prop-set"])
+def test_prop_families_run_multi_slot_delivery_through_l4(
+    monkeypatch, tmp_path, family
+):
+    request, result = _prop_handoff(family)
+    _write_prop_delivery(tmp_path, request)
+    root = f"res://assets/generated/{family}/market"
+    _set_good_probe(
+        monkeypatch,
+        {
+            f"{root}/coin.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/market.png",
+                    "region": [0, 0, 16, 16],
+                    "margin": [0, 0, 0, 0],
+                }
+            },
+            f"{root}/chest.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/market.png",
+                    "region": [16, 0, 16, 16],
+                    "margin": [0, 0, 0, 0],
+                }
+            },
+        },
+    )
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        level: True for level in ("L0", "L1", "L2", "L3", "L4")
+    }
+    if family == "compact-prop-pack":
+        assert _register_validated_outputs(tmp_path, request, actual)["updated"] == [
+            "coin", "chest"
+        ]
+
+
+def test_compact_prop_multi_slot_delivery_runs_through_real_godot_l4(
+    godot_project, godot_bin
+):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(godot_project, request)
+
+    actual = compile_and_validate(
+        request, result, project_root=godot_project, godot_path=godot_bin
+    )
+
+    assert actual["validation"]["levels"] == {
+        level: True for level in ("L0", "L1", "L2", "L3", "L4")
+    }
+
+
+@pytest.mark.parametrize("mutation", ["rect", "extra-region", "dimensions"])
+def test_prop_delivery_must_exactly_bind_declared_geometry(tmp_path, mutation):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request, extra_region=mutation == "extra-region")
+    output = tmp_path / "assets/generated/compact-prop-pack/market"
+    metadata = output / "market.json"
+    if mutation == "rect":
+        delivered = json.loads(metadata.read_text(encoding="utf-8"))
+        delivered["regions"][0]["rect"] = [0, 0, 1, 1]
+        metadata.write_text(json.dumps(delivered), encoding="utf-8")
+    elif mutation == "dimensions":
+        Image.new("RGBA", (64, 64), (1, 2, 3, 255)).save(output / "market.png")
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        "L0": True,
+        "L1": False,
+        "L2": False,
+        "L3": False,
+        "L4": False,
+    }
+
+
+@pytest.mark.parametrize("pixel", [(255, 0, 255, 255), (1, 2, 3, 255)])
+def test_compact_prop_delivery_rejects_opaque_magenta_or_missing_padding(tmp_path, pixel):
+    request, result = _prop_handoff("compact-prop-pack")
+    _write_prop_delivery(tmp_path, request)
+    atlas = tmp_path / "assets/generated/compact-prop-pack/market/market.png"
+    Image.new("RGBA", (32, 16), pixel).save(atlas)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["levels"] == {
+        "L0": True,
+        "L1": False,
+        "L2": False,
+        "L3": False,
+        "L4": False,
+    }
+
+
+@pytest.mark.parametrize("kind", ["single", "atlas"])
+def test_platform_strip_runs_each_supported_source_type_to_l4(
+    monkeypatch, tmp_path, kind
+):
+    asset_id = "bridge"
+    root = f"res://assets/generated/platform-strip/{asset_id}"
+    request = {
+        "asset_type": "platform-strip",
+        "asset_id": asset_id,
+        "brief": "A bridge.",
+        "spec": {
+            "kind": kind,
+            "grid": {"columns": 3, "rows": 1, "cell_width": 8, "cell_height": 8},
+            "segments": [
+                {"name": "left", "role": "left_cap", "slot": [0, 0]},
+                {"name": "middle", "role": "repeat_middle", "slot": [1, 0]},
+                {"name": "right", "role": "right_cap", "slot": [2, 0]},
+            ],
+        },
+    }
+    if kind == "single":
+        result = {
+            "asset_type": "platform-strip",
+            "outputs": [
+                {
+                    "role": "runtime",
+                    "name": name,
+                    "path": f"{root}/{name}.png",
+                    "godot_type": "Texture2D",
+                }
+                for name in ("left", "middle", "right")
+            ],
+            "sources": [
+                {"path": f"{root}/{name}.png", "layout": "single"}
+                for name in ("left", "middle", "right")
+            ],
+            "previews": [],
+            "validation": {"passed": False},
+        }
+        directory = tmp_path / "assets/generated/platform-strip/bridge"
+        directory.mkdir(parents=True)
+        for name in ("left", "middle", "right"):
+            image = Image.new("RGBA", (8, 8), (1, 2, 3, 255))
+            image.save(directory / f"{name}.png")
+        structures = {
+            f"{root}/{name}.png": {"texture2d": {"width": 8, "height": 8}}
+            for name in ("left", "middle", "right")
+        }
+    else:
+        result = {
+            "asset_type": "platform-strip",
+            "outputs": [
+                {
+                    "role": "runtime",
+                    "name": name,
+                    "path": f"{root}/{name}.tres",
+                    "godot_type": "AtlasTexture",
+                }
+                for name in ("left", "middle", "right")
+            ],
+            "sources": [{"path": f"{root}/bridge.png", "layout": "region_atlas"}],
+            "previews": [],
+            "validation": {"passed": False},
+        }
+        directory = tmp_path / "assets/generated/platform-strip/bridge"
+        directory.mkdir(parents=True)
+        image = Image.new("RGBA", (24, 8), (1, 2, 3, 255))
+        image.save(directory / "bridge.png")
+        (directory / "bridge.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "atlas_path": f"{root}/bridge.png",
+                    "regions": [
+                        {
+                            "name": "left",
+                            "rect": [0, 0, 8, 8],
+                            "pivot": [0.5, 1.0],
+                            "nine_slice": None,
+                        },
+                        {
+                            "name": "middle",
+                            "rect": [8, 0, 8, 8],
+                            "pivot": [0.5, 1.0],
+                            "nine_slice": None,
+                        },
+                        {
+                            "name": "right",
+                            "rect": [16, 0, 8, 8],
+                            "pivot": [0.5, 1.0],
+                            "nine_slice": None,
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        structures = {
+            f"{root}/{name}.tres": {
+                "atlas_texture": {
+                    "has_atlas": True,
+                    "atlas_path": f"{root}/bridge.png",
+                    "region": rect,
+                    "margin": [0, 0, 0, 0],
+                }
+            }
+            for name, rect in (
+                ("left", [0, 0, 8, 8]),
+                ("middle", [8, 0, 8, 8]),
+                ("right", [16, 0, 8, 8]),
+            )
+        }
+    raw_source = tmp_path / ".godotmaker/asset-generation/sources/bridge_source.png"
+    raw_source.parent.mkdir(parents=True)
+    Image.new("RGBA", (24, 8), (1, 2, 3, 255)).save(raw_source)
+    _set_good_probe(monkeypatch, structures)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["passed"] is True, actual["validation"]
+    assert _register_validated_outputs(tmp_path, request, actual)["updated"] == [
+        "left", "middle", "right"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("family", "request_name", "result_name"),
+    [
+        ("character-bundle", "valid-resolved-request.json", "valid-result.json"),
+        ("fx-bundle", "animated-request.json", "animated-result.json"),
+        ("fx-bundle", "static-request.json", "static-result.json"),
+    ],
+)
+def test_bundles_run_declared_static_and_multi_action_outputs_to_l4(
+    monkeypatch, tmp_path, family, request_name, result_name
+):
+    fixtures = REPO_ROOT / "skills/assets" / family / "fixtures"
+    request = json.loads((fixtures / request_name).read_text(encoding="utf-8"))
+    result = json.loads((fixtures / result_name).read_text(encoding="utf-8"))
+    asset_id = request["asset_id"]
+    output = tmp_path / "assets" / "generated" / family / asset_id
+    output.mkdir(parents=True)
+    for preview in result["previews"]:
+        preview_file = tmp_path / preview["path"].removeprefix("res://")
+        preview_file.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(preview_file)
+    runtime = result["outputs"][0]
+    if runtime["godot_type"] == "Texture2D":
+        Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(output / f"{asset_id}.png")
+        structures = {runtime["path"]: {"texture2d": {"width": 8, "height": 8}}}
+    else:
+        for source in result["sources"]:
+            Image.new("RGBA", (8, 8), (1, 2, 3, 255)).save(
+                output / Path(source["path"]).name
+            )
+        for action in request["spec"]["actions"]:
+            for frame in action["frame_names"]:
+                Image.new("RGBA", (1, 1), (1, 2, 3, 255)).save(
+                    output / f"{asset_id}_{action['name']}_{frame}.png"
+                )
+        animations = [
+            {
+                "name": action["name"],
+                "loop": action["loop"],
+                "fps": action["fps"],
+                "frame_paths": [
+                    f"res://assets/generated/{family}/{asset_id}/{asset_id}_{action['name']}_{frame}.png"
+                    for frame in action["frame_names"]
+                ],
+                "frame_count": len(action["frame_names"]),
+                "frame_durations": action["frame_durations"],
+            }
+            for action in request["spec"]["actions"]
+        ]
+        structures = {runtime["path"]: {"spriteframes": {"animations": animations}}}
+    _set_good_probe(monkeypatch, structures)
+
+    actual = compile_and_validate(
+        request, result, project_root=tmp_path, godot_path="fake"
+    )
+
+    assert actual["validation"]["passed"] is True, actual["validation"]

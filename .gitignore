@@ -1,0 +1,14 @@
+# Original transfer archives remain beside the tracked source checkpoint.
+/source-zips/
+/transfer-parts/
+/history/*.bundle
+/evidence/*.zip
+**/.godot/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+**/.workbench.sqlite3*
+**/.godotmaker/runs/
+**/.godotmaker-gdunit-*/

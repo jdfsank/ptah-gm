@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/ui/death_screen.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/ui/death_screen.gd</h1><p>只读源快照 · SHA-256 410909529713969041388f08efb422847d95201f02a9a8a758e120811f785cae</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> extends &quot;res://scripts/ui/title_screen.gd&quot;</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> func _ready() -&gt; void:</span>
+<span class="line" id="L4"><a href="#L4">   4</a> 	var content := build_modal(&quot;你已倒下&quot;, &quot;命运尚未终结 · 返回检查点再战&quot;)</span>
+<span class="line" id="L5"><a href="#L5">   5</a> 	detail = add_label(content, &quot;&quot;, 24)</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	add_button(content, &quot;返回检查点&quot;, &quot;retry&quot;, &quot;RetryButton&quot;)</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	add_button(content, &quot;返回标题&quot;, &quot;title&quot;, &quot;TitleButton&quot;)</span>
+<span class="line" id="L8"><a href="#L8">   8</a> 	add_label(content, &quot;重试恢复生命，重新迎战。&quot;, 22)</span>
+<span class="line" id="L9"><a href="#L9">   9</a> </span>
+<span class="line" id="L10"><a href="#L10">  10</a> func refresh(snapshot: Dictionary) -&gt; void:</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	var checkpoint: Dictionary = snapshot.get(&quot;checkpoint&quot;, {})</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	detail.text = &quot;检查点：静谧存档室 · 神龛&quot; if checkpoint.get(&quot;id&quot;, &quot;start&quot;) == &quot;quiet_shrine&quot; else &quot;检查点：大厅 · 起点&quot;</span>
+</pre>

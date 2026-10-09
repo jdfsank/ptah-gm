@@ -1,0 +1,161 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/ui/hud.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/ui/hud.gd</h1><p>只读源快照 · SHA-256 ba6df2476dec0e68501d1e09af832c35b68c9a81ca1cc40d6720907eacb87342</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> extends &quot;res://scripts/ui/title_screen.gd&quot;</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const HEART = preload(&quot;res://assets/generated/compact-prop-pack/casino_small_props/heart_gem.tres&quot;)</span>
+<span class="line" id="L4"><a href="#L4">   4</a> const MOON = preload(&quot;res://assets/generated/compact-prop-pack/casino_small_props/moonstep.tres&quot;)</span>
+<span class="line" id="L5"><a href="#L5">   5</a> var health: ProgressBar</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var energy: ProgressBar</span>
+<span class="line" id="L7"><a href="#L7">   7</a> var health_text: Label</span>
+<span class="line" id="L8"><a href="#L8">   8</a> var energy_text: Label</span>
+<span class="line" id="L9"><a href="#L9">   9</a> var room_name: Label</span>
+<span class="line" id="L10"><a href="#L10">  10</a> var objective: Label</span>
+<span class="line" id="L11"><a href="#L11">  11</a> var moonstep: HBoxContainer</span>
+<span class="line" id="L12"><a href="#L12">  12</a> var notice: Label</span>
+<span class="line" id="L13"><a href="#L13">  13</a> var notice_panel: PanelContainer</span>
+<span class="line" id="L14"><a href="#L14">  14</a> var boss_panel: PanelContainer</span>
+<span class="line" id="L15"><a href="#L15">  15</a> var boss_bar: ProgressBar</span>
+<span class="line" id="L16"><a href="#L16">  16</a> var boss_text: Label</span>
+<span class="line" id="L17"><a href="#L17">  17</a> var save_label: Label</span>
+<span class="line" id="L18"><a href="#L18">  18</a> </span>
+<span class="line" id="L19"><a href="#L19">  19</a> func _ready() -&gt; void:</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 	var top := HBoxContainer.new()</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	top.name = &quot;Top&quot;</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 	add_child(top)</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	top.offset_left = 24</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 	top.offset_right = -24</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 	top.offset_top = 18</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 	top.offset_bottom = 143</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 	var resources := PanelContainer.new()</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	resources.custom_minimum_size.x = 320</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 	top.add_child(resources)</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 	var stack := VBoxContainer.new()</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 	stack.add_theme_constant_override(&quot;separation&quot;, 3)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 	resources.add_child(stack)</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 	var row := HBoxContainer.new()</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 	stack.add_child(row)</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 	add_icon(row, HEART, 28)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 	health_text = add_label(row, &quot;生命&quot;, 22)</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	health_text.name = &quot;HealthValue&quot;</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 	health = add_bar(stack, &quot;HealthBar&quot;)</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 	energy_text = add_label(stack, &quot;飞牌能量&quot;, 20)</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 	energy = add_bar(stack, &quot;EnergyBar&quot;)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 	var fill: StyleBoxFlat = energy.get_theme_stylebox(&quot;fill&quot;).duplicate()</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 	fill.bg_color = Color(0.54, 0.36, 0.85)</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	energy.add_theme_stylebox_override(&quot;fill&quot;, fill)</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 	var info := PanelContainer.new()</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 	top.add_child(info)</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 	var text_stack := VBoxContainer.new()</span>
+<span class="line" id="L50"><a href="#L50">  50</a> 	text_stack.add_theme_constant_override(&quot;separation&quot;, 2)</span>
+<span class="line" id="L51"><a href="#L51">  51</a> 	info.add_child(text_stack)</span>
+<span class="line" id="L52"><a href="#L52">  52</a> 	room_name = add_label(text_stack, &quot;&quot;, 26, Color(1, 0.84, 0.51))</span>
+<span class="line" id="L53"><a href="#L53">  53</a> 	room_name.name = &quot;RoomName&quot;</span>
+<span class="line" id="L54"><a href="#L54">  54</a> 	room_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT</span>
+<span class="line" id="L55"><a href="#L55">  55</a> 	objective = add_label(text_stack, &quot;&quot;, 22)</span>
+<span class="line" id="L56"><a href="#L56">  56</a> 	objective.name = &quot;Objective&quot;</span>
+<span class="line" id="L57"><a href="#L57">  57</a> 	objective.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT</span>
+<span class="line" id="L58"><a href="#L58">  58</a> 	objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART</span>
+<span class="line" id="L59"><a href="#L59">  59</a> 	moonstep = HBoxContainer.new()</span>
+<span class="line" id="L60"><a href="#L60">  60</a> 	text_stack.add_child(moonstep)</span>
+<span class="line" id="L61"><a href="#L61">  61</a> 	add_icon(moonstep, MOON, 30)</span>
+<span class="line" id="L62"><a href="#L62">  62</a> 	add_label(moonstep, &quot;月步已觉醒 · 空中再按 Space / W&quot;, 20)</span>
+<span class="line" id="L63"><a href="#L63">  63</a> 	save_label = add_label(text_stack, &quot;&quot;, 20)</span>
+<span class="line" id="L64"><a href="#L64">  64</a> 	save_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT</span>
+<span class="line" id="L65"><a href="#L65">  65</a> 	var footer := PanelContainer.new()</span>
+<span class="line" id="L66"><a href="#L66">  66</a> 	add_child(footer)</span>
+<span class="line" id="L67"><a href="#L67">  67</a> 	footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)</span>
+<span class="line" id="L68"><a href="#L68">  68</a> 	footer.offset_left = 24</span>
+<span class="line" id="L69"><a href="#L69">  69</a> 	footer.offset_right = -24</span>
+<span class="line" id="L70"><a href="#L70">  70</a> 	footer.offset_top = -64</span>
+<span class="line" id="L71"><a href="#L71">  71</a> 	footer.offset_bottom = -16</span>
+<span class="line" id="L72"><a href="#L72">  72</a> 	add_label(footer, &quot;A/D ←/→ 移动   Space/W 跳跃   点按 J 剑   点按 K 飞牌   Shift/L 闪避   E 互动   M 地图   Esc 暂停&quot;, 20)</span>
+<span class="line" id="L73"><a href="#L73">  73</a> 	notice_panel = PanelContainer.new()</span>
+<span class="line" id="L74"><a href="#L74">  74</a> 	add_child(notice_panel)</span>
+<span class="line" id="L75"><a href="#L75">  75</a> 	notice_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)</span>
+<span class="line" id="L76"><a href="#L76">  76</a> 	notice_panel.offset_left = -460</span>
+<span class="line" id="L77"><a href="#L77">  77</a> 	notice_panel.offset_right = 460</span>
+<span class="line" id="L78"><a href="#L78">  78</a> 	notice_panel.offset_top = 171</span>
+<span class="line" id="L79"><a href="#L79">  79</a> 	notice = add_label(notice_panel, &quot;&quot;, 22)</span>
+<span class="line" id="L80"><a href="#L80">  80</a> 	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART</span>
+<span class="line" id="L81"><a href="#L81">  81</a> 	boss_panel = PanelContainer.new()</span>
+<span class="line" id="L82"><a href="#L82">  82</a> 	boss_panel.name = &quot;BossPanel&quot;</span>
+<span class="line" id="L83"><a href="#L83">  83</a> 	add_child(boss_panel)</span>
+<span class="line" id="L84"><a href="#L84">  84</a> 	boss_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)</span>
+<span class="line" id="L85"><a href="#L85">  85</a> 	boss_panel.offset_left = -385</span>
+<span class="line" id="L86"><a href="#L86">  86</a> 	boss_panel.offset_right = 385</span>
+<span class="line" id="L87"><a href="#L87">  87</a> 	boss_panel.offset_top = 250</span>
+<span class="line" id="L88"><a href="#L88">  88</a> 	boss_panel.offset_bottom = 320</span>
+<span class="line" id="L89"><a href="#L89">  89</a> 	var boss_style: StyleBoxFlat = boss_panel.get_theme_stylebox(&quot;panel&quot;).duplicate()</span>
+<span class="line" id="L90"><a href="#L90">  90</a> 	boss_style.content_margin_top = 8.0</span>
+<span class="line" id="L91"><a href="#L91">  91</a> 	boss_style.content_margin_bottom = 8.0</span>
+<span class="line" id="L92"><a href="#L92">  92</a> 	boss_panel.add_theme_stylebox_override(&quot;panel&quot;, boss_style)</span>
+<span class="line" id="L93"><a href="#L93">  93</a> 	var boss_stack := VBoxContainer.new()</span>
+<span class="line" id="L94"><a href="#L94">  94</a> 	boss_stack.add_theme_constant_override(&quot;separation&quot;, 4)</span>
+<span class="line" id="L95"><a href="#L95">  95</a> 	boss_panel.add_child(boss_stack)</span>
+<span class="line" id="L96"><a href="#L96">  96</a> 	boss_text = add_label(boss_stack, &quot;&quot;, 22, Color(1, 0.8, 0.55))</span>
+<span class="line" id="L97"><a href="#L97">  97</a> 	boss_bar = add_bar(boss_stack, &quot;BossHealth&quot;)</span>
+<span class="line" id="L98"><a href="#L98">  98</a> 	top.resized.connect(_layout_status_panels.call_deferred)</span>
+<span class="line" id="L99"><a href="#L99">  99</a> 	notice_panel.minimum_size_changed.connect(_layout_status_panels.call_deferred)</span>
+<span class="line" id="L100"><a href="#L100"> 100</a> 	ignore_mouse(self)</span>
+<span class="line" id="L101"><a href="#L101"> 101</a> </span>
+<span class="line" id="L102"><a href="#L102"> 102</a> func add_icon(parent: Node, texture: Texture2D, dimension: int) -&gt; void:</span>
+<span class="line" id="L103"><a href="#L103"> 103</a> 	var icon := TextureRect.new()</span>
+<span class="line" id="L104"><a href="#L104"> 104</a> 	icon.texture = texture</span>
+<span class="line" id="L105"><a href="#L105"> 105</a> 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE</span>
+<span class="line" id="L106"><a href="#L106"> 106</a> 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED</span>
+<span class="line" id="L107"><a href="#L107"> 107</a> 	icon.custom_minimum_size = Vector2(dimension, dimension)</span>
+<span class="line" id="L108"><a href="#L108"> 108</a> 	parent.add_child(icon)</span>
+<span class="line" id="L109"><a href="#L109"> 109</a> </span>
+<span class="line" id="L110"><a href="#L110"> 110</a> func add_bar(parent: Node, node_name: String) -&gt; ProgressBar:</span>
+<span class="line" id="L111"><a href="#L111"> 111</a> 	var bar := ProgressBar.new()</span>
+<span class="line" id="L112"><a href="#L112"> 112</a> 	bar.name = node_name</span>
+<span class="line" id="L113"><a href="#L113"> 113</a> 	bar.custom_minimum_size = Vector2(0, 12)</span>
+<span class="line" id="L114"><a href="#L114"> 114</a> 	bar.show_percentage = false</span>
+<span class="line" id="L115"><a href="#L115"> 115</a> 	parent.add_child(bar)</span>
+<span class="line" id="L116"><a href="#L116"> 116</a> 	return bar</span>
+<span class="line" id="L117"><a href="#L117"> 117</a> </span>
+<span class="line" id="L118"><a href="#L118"> 118</a> func ignore_mouse(node: Node) -&gt; void:</span>
+<span class="line" id="L119"><a href="#L119"> 119</a> 	if node is Control:</span>
+<span class="line" id="L120"><a href="#L120"> 120</a> 		node.mouse_filter = Control.MOUSE_FILTER_IGNORE</span>
+<span class="line" id="L121"><a href="#L121"> 121</a> 	for child in node.get_children():</span>
+<span class="line" id="L122"><a href="#L122"> 122</a> 		ignore_mouse(child)</span>
+<span class="line" id="L123"><a href="#L123"> 123</a> </span>
+<span class="line" id="L124"><a href="#L124"> 124</a> func refresh(snapshot: Dictionary) -&gt; void:</span>
+<span class="line" id="L125"><a href="#L125"> 125</a> 	var player: Dictionary = snapshot.get(&quot;player&quot;, {})</span>
+<span class="line" id="L126"><a href="#L126"> 126</a> 	health.max_value = player.get(&quot;max_health&quot;, 100)</span>
+<span class="line" id="L127"><a href="#L127"> 127</a> 	health.value = player.get(&quot;health&quot;, 0)</span>
+<span class="line" id="L128"><a href="#L128"> 128</a> 	health_text.text = &quot;生命  %d / %d&quot; % [health.value, health.max_value]</span>
+<span class="line" id="L129"><a href="#L129"> 129</a> 	energy.max_value = player.get(&quot;max_energy&quot;, 100)</span>
+<span class="line" id="L130"><a href="#L130"> 130</a> 	energy.value = player.get(&quot;energy&quot;, 0)</span>
+<span class="line" id="L131"><a href="#L131"> 131</a> 	energy_text.text = &quot;飞牌能量  %d / %d&quot; % [energy.value, energy.max_value]</span>
+<span class="line" id="L132"><a href="#L132"> 132</a> 	room_name.text = snapshot.get(&quot;room_name&quot;, &quot;&quot;)</span>
+<span class="line" id="L133"><a href="#L133"> 133</a> 	objective.text = &quot;目标：&quot; + snapshot.get(&quot;objective&quot;, &quot;&quot;)</span>
+<span class="line" id="L134"><a href="#L134"> 134</a> 	moonstep.visible = snapshot.get(&quot;moonstep&quot;, false)</span>
+<span class="line" id="L135"><a href="#L135"> 135</a> 	var status: String = snapshot.get(&quot;save_status&quot;, &quot;none&quot;)</span>
+<span class="line" id="L136"><a href="#L136"> 136</a> 	var statuses: Dictionary = {&quot;none&quot;: &quot;尚未在神龛存档&quot;, &quot;saved&quot;: &quot;已存入本浏览器&quot; if OS.has_feature(&quot;web&quot;) else &quot;进度已保存&quot;, &quot;failed&quot;: &quot;保存失败 · 本次仍可重试&quot;, &quot;pending&quot;: &quot;正在保存…&quot;, &quot;unavailable&quot;: &quot;浏览器存储不可用&quot;}</span>
+<span class="line" id="L137"><a href="#L137"> 137</a> 	save_label.text = statuses.get(status, &quot;&quot;)</span>
+<span class="line" id="L138"><a href="#L138"> 138</a> 	save_label.add_theme_color_override(&quot;font_color&quot;, Color(1, 0.55, 0.55) if status in [&quot;failed&quot;, &quot;unavailable&quot;] else Color(0.77, 0.72, 0.85))</span>
+<span class="line" id="L139"><a href="#L139"> 139</a> 	notice.text = snapshot.get(&quot;notice&quot;, &quot;&quot;)</span>
+<span class="line" id="L140"><a href="#L140"> 140</a> 	notice_panel.visible = not notice.text.is_empty()</span>
+<span class="line" id="L141"><a href="#L141"> 141</a> 	boss_panel.visible = false</span>
+<span class="line" id="L142"><a href="#L142"> 142</a> 	for boss in snapshot.get(&quot;bosses&quot;, []):</span>
+<span class="line" id="L143"><a href="#L143"> 143</a> 		if not boss.get(&quot;dead&quot;, false) and boss.get(&quot;arena_active&quot;, false):</span>
+<span class="line" id="L144"><a href="#L144"> 144</a> 			boss_panel.visible = true</span>
+<span class="line" id="L145"><a href="#L145"> 145</a> 			boss_bar.max_value = boss.max_health</span>
+<span class="line" id="L146"><a href="#L146"> 146</a> 			boss_bar.value = boss.health</span>
+<span class="line" id="L147"><a href="#L147"> 147</a> 			boss_text.text = &quot;皇家庄家 · 第%d阶段   %d / %d&quot; % [boss.phase, boss.health, boss.max_health]</span>
+<span class="line" id="L148"><a href="#L148"> 148</a> 			break</span>
+<span class="line" id="L149"><a href="#L149"> 149</a> 	_layout_status_panels.call_deferred()</span>
+<span class="line" id="L150"><a href="#L150"> 150</a> </span>
+<span class="line" id="L151"><a href="#L151"> 151</a> func _layout_status_panels() -&gt; void:</span>
+<span class="line" id="L152"><a href="#L152"> 152</a> 	# Container heights can grow with Moonstep/objective wrapping. Keep the status</span>
+<span class="line" id="L153"><a href="#L153"> 153</a> 	# panels below that real height and clear of the grounded melee lane.</span>
+<span class="line" id="L154"><a href="#L154"> 154</a> 	var next_y: float = $Top.get_rect().end.y + 10.0</span>
+<span class="line" id="L155"><a href="#L155"> 155</a> 	notice_panel.offset_top = next_y</span>
+<span class="line" id="L156"><a href="#L156"> 156</a> 	notice_panel.offset_bottom = next_y + notice_panel.get_combined_minimum_size().y</span>
+<span class="line" id="L157"><a href="#L157"> 157</a> 	if notice_panel.visible:</span>
+<span class="line" id="L158"><a href="#L158"> 158</a> 		next_y = notice_panel.offset_bottom + 8.0</span>
+<span class="line" id="L159"><a href="#L159"> 159</a> 	boss_panel.offset_top = next_y</span>
+<span class="line" id="L160"><a href="#L160"> 160</a> 	boss_panel.offset_bottom = next_y + boss_panel.get_combined_minimum_size().y</span>
+</pre>

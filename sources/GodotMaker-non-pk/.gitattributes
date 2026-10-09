@@ -1,0 +1,25 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Ensure batch files keep CRLF on Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# Godot binary resources
+*.res binary
+*.import binary

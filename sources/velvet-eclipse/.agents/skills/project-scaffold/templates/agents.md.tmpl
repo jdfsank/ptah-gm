@@ -1,0 +1,80 @@
+# AGENTS.md
+
+## Project: {{game_title}}
+
+{{game_description}}
+
+Built with Godot 4.x and the gecs ECS framework.
+
+## Architecture
+
+ECS-native: components are data, systems are logic, entities are component bags.
+
+### Directory Layout
+
+- `src/components/` — C_ prefix, extends Component, @export vars only
+- `src/systems/` — PascalCase + System suffix, extends System
+- `src/entities/` — extends Entity, define_components()
+- `scenes/` — .tscn scene files; gameplay scene contains a World child
+  node wired via `ECS.world = $World` in the main script's `_ready()`
+  (autoloading World breaks gecs v7.1.0)
+- `test/` — gdUnit4 tests (TDD: test first, then implement)
+
+### ECS Rules
+
+1. Components hold data only — no logic, no methods that modify other components
+2. Systems query entities by component composition and run logic each frame
+3. One system writes each data field per entity — no write conflicts
+4. Entity destruction: add DestroyTag component, DestructionSystem handles cleanup at frame end
+5. Physics callbacks: never modify node tree directly — only add components or use SetDeferred
+
+### gecs Quick Reference
+
+```gdscript
+# Component — pure data
+class_name C_Velocity extends Component
+@export var x: float = 0.0
+@export var y: float = 0.0
+
+# System — pure logic
+class_name MovementSystem extends System
+func query() -> QueryBuilder:
+    return q.with_all([C_Velocity])
+func process(entity: Entity, delta: float) -> void:
+    var vel = entity.get_component(C_Velocity)
+    entity.position += Vector2(vel.x, vel.y) * delta
+
+# Entity — component bag
+class_name PlayerEntity extends Entity
+func define_components() -> Array:
+    return [C_Velocity, C_Health, C_PlayerInput]
+```
+
+For full gecs API, use the **gecs** skill.
+
+## Testing
+
+- **Framework**: gdUnit4
+- **TDD**: write test first, then implementation
+- **Run single**: `godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://test/xxx.gd --ignoreHeadlessMode`
+
+## Build Check
+
+- **Compile**: `godot --headless --quit 2>&1`
+- Use the **headless-build** skill for structured error diagnosis
+
+## Available Skills
+
+GodotMaker skills in `.claude/skills/`:
+
+| Skill | Purpose |
+|-------|---------|
+| **gecs** | ECS framework API reference and patterns |
+| **headless-build** | Compile-check verification |
+| **gdunit-driver** | Test runner and result parser |
+| **godot-api** | Godot engine API lookup by version |
+| **physics**, **ui**, **animation**, etc. | Post-implementation reviewers |
+
+## Language
+
+- Code, comments, commit messages: English

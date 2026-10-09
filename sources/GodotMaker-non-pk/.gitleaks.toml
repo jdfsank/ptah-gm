@@ -1,0 +1,18 @@
+# Gitleaks configuration for GodotMaker
+# https://github.com/gitleaks-io/gitleaks
+
+title = "GodotMaker gitleaks config"
+
+[extend]
+# Use the default gitleaks rules as baseline
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''.local-docs/''',
+    '''\.pytest_cache/''',
+    '''__pycache__/''',
+    '''\.godot/''',
+    '''tests/''',
+]

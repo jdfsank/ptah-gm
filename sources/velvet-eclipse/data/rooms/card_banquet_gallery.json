@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "id": "card_banquet_gallery",
+  "name": "牌宴回廊",
+  "bounds": [
+    0,
+    0,
+    2880,
+    720
+  ],
+  "background": "bg_lobby",
+  "light": [
+    0.5,
+    0.6,
+    0.8,
+    1
+  ],
+  "spawns": {
+    "start": [
+      180,
+      620
+    ],
+    "from_lobby": [
+      180,
+      620
+    ],
+    "from_clocktower": [
+      2680,
+      620
+    ]
+  },
+  "platforms": [
+    {
+      "id": "floor",
+      "rect": [
+        0,
+        620,
+        2880,
+        80
+      ]
+    },
+    {
+      "id": "banquet_dais",
+      "rect": [
+        1120,
+        540,
+        480,
+        80
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "chandelier_0",
+      "asset_id": "chandelier",
+      "position": [
+        500,
+        130
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -8
+    },
+    {
+      "id": "chandelier_1",
+      "asset_id": "chandelier",
+      "position": [
+        1400,
+        130
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -8
+    },
+    {
+      "id": "chandelier_2",
+      "asset_id": "chandelier",
+      "position": [
+        2300,
+        130
+      ],
+      "size": [
+        200,
+        180
+      ],
+      "z": -8
+    },
+    {
+      "id": "curtain_0",
+      "asset_id": "curtain",
+      "position": [
+        220,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_1",
+      "asset_id": "curtain",
+      "position": [
+        920,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_2",
+      "asset_id": "curtain",
+      "position": [
+        1620,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    },
+    {
+      "id": "curtain_3",
+      "asset_id": "curtain",
+      "position": [
+        2320,
+        210
+      ],
+      "size": [
+        260,
+        420
+      ],
+      "z": -10
+    }
+  ],
+  "enemies": [
+    {
+      "id": "banquet_melee",
+      "kind": "melee",
+      "position": [
+        750,
+        620
+      ],
+      "patrol_radius": 180
+    },
+    {
+      "id": "banquet_spectral",
+      "kind": "ranged",
+      "position": [
+        1710,
+        620
+      ],
+      "patrol_radius": 200
+    },
+    {
+      "id": "banquet_card",
+      "kind": "flying",
+      "position": [
+        2350,
+        535
+      ],
+      "patrol_radius": 170
+    }
+  ],
+  "doors": [
+    {
+      "id": "to_lobby",
+      "position": [
+        110,
+        620
+      ],
+      "target_room": "grand_lobby",
+      "target_spawn": "from_gallery",
+      "prompt": "返回大厅"
+    },
+    {
+      "id": "to_clocktower",
+      "position": [
+        2770,
+        620
+      ],
+      "target_room": "roulette_clocktower",
+      "target_spawn": "from_gallery",
+      "prompt": "进入轮盘钟楼"
+    }
+  ],
+  "relic": null,
+  "checkpoint": null,
+  "boss": null
+}

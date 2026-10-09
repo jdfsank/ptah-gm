@@ -1,0 +1,46 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/input_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/input_system.gd</h1><p>只读源快照 · SHA-256 c3a451e20d9fedc92c38c16b4d8fe56dde53b27cc0f18308f3ba3108d6f1ddbe</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name InputSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> var _held: Dictionary = {}</span>
+<span class="line" id="L5"><a href="#L5">   5</a> var _edges: Dictionary = {}</span>
+<span class="line" id="L6"><a href="#L6">   6</a> var _last_tick: int = -1</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func setup() -&gt; void:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func query() -&gt; QueryBuilder:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	return q.with_all([C_Input]).enabled()</span>
+<span class="line" id="L13"><a href="#L13">  13</a> </span>
+<span class="line" id="L14"><a href="#L14">  14</a> func process(entities: Array[Entity], _components: Array, _delta: float) -&gt; void:</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	if _last_tick != runtime.tick_index:</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		_last_tick = runtime.tick_index</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		_edges.clear()</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		for event in runtime.take_actions():</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 			var action: String = event.action</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 			var pressed: bool = event.pressed</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 			if pressed and not _held.get(action, false):</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 				_edges[action] = true</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 			_held[action] = pressed</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	var playing: bool = runtime.session.mode == &quot;playing&quot;</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	for entity in entities:</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if not entity.enabled:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			continue</span>
+<span class="line" id="L28"><a href="#L28">  28</a> 		var input: C_Input = entity.get_component(C_Input)</span>
+<span class="line" id="L29"><a href="#L29">  29</a> 		if input.source == &quot;ai&quot;:</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 			continue</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		input.axis = float(_held.get(&quot;move_right&quot;, false)) - float(_held.get(&quot;move_left&quot;, false)) if playing else 0.0</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 		input.jump_pressed = playing and _edges.get(&quot;jump&quot;, false)</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		input.jump_held = playing and _held.get(&quot;jump&quot;, false)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		input.sword_pressed = playing and _edges.get(&quot;sword&quot;, false)</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		input.card_pressed = playing and _edges.get(&quot;card&quot;, false)</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		input.dodge_pressed = playing and _edges.get(&quot;dodge&quot;, false)</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 		input.interact_pressed = playing and _edges.get(&quot;interact&quot;, false)</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		input.ui_actions.clear()</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		for action in [&quot;pause&quot;, &quot;map&quot;, &quot;ui_accept&quot;, &quot;ui_cancel&quot;, &quot;ui_left&quot;, &quot;ui_right&quot;, &quot;ui_up&quot;, &quot;ui_down&quot;]:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 			if _edges.get(action, false):</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 				input.ui_actions.append(action)</span>
+<span class="line" id="L42"><a href="#L42">  42</a> </span>
+<span class="line" id="L43"><a href="#L43">  43</a> func clear_actions() -&gt; void:</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 	_held.clear()</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	_edges.clear()</span>
+</pre>

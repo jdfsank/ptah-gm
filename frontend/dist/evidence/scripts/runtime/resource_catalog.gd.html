@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/runtime/resource_catalog.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/runtime/resource_catalog.gd</h1><p>只读源快照 · SHA-256 79bf20653097dcbe7d84925cc6614ef290731452a7b9805b7539535585fef673</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name ResourceCatalog extends RefCounted</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> const BINDINGS: Dictionary = {</span>
+<span class="line" id="L4"><a href="#L4">   4</a> 	&quot;bg_throne&quot;: [&quot;Texture2D&quot;, &quot;res://assets/generated/background-map/bg_throne/bg_throne.png&quot;],</span>
+<span class="line" id="L5"><a href="#L5">   5</a> 	&quot;bg_tower&quot;: [&quot;Texture2D&quot;, &quot;res://assets/generated/background-map/bg_tower/bg_tower.png&quot;],</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	&quot;roulette&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/roulette.tres&quot;],</span>
+<span class="line" id="L7"><a href="#L7">   7</a> 	&quot;shrine&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/shrine.tres&quot;],</span>
+<span class="line" id="L8"><a href="#L8">   8</a> 	&quot;moonstep&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/moonstep.tres&quot;],</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	&quot;ghost_hand&quot;: [&quot;Texture2D&quot;, &quot;res://assets/generated/fx-bundle/ghost_hand/ghost_hand.png&quot;],</span>
+<span class="line" id="L10"><a href="#L10">  10</a> 	&quot;boss_frames&quot;: [&quot;SpriteFrames&quot;, &quot;res://assets/generated/character-bundle/boss_frames/boss_frames.tres&quot;],</span>
+<span class="line" id="L11"><a href="#L11">  11</a> 	&quot;heart_gem&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/heart_gem.tres&quot;],</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	&quot;enemy_card&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/enemy_card.tres&quot;],</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 	&quot;player_card&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/player_card.tres&quot;],</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 	&quot;dealer_frames&quot;: [&quot;SpriteFrames&quot;, &quot;res://assets/generated/character-bundle/dealer_frames/dealer_frames.tres&quot;],</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 	&quot;heroine_frames&quot;: [&quot;SpriteFrames&quot;, &quot;res://assets/generated/character-bundle/heroine_frames/heroine_frames.tres&quot;],</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 	&quot;bg_lobby&quot;: [&quot;Texture2D&quot;, &quot;res://assets/generated/background-map/bg_lobby/bg_lobby.png&quot;],</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 	&quot;platform_left&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/platform-strip/casino_platforms/platform_left.tres&quot;],</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 	&quot;platform_middle&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/platform-strip/casino_platforms/platform_middle.tres&quot;],</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 	&quot;platform_right&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/platform-strip/casino_platforms/platform_right.tres&quot;],</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 	&quot;arch&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/arch.tres&quot;],</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 	&quot;curtain&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/curtain.tres&quot;],</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 	&quot;chandelier&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/chandelier.tres&quot;],</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 	&quot;railing&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/scene-prop-set/casino_props/railing.tres&quot;],</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 	&quot;candle&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/candle.tres&quot;],</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 	&quot;chip&quot;: [&quot;AtlasTexture&quot;, &quot;res://assets/generated/compact-prop-pack/casino_small_props/chip.tres&quot;],</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 	&quot;ui_cjk_font&quot;: [&quot;FontFile&quot;, &quot;res://assets/fonts/NotoSansCJK-Regular.ttc&quot;]</span>
+<span class="line" id="L27"><a href="#L27">  27</a> }</span>
+<span class="line" id="L28"><a href="#L28">  28</a> var _cache: Dictionary = {}</span>
+<span class="line" id="L29"><a href="#L29">  29</a> var last_error: String = &quot;&quot;</span>
+<span class="line" id="L30"><a href="#L30">  30</a> </span>
+<span class="line" id="L31"><a href="#L31">  31</a> func has_asset(asset_id: String) -&gt; bool:</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 	return BINDINGS.has(asset_id)</span>
+<span class="line" id="L33"><a href="#L33">  33</a> </span>
+<span class="line" id="L34"><a href="#L34">  34</a> func resolve(asset_id: String) -&gt; Resource:</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 	if _cache.has(asset_id):</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 		return _cache[asset_id]</span>
+<span class="line" id="L37"><a href="#L37">  37</a> 	if not BINDINGS.has(asset_id):</span>
+<span class="line" id="L38"><a href="#L38">  38</a> 		last_error = &quot;Unknown required asset: &quot; + asset_id</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 		return null</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 	var binding: Array = BINDINGS[asset_id]</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 	if not ResourceLoader.exists(binding[1]):</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 		last_error = &quot;Missing required asset: &quot; + binding[1]</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 		return null</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 	var resource: Resource = load(binding[1])</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 	if resource == null or not resource.is_class(binding[0]):</span>
+<span class="line" id="L46"><a href="#L46">  46</a> 		last_error = &quot;Asset type mismatch: %s requires %s&quot; % [asset_id, binding[0]]</span>
+<span class="line" id="L47"><a href="#L47">  47</a> 		return null</span>
+<span class="line" id="L48"><a href="#L48">  48</a> 	_cache[asset_id] = resource</span>
+<span class="line" id="L49"><a href="#L49">  49</a> 	return resource</span>
+</pre>

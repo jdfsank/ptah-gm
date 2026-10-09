@@ -1,0 +1,130 @@
+# Check your environment
+
+`check_env.py` confirms your machine is set up to run GodotMaker. Run this any time something seems off.
+
+```bash
+python tools/check_env.py
+```
+
+A clean run ends with:
+
+```
+All required checks passed! Ready to use GodotMaker.
+```
+
+If anything is missing, you'll see a list of failed checks and what to do about each one.
+
+## What it checks
+
+### Git
+
+- Git 2.30 or later is installed.
+- `git user.name` and `git user.email` are set (needed for commits that `/gm-scaffold` and the worktree system create).
+
+### Python
+
+- Python 3.10 or later is running this script.
+- Core packages are installed: `requests`, `pillow`.
+- Provider packages are checked based on `.godotmaker/config.yaml`: `google-genai` for Gemini, `openai` for OpenAI, and `xai-sdk` for Grok image generation. Wan uses the standard-library HTTP client; its selected configuration also requires `DASHSCOPE_API_KEY` and an explicit `DASHSCOPE_REGION`.
+
+### Godot E2E (Python package)
+
+- `[FAIL]` if the `godot-e2e` package is not installed for the Python that GodotMaker runs on.
+- `[WARN]` if the package is fine but the `godot-e2e` command on your PATH comes from a different Python.
+
+Most machines have more than one Python. `pip install godot-e2e` installs into whichever one your terminal happens to use, and that may not be the one GodotMaker runs on — which is how the package ends up installed and still reported as missing.
+
+**If this check fails,** copy the whole line it prints and run it in your terminal. The line already contains the full path of the correct Python, so you do not have to work out which one it is:
+
+```
+--- Godot E2E (Python package) ---
+  Python used by GodotMaker: /home/you/game/.venv/bin/python
+  VIRTUAL_ENV: not set
+  godot-e2e command on PATH: /usr/local/bin/godot-e2e
+  [FAIL] E2E test tool 'godot-e2e' is not installed for the Python that GodotMaker uses. It is installed for a different Python (/usr/local/bin/godot-e2e), so it can look present and still be unusable here. To fix it, copy this whole line into your terminal and run it: /home/you/game/.venv/bin/python -m pip install godot-e2e
+```
+
+On Windows, if the path of that Python contains a space, the check prints one line for PowerShell and one for Command Prompt (cmd.exe) — the two shells need different quoting, so use the one that matches the window you are in.
+
+Then run `python tools/check_env.py` again. The check is redone from scratch every run, so it turns green as soon as the install lands — an earlier failure is never carried over.
+
+**If this check warns,** nothing is broken: the package is installed where it belongs, only the command on your PATH comes from somewhere else, which is normal with pyenv, asdf, or a launcher script. Act on it only if e2e tests later fail with a `godot_e2e` import error; the warning carries the same install line for that case.
+
+This check covers the Python package. The `addons/godot_e2e/` addon inside your game project is a separate dependency.
+
+### Node.js
+
+- Node.js 18 or later is installed (needed to run `godot-mcp` via `npx`).
+- `npx` is available on your PATH (it comes with Node.js).
+
+### Godot
+
+- Godot 4.5 or later is reachable as `godot` or `godot4` on your PATH.
+
+If Godot is not on your PATH, this check shows a warning rather than a hard failure — you can still provide the full path to the executable when you run `publish.py`, and it will be saved in `.claude/godotmaker.yaml` for future use.
+
+### Selected coding agent
+
+- Claude Code projects check that `claude` is installed.
+- Codex projects check that `codex` is installed, the `.agents` runtime tree is
+  present, and the `godot` MCP server is configured.
+- OpenCode projects check that `opencode` is installed, the `.opencode`
+  runtime tree and hook adapter are present, and the `godot` MCP server is
+  configured.
+
+### API keys
+
+| Key | Status | Used for |
+|-----|--------|---------|
+| `GOOGLE_API_KEY` or `GEMINI_API_KEY` | Required when selected | Gemini image generation or VQA |
+| `OPENAI_API_KEY` | Required when selected | OpenAI image generation or VQA |
+| `XAI_API_KEY` | Required when selected | xAI Grok image generation |
+
+API-backed selectors fail when the matching key is absent. `asset_image_model:
+native` passes for Codex and warns for Claude Code because the checker cannot
+prove a Claude-side native generation tool is available. OpenCode projects fail
+on `native` image generation or `native` VQA until you switch those fields to
+`codex` or an API-backed selector. `asset_image_model: codex` in a Claude Code
+or OpenCode project passes when the Codex CLI is on PATH.
+
+The checker also verifies that the selected provider package can be imported, catching installation issues that version checks alone would miss.
+
+## Reading the output
+
+Each line starts with one of three markers:
+
+```
+[PASS] Git 2.43.0 (>= 2.30)
+[FAIL] Package 'google-genai' missing. Run: pip install google-genai
+[WARN] XAI_API_KEY not set (optional, cheaper image generation)
+```
+
+`[WARN]` lines are for optional items — they don't stop you from using GodotMaker. `[FAIL]` lines are blockers.
+
+At the end, any failed checks are listed together so you can fix them in one pass:
+
+```
+========================================
+Total: 14 checks
+  PASS: 12
+  FAIL: 1
+  WARN: 1
+
+Failed checks:
+  - Package 'google-genai' missing. Run: pip install google-genai
+
+Fix the above issues before using GodotMaker.
+```
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | All required checks passed (warnings are fine) |
+| 1 | One or more required checks failed |
+
+Scripts and CI pipelines can rely on this exit code to gate further steps.
+
+## If you're just getting started
+
+See [installation](../01-getting-started/installation.md) for a step-by-step guide to getting all these prerequisites in place before running `check_env.py`.

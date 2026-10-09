@@ -1,0 +1,2862 @@
+[
+  {
+    "path": "GodotMaker-non-pk/.editorconfig",
+    "bytes": 832,
+    "sha256": "9eef43af7ecc7f64890b990e86d282295c57d465e95a6042588321a7311af50f"
+  },
+  {
+    "path": "GodotMaker-non-pk/.gitattributes",
+    "bytes": 372,
+    "sha256": "d5216210ca7f634c944883075e29aafaf8daa94ae38707d21afe6acab7a02872"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/CODEOWNERS",
+    "bytes": 17,
+    "sha256": "1dd15712b8fdb09f373a3fad820ee7c4d49af29cf18d7ce28e72ed3aad6042c2"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/ISSUE_TEMPLATE/bug_report.md",
+    "bytes": 504,
+    "sha256": "f6a9960655423ab66d0f7023af2020e0894a62035b19c2a8c68f3d6cded27def"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/ISSUE_TEMPLATE/feature_request.md",
+    "bytes": 412,
+    "sha256": "348249881d5245fd84c491bbaa9322a1f1e4f864334040f9898d3ada7f17a1b9"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/PULL_REQUEST_TEMPLATE.md",
+    "bytes": 1996,
+    "sha256": "c8b1b3355671aef53e6f9e0851a1a147d7f5786ee37e830066e2f678d5c6cd6c"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/workflows/ci.yml",
+    "bytes": 2051,
+    "sha256": "558c79b322ee207b2571982da3a13f7ff413c3b830704ba11c672f90a819a964"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/workflows/docs.yml",
+    "bytes": 2044,
+    "sha256": "fae1971f61202e7d22cb61fc8d3daa2774d0262381b416ac05da7bcffa703f2b"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/workflows/release.yml",
+    "bytes": 817,
+    "sha256": "e1153ce9224a828829a145c345a962a0e0215ac442560143c27bbb0c6b29e6cc"
+  },
+  {
+    "path": "GodotMaker-non-pk/.github/workflows/review-headless.yml",
+    "bytes": 1026,
+    "sha256": "8f357e8530643f13e20b01afdf88ca43ed9e0356deac8e8b2b53fd7c9ca33caf"
+  },
+  {
+    "path": "GodotMaker-non-pk/.gitignore",
+    "bytes": 509,
+    "sha256": "c8664c6e0dc812385da150b4636fd85246bc0f701ae0a024a34552ee4f4ca53b"
+  },
+  {
+    "path": "GodotMaker-non-pk/.gitleaks.toml",
+    "bytes": 364,
+    "sha256": "15141822573ad47e4b5e9b0574d3fc94048918ef5b57685528f09ee4fd526d08"
+  },
+  {
+    "path": "GodotMaker-non-pk/CHANGELOG.md",
+    "bytes": 61184,
+    "sha256": "75da7f8c2798624a82c4ee80eaf8dd7870b19c27b076d773b69b6f45c6921157"
+  },
+  {
+    "path": "GodotMaker-non-pk/CLAUDE.md",
+    "bytes": 4507,
+    "sha256": "adcdeb32e13fb461cdb64489261e9feb17eebe90101b74db954713138d9f3a7d"
+  },
+  {
+    "path": "GodotMaker-non-pk/CODE_OF_CONDUCT.md",
+    "bytes": 2030,
+    "sha256": "80ff57520e0beb8c40ba8a7abded15b1f7db4d1e6aa5cee223c4932c0223781f"
+  },
+  {
+    "path": "GodotMaker-non-pk/CONTRIBUTING.md",
+    "bytes": 4183,
+    "sha256": "049004d5cf8e7918f0e6bc0d069cf7e34ce9afe455cc2554c9ebe5d545454a37"
+  },
+  {
+    "path": "GodotMaker-non-pk/FORK.md",
+    "bytes": 1648,
+    "sha256": "f7b00148daf8cf99c85b66732b7856158e43090d9e9259e72e6161ba5282475f"
+  },
+  {
+    "path": "GodotMaker-non-pk/LICENSE",
+    "bytes": 4914,
+    "sha256": "8fa3bbf7ef73986f44efb3ad39386642dde98ba90b3e859f624c22fa524865c0"
+  },
+  {
+    "path": "GodotMaker-non-pk/README.md",
+    "bytes": 12153,
+    "sha256": "2d9e50ccef242e1158fe96c18141d41bdf030a2d934d939246a96e0f1a1782c0"
+  },
+  {
+    "path": "GodotMaker-non-pk/README.zh-CN.md",
+    "bytes": 11730,
+    "sha256": "a2ca563c3855009a0f1190f80b40d7cd6dbe30fe03567a6e8d7dadb2588e3bad"
+  },
+  {
+    "path": "GodotMaker-non-pk/ROADMAP.md",
+    "bytes": 13035,
+    "sha256": "98ff39772b4c9cdb65364a724894f54382265398461b4e3d7c4dd5c37710480a"
+  },
+  {
+    "path": "GodotMaker-non-pk/SECURITY.md",
+    "bytes": 493,
+    "sha256": "1ceac2b769aca6147e89f1d6d2c4aabae06039ca14e450d70ccc68cd70750193"
+  },
+  {
+    "path": "GodotMaker-non-pk/SUPPORT.md",
+    "bytes": 727,
+    "sha256": "f2f869a2853c78a9acb94d683e7042d7d6dce6a37b025ffbd61ff0055dce6eea"
+  },
+  {
+    "path": "GodotMaker-non-pk/VERSION",
+    "bytes": 6,
+    "sha256": "1575e1af4a95f12f70b4ee6a6adce8160953d93ea17dc2611b90883ccc3ad3b8"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/capability-contract.md",
+    "bytes": 3511,
+    "sha256": "48a8f424f7349b784b505907dd609024046d7fd3588a127033523c470f0d1fc5"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/claude-code/config/settings.json",
+    "bytes": 1937,
+    "sha256": "6c64fab167cea4b580133e55b46cedc195fad1a8b3c442159fd571f0bf4eeb0b"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/claude-code/references/runtime-mapping.md",
+    "bytes": 3042,
+    "sha256": "5c2213c9cbc70b5386ce7acb2f623e32b2f2f2a92b32100d185df6b908096870"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/codex/config/hooks.json",
+    "bytes": 898,
+    "sha256": "10da02ea1417620e226380cb6a848c45789d1407a28a277bc03ccfcea20eb58a"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/codex/references/delegation-worktree.md",
+    "bytes": 7535,
+    "sha256": "e119c435db0ccaaf812e61342931ad36cf0d0b6c4db8dbba7cb49ca3c8ed818b"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/codex/references/runtime-mapping.md",
+    "bytes": 12925,
+    "sha256": "972786a9c6678972caf94acb0a2704f814ed9441a7ee2ee50500a3f38a436642"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/codex/templates/agents-bootstrap.md",
+    "bytes": 659,
+    "sha256": "d1eaac5d8b67efa18b451dd7b9135af22c9af407c6684ba97436f0500af2bc49"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/opencode/plugins/godotmaker-hooks.js",
+    "bytes": 8484,
+    "sha256": "bbea9981d8317bb9fd5e72a70d9a490872614eb7a520041dc6f169540c7877c1"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/opencode/references/runtime-mapping.md",
+    "bytes": 4816,
+    "sha256": "2c1d48a8cd88708554ae5508b6e24f4b6313942238b152edf1ac98f221b0a437"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/opencode/templates/agents-bootstrap.md",
+    "bytes": 454,
+    "sha256": "7db55fcff3b9c55e88884a464c245f5fe0c0dbdd2109c784a65271d929e13910"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/pi/extensions/godotmaker-runtime.ts",
+    "bytes": 14148,
+    "sha256": "2ecb9a29539a52f9c58ece17603285ce076bbcae886c1447d551d73cf2a1f56e"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/pi/references/runtime-mapping.md",
+    "bytes": 3811,
+    "sha256": "e5848edb7ee955bb21e586bf5087746d57845f3f67aba28f4cb65ac37fb8e82b"
+  },
+  {
+    "path": "GodotMaker-non-pk/agent-runtimes/pi/templates/agents-bootstrap.md",
+    "bytes": 266,
+    "sha256": "67eb04245132b1b06484639deffbec12ab37cf6e4fb74ea7d5cb3b3893d27e21"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/analyst.md",
+    "bytes": 2396,
+    "sha256": "b703d100359388e5b257d0374cef14bfc34f195625b2dfade1863a15b33d2889"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/asset-producer.md",
+    "bytes": 6124,
+    "sha256": "f330e1b61a3cd1c38f56fb950f78f648aea332b23cf07dfd97d81b313b325470"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/decomposer.md",
+    "bytes": 18840,
+    "sha256": "65ca97aee6decbdc8c6d92ac784e5dc5fe90e3fa0a3ebed527a70c6d1a9a13e1"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/gdd-auditor.md",
+    "bytes": 7588,
+    "sha256": "6595a37585e94dd9c06b274e2e3da466ad0320183782ba25e9a5355383f793b9"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/reviewer.md",
+    "bytes": 7835,
+    "sha256": "6ba349532b7d456b613c750b3e25430095bcc86361c526190587f68f6f3dfc7d"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/verifier.md",
+    "bytes": 5613,
+    "sha256": "af6c0a73b8df6a7c68815c245e4ff548e0518d94dbc0a05543791878105fa5ce"
+  },
+  {
+    "path": "GodotMaker-non-pk/agents/worker.md",
+    "bytes": 13754,
+    "sha256": "22da4a982cb11c682731015530421b58ac4e682491732244f17ab6cee1088f69"
+  },
+  {
+    "path": "GodotMaker-non-pk/config/addon_versions.json",
+    "bytes": 2779,
+    "sha256": "b1aa4604fa55e18bd3b1e4433fd558e049ede7d6be1fafcd0f2edb2a0b3b48ff"
+  },
+  {
+    "path": "GodotMaker-non-pk/config/config.yaml.default",
+    "bytes": 2104,
+    "sha256": "8e705cf431f5734690da3dd144601933ff3396cd2206f4827d60f42cc3444e4f"
+  },
+  {
+    "path": "GodotMaker-non-pk/config/review-baseline.json",
+    "bytes": 959,
+    "sha256": "803ef7defa356463b8e13161f4920c3f621e538b1d70980c0f0b14aecf85841c"
+  },
+  {
+    "path": "GodotMaker-non-pk/config/stage_schemas.json",
+    "bytes": 651,
+    "sha256": "83aee03469a6baac52e05c775feb1d69fe289fa05d29f2d76cfd1116c318e730"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/assets/icon.png",
+    "bytes": 1458183,
+    "sha256": "2aba2af6c9a0199c754901b25fbb62f8852b3950d7617069357407b57b8135dd"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/contributing/shared-refs.md",
+    "bytes": 3855,
+    "sha256": "fe397861854d39d4d1307c976f7ae0a0afc5bd58234038b17ea03454ff3b4799"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/decisions/disable-gdtoolkit.md",
+    "bytes": 5540,
+    "sha256": "bdf7d92622ac16aa8e71c919f7ccfe9d15c144c63232bb40742d7fc1d1ff6cc3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/hooks.md",
+    "bytes": 18086,
+    "sha256": "8948811f25c599d6636b8e15f2e65f84cccb95d464f02f6b0e08388e5db5195a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/index.md",
+    "bytes": 3127,
+    "sha256": "7ac73dd54d6f1f9437ec4ada2b5438edb22dabf22fc2fc507c9638f1b8a0a701"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/review.md",
+    "bytes": 7866,
+    "sha256": "a205eea23fe921f2bc06e3eb805e3778b1705b8cd639acbea24d90a00a0a96ee"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/tips.md",
+    "bytes": 1168,
+    "sha256": "6045f69e76a95030479ae8804ce54f02b7309a2f29465fa7d952a08861b91f9a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/next.md",
+    "bytes": 1572,
+    "sha256": "8d7e7815be2d0f7a99d00255bcfc926973f23774efc1b478bb369ef2cb274f6e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/next.template.md",
+    "bytes": 550,
+    "sha256": "993839bca0301193e84558ab295b28666f2075292d185991946898621b606086"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/release-checklist.md",
+    "bytes": 7602,
+    "sha256": "307ac9e0f711585247f9e3411d5e4e2dde2f44374a7067c3004b31a76022b0bc"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.2.0.md",
+    "bytes": 3017,
+    "sha256": "af4cbfdc5064b5d29c881d0a6992be9029f13d8cf26a3238bbd2103f85c25ed3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.2.1.md",
+    "bytes": 1385,
+    "sha256": "1732685b2cd0f916b794cca8e8b732d78d5542ac0efbc8fd17849056139eab6f"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.2.2.md",
+    "bytes": 4777,
+    "sha256": "a01ed354a58b6662e68da413c32c09982d579d78dfde332e962f7576dd6ca133"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.0.md",
+    "bytes": 12646,
+    "sha256": "68a888cfa21f3d115a77c5e9e927e0abc1dc50d5b4f1af3aa5e441027f660ae8"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.1.md",
+    "bytes": 1647,
+    "sha256": "f6bd67fc67129f9d5499fd62c66481a322b4b2a459635e85f3d29e1a9cc67210"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.2.md",
+    "bytes": 4261,
+    "sha256": "7e07aa4d79072fd5ea9390cae2965b69f2831f17b68036acef59b7de5312ccac"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.3.md",
+    "bytes": 2748,
+    "sha256": "3d37ed7a400b405061fa37cf4872ebec67c381a3c37d674184ea4bba2f666b96"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.4.md",
+    "bytes": 4761,
+    "sha256": "ffff2e320a15a2f83efe90bb81922f6e125a7f2f7dd7efe34027b4e52594cc63"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.3.5.md",
+    "bytes": 2508,
+    "sha256": "d5230ad671b2590dbc48583b9c3428a3c4cece0f2f643e84d78ce3fe78317579"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.4.0.md",
+    "bytes": 7970,
+    "sha256": "d6406fe03e67ced8c6077bd27616943a79acede7e141336a05b0543bad3fd3e0"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.4.1.md",
+    "bytes": 373,
+    "sha256": "6ed504f743177a78dd52599b387b1ebfe182b9c6900b94ad6381c3fe1ac4e473"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.5.0.md",
+    "bytes": 1180,
+    "sha256": "44e49d8c45c97c519647f9055ad80e74d92bb5672d7883aa57c26e1ebd0bc0de"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.0.md",
+    "bytes": 2146,
+    "sha256": "18cf0c67db5bccfd94e6567ebba03e34d597f1406dcad26a3f54d068a8dce809"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.1.md",
+    "bytes": 676,
+    "sha256": "720519e03a98da6df08501abfa49337f6a271aee3bf71d0d08b7ba845068f129"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.2.md",
+    "bytes": 313,
+    "sha256": "982794c55f8ff29f177022e1dcc83c291ad32731b8a96d7be9ca653d4e644c61"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.3.md",
+    "bytes": 389,
+    "sha256": "1cc8296ef2d0f8b58491020486b6a412d3d1521aa7afe2030d1e5102c16aeb28"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.4.md",
+    "bytes": 407,
+    "sha256": "064d3703f827a3c96275ebadba4fb3cab49123ace599d483665ec97320f11f72"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.6.5.md",
+    "bytes": 261,
+    "sha256": "80aa6af203fcab6de29315c3ef42bddd4a2e5b814cb952bea30b7a2c51ec891b"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.7.0.md",
+    "bytes": 7223,
+    "sha256": "34a60a8b03d1dafe043f2b1cbad104df92d58f002f52ad54a41731f75b83d028"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.8.0.md",
+    "bytes": 2371,
+    "sha256": "faa303591afdd078986dd1a9b949c2369aaf27d94d2108bd16124c50da7d7fcf"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.8.1.md",
+    "bytes": 1279,
+    "sha256": "484c8eb77cc967c5d13b4060d751afe348b209cb99150d86bfda75999ac27a6c"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v0.8.2.md",
+    "bytes": 617,
+    "sha256": "10ab04ca8d2b6f2a36887f9586864086e6196eedc747b54cecae447b033be925"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v1.0.0.md",
+    "bytes": 15187,
+    "sha256": "6fb46920f60ead77fc58a6ac10cb1cb785a5acc7563cbecd6dbe1f3ae6031a33"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/update/v1.1.0.md",
+    "bytes": 4034,
+    "sha256": "400d4b4860bb94de4d081d21e662d120d6719c63c96632cc06c88673654615c2"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/user-notice.md",
+    "bytes": 3509,
+    "sha256": "a3006254510ab20812fd7f148536b95f7b0286daf3f2a2ed796bd8434e2ebdb6"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/versioning.md",
+    "bytes": 10394,
+    "sha256": "29a6be6061a28592861880c8ef385d1b228fc9fe0af282539420cb79b83f39bc"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/01-getting-started/first-game.md",
+    "bytes": 4198,
+    "sha256": "c55e5291558bf4bab3bc746a09f97b3c938beb99f978385436478bcd2362ce4e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/01-getting-started/installation.md",
+    "bytes": 4067,
+    "sha256": "15d146a0fb46bb496f728f43ff815a249e442fcd3c3838d7493cc0814e62c131"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/01-getting-started/project-layout.md",
+    "bytes": 8478,
+    "sha256": "38dbbb99d2b81fbfb0ea89c53a9d2dbcdf00bcc15a52eb8aa1ccbc0653f75dea"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/01-getting-started/upgrade-to-v1.md",
+    "bytes": 12021,
+    "sha256": "40b93008b18e88899d6312f15e58cd04c5f29b2cdae83b5a2e158a13efcfe79e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/02-concepts/ecs-in-plain-english.md",
+    "bytes": 4815,
+    "sha256": "9921a158e2a91d190efe631f70c8b77b95bd0896a46ce9d7e8583f7b222da13a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/02-concepts/how-it-works.md",
+    "bytes": 3873,
+    "sha256": "9b5983c794bff753b1eb3d6d8e6ee42791387acd29d886afe03434cd61d53543"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/02-concepts/the-9-roles.md",
+    "bytes": 16183,
+    "sha256": "16c9b315b44e74054ea395fe4418d4cb369cf34267d157c1ac05d25f8f4cbb71"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/02-concepts/why-this-approach.md",
+    "bytes": 6168,
+    "sha256": "ff5328995ebc8c0ce43f722f3888c2e357c79cf0e17b60a0b7e939d337da7796"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/03-skills/core-skills.md",
+    "bytes": 5609,
+    "sha256": "7df8c6c355d7b81e58f8ab4e504364d6a6224774436471c2636c9ac22700abe3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/03-skills/reviewer-skills.md",
+    "bytes": 4832,
+    "sha256": "fd7d56ab732417dda34a3deca1d17082be32a8d09ee2f02de2006dadb1870318"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/03-skills/skill-system.md",
+    "bytes": 3172,
+    "sha256": "5be0ea108580d19ab05d8781ffbb56f6292485caf16315cfc8b3884ad78f0cc9"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/04-troubleshooting/common-problems.md",
+    "bytes": 14298,
+    "sha256": "b344a20a73032eb82a78f375ff7592dcce1747b99805db3a6a1d211df92d941d"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/04-troubleshooting/recovery-and-resume.md",
+    "bytes": 7237,
+    "sha256": "0871c051491e9d06fbc1cbcd240687879193e6fdd089d43ee93fb1c40a5bd6cf"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/05-tools/asset-tools.md",
+    "bytes": 2164,
+    "sha256": "474bd5fd092c8f1ff5c763564ce574b9df522b6648f4a42356a8de0d9592b6de"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/05-tools/check-env.md",
+    "bytes": 5839,
+    "sha256": "58fe9ca3bff7bf308c182f77d75c85798dad535fbd2dcf0c2a8a1067d80df756"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/05-tools/check-project.md",
+    "bytes": 3580,
+    "sha256": "b2aaee8efb4aecb2dd6977462a8ea20ceb045335312a1384fc09e0aaa329f02a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/05-tools/publish.md",
+    "bytes": 8444,
+    "sha256": "e17fd5881d061f54e33d5c11492cbc931650ab5bee094bc2c29f3d55f2005fb9"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/05-tools/seal-tag.md",
+    "bytes": 9861,
+    "sha256": "d3240e9045cfd5f942d0e8bc1c877fb7a3ef05bedc054737924d8553f01d37dc"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/addon-versions.md",
+    "bytes": 3061,
+    "sha256": "3d9449538cad2970a21248645fc12c01ea7f4627e26c00db600745c48b5f9f35"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/godotmaker-yaml.md",
+    "bytes": 3615,
+    "sha256": "a3246485efa577c6efab088e196c8ba236f873267dce71e9b09322f9a0ef7f74"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/project-config.md",
+    "bytes": 6632,
+    "sha256": "18dc6bd48d4ec28be2350f2155de17d82c28716060afb55d763211ea7ced8e60"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/README.md",
+    "bytes": 715,
+    "sha256": "39c308182ca4ee9db02a1eb7229de1b21e74ef379287d1bed93a22f064431746"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/agent-runtimes/claude-code.md",
+    "bytes": 646,
+    "sha256": "d0106c1c1de7fe2d7332ad5bdba4c9dca8509c139477afba22a944cdce67453a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/agent-runtimes/codex.md",
+    "bytes": 622,
+    "sha256": "8afe86794259155e2d2781b3892c1b9aed38f2fe8644801964a4fb87ad123a0e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/agent-runtimes/opencode.md",
+    "bytes": 3320,
+    "sha256": "fb8a75bf8f5c7bd242834728b2fb94b6c900fbe94096c2b1ae388dcfd8b472c3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/agent-runtimes/pi.md",
+    "bytes": 2207,
+    "sha256": "3238db8cab177f60c4e26e42b469c4f4bec5378c676f32b18975897b0d1d02ea"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/codex.md",
+    "bytes": 488,
+    "sha256": "823b77280a08282f2ff3bd2724a06e06cf249865984622c402a3aeb5ea93f57c"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/gemini.md",
+    "bytes": 450,
+    "sha256": "bd5667062d17af497da2a5c2efd5757a0810dc5a2f60bdf8656a6c3ee1251dce"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/grok.md",
+    "bytes": 449,
+    "sha256": "cc74e02c620e85aa0e2a8759e53a552edd92b8da997938229e402e5cdae292ca"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/native.md",
+    "bytes": 747,
+    "sha256": "1b1f1f09fb23775819e29275ccfcfeea6ecc81446026bb8b9e3d4dd73e055206"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/openai.md",
+    "bytes": 368,
+    "sha256": "941c4200c0944e6ddb93a21d796337f8de3d5151603f096e49e69c5ff4a8140e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/06-configuration/providers/image-vqa/wan.md",
+    "bytes": 932,
+    "sha256": "858d879c7ef1ae0b1ad4ecaf6611eef64fa1464cf6c12d8aa93cee23b79df0d7"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/codebase-guide.md",
+    "bytes": 15734,
+    "sha256": "5b2d6dcfe318609b2dd295f9c7a58e0495a64457a7f1c757180cd2515e2f83d2"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/development-setup.md",
+    "bytes": 3411,
+    "sha256": "d7419c389f967221bc408e6507a81e9da4da57cc1015c991768738f405e231fd"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/release-process.md",
+    "bytes": 4972,
+    "sha256": "51521efa08b32cfe9b75caab823d45f463a4f683a81d2d8bb7650ace9c1d77c6"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/testing.md",
+    "bytes": 5717,
+    "sha256": "53fad9be94803e10985cb5b75cb945e4b60089723d37e41d4e14e2e9ca808ae7"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/writing-a-hook.md",
+    "bytes": 9242,
+    "sha256": "f3c07717ead1e8b1a0ff49e19a4e9196276c0b80cc2b3a5fdff0ace25116ced7"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/07-contributing/writing-a-skill.md",
+    "bytes": 8386,
+    "sha256": "f351f2633e42b4ea6435509f18918842167a152ca265c132a0c24fe171354363"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/08-reference/changelog.md",
+    "bytes": 2666,
+    "sha256": "467e6bf79bd519ef4b137cd19854873fc18352e894265293913d1fe9f8040d6e"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/08-reference/faq.md",
+    "bytes": 11021,
+    "sha256": "90cb466d9b4a05a0dc67ea11284b6107a9b84e1f48b7a27db11e6ddc50feb8c8"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/08-reference/glossary.md",
+    "bytes": 12386,
+    "sha256": "f8b01645bd39148526ca50d06821d9f29513cfec4ec4e6629066951e6a7ac36b"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/wiki/Home.md",
+    "bytes": 4159,
+    "sha256": "67be8988790d9e792d9e41701b3badeb782da0eaecd38cb50b8e22042f378ece"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/hooks.md",
+    "bytes": 17811,
+    "sha256": "18198ce21899d1d420230a06e6213ab21dc4ffd5bd821f0826fde37dac53703f"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/index.md",
+    "bytes": 2955,
+    "sha256": "849dc58df1301c15fd46275b2f8bc181076ce7e3fb30e60404d76be803d26a06"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/review.md",
+    "bytes": 6293,
+    "sha256": "0514c18567facd4220b445f923823840eb3241c66f96fc7f7a95809b33cce5c8"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/tips.md",
+    "bytes": 1263,
+    "sha256": "1e81a048192c0a08d12dfc5220cc0305987622ac5f62875d0896f9fe8940bdf3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/user-notice.md",
+    "bytes": 3380,
+    "sha256": "37ee80a2706eeef5d0cdcc5d537587a71370db53ebbd70fa41a2fa65b96a7b5c"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/versioning.md",
+    "bytes": 9850,
+    "sha256": "ab5ffc6a89d61b0817b171548339b556c0b78e71d787418da0f4503224cad5ac"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/01-getting-started/first-game.md",
+    "bytes": 4040,
+    "sha256": "268fae1ce33ce174143255485c1fa4103717216d8f36b86fd400ec2ab86f2972"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/01-getting-started/installation.md",
+    "bytes": 3881,
+    "sha256": "779505224e686c9b5d527ea022d965b62940abefab9a6b39b1e8428cb4d83c76"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/01-getting-started/project-layout.md",
+    "bytes": 7820,
+    "sha256": "a361f462053b3840292c7e4c4dc64566b857b333def284d05856ba4b70d67585"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/01-getting-started/upgrade-to-v1.md",
+    "bytes": 11108,
+    "sha256": "7f115ac2d36d8c632d9f0b0ff600c66973975531ffa6661f2d147b726769bec2"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/02-concepts/ecs-in-plain-english.md",
+    "bytes": 4694,
+    "sha256": "d416db72e78a70e06fb7251df44c8163c2753c119e290aad42ccd00f52cb32f3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/02-concepts/how-it-works.md",
+    "bytes": 3526,
+    "sha256": "65974a47d63084cd825cfafaf92fb706fac8a71f0f4d99a4afd064a3223c7204"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/02-concepts/the-9-roles.md",
+    "bytes": 15775,
+    "sha256": "00f96c01fcec45f59406b3b20641e56a2fdd5c480a664457acd2547cb589b676"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/02-concepts/why-this-approach.md",
+    "bytes": 5828,
+    "sha256": "d934749bd7af7b28658b46dd176e012db4c07c6c5682ffd304a3021778837132"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/03-skills/core-skills.md",
+    "bytes": 5486,
+    "sha256": "391beb8f9a06206b4d1b5261b8e5d0122752130fdd958a8f9646d6d87cfe71e4"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/03-skills/reviewer-skills.md",
+    "bytes": 4566,
+    "sha256": "dbb64e47d61b94f3ab1ceeee6b9bacbdc19f4e3a3a2d7104e5d48cf1ac1dcc47"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/03-skills/skill-system.md",
+    "bytes": 3074,
+    "sha256": "00b48caca0ea00082cc2beaa7d996b6ba259728fbde3c7faff335cee20263d56"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/04-troubleshooting/common-problems.md",
+    "bytes": 14149,
+    "sha256": "b9c373774bfe9bc9b0e074f1e0d2b89afda62eefd439cb08f7af7afd364c19c0"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/04-troubleshooting/recovery-and-resume.md",
+    "bytes": 7269,
+    "sha256": "2d91b9f178d1a1c463bf506cf066c780408ee6362fbfa7ce23d681a53dc09d5a"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/05-tools/asset-tools.md",
+    "bytes": 3743,
+    "sha256": "eb498dc37f6d0a8bede3a427b7593383a31e7557d10d3621ca35f55efd634fdc"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/05-tools/check-env.md",
+    "bytes": 5653,
+    "sha256": "f2a7e01beea9f61047e7536bc2693c8534255eb0c6cf4752a36f8c23f1c694d5"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/05-tools/check-project.md",
+    "bytes": 3498,
+    "sha256": "05e07d375be4f079317431061520a5ae878b18fca1ee452753e36033a9799cd5"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/05-tools/publish.md",
+    "bytes": 8032,
+    "sha256": "3697a0daf4a32c776da4232a9e05b86a2278550190d56563768ecd7bbb5be6e8"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/05-tools/seal-tag.md",
+    "bytes": 9695,
+    "sha256": "e28698efdf8e81539eff7258e93a5062ef202ffcf040db37b7d55e74e658d648"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/addon-versions.md",
+    "bytes": 3128,
+    "sha256": "dc67902d3f99f25b61a5ca67f87dc609394234aceaaf89f953f5dd503f8fd7e1"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/godotmaker-yaml.md",
+    "bytes": 3615,
+    "sha256": "b5fce62ccbb242e7014e891b266913d8ca697c0c50c5bcde41e7d353030eb720"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/project-config.md",
+    "bytes": 6323,
+    "sha256": "883095756d74d972a9b5e26a3d619d9e9197d927925ca05f614ccd0f03fde955"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/README.md",
+    "bytes": 715,
+    "sha256": "fbf038949dee0681fa1dba0428ea055b73383a8c2c96306e2ec72030d7625039"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/agent-runtimes/claude-code.md",
+    "bytes": 611,
+    "sha256": "82962ce1378b8ee462846d5fed5c22c734ffa7b690ff2475cbafa0464c6e14de"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/agent-runtimes/codex.md",
+    "bytes": 616,
+    "sha256": "255211a7b21a99a3ed51b413d7cfabfe211bf0690451552c53c342ccc27f0a6f"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/agent-runtimes/opencode.md",
+    "bytes": 3152,
+    "sha256": "7c07545b48822ae70031134c61e1170844ed95f943736586767faeddee2f60c0"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/agent-runtimes/pi.md",
+    "bytes": 1450,
+    "sha256": "363076915e18114f1e09a23f48f6168942929648aec90a06ea7ee589bc50a05b"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/codex.md",
+    "bytes": 462,
+    "sha256": "3e228bae3b8e7bde519d185ab783369791010d2872741787701ba81ec5947187"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/gemini.md",
+    "bytes": 497,
+    "sha256": "65b1be1ecb520847e02eeabe7ec75fb4c29127b14e0c8425cdee6bc0f9f73ee9"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/grok.md",
+    "bytes": 450,
+    "sha256": "687e42a8d990e92f7819fa59b245f60daf46b21f37bb6e634a85cc16a801b698"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/native.md",
+    "bytes": 675,
+    "sha256": "e75aef9a5a5c81fd4df3ad4268f4566001afa16432ae4b84d829654b94891a70"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/openai.md",
+    "bytes": 394,
+    "sha256": "b54708cba740c6c44917b70d585a199db78d9a5a6bb968116bb7eca84906b5a6"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/06-configuration/providers/image-vqa/wan.md",
+    "bytes": 889,
+    "sha256": "44d7e880703a5dd6cf6984517c712c0759d002748a674e03096727ee8633a69b"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/codebase-guide.md",
+    "bytes": 15639,
+    "sha256": "64dcd2eefc5fe558e45f22816e533a13ea448428ba851ab5e24df3c793a0cbf3"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/development-setup.md",
+    "bytes": 3375,
+    "sha256": "dd7c50aa155fde2f4bdb85bc46ac4c9242f1e54f7722c9c9405f67b0746f4f32"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/release-process.md",
+    "bytes": 4735,
+    "sha256": "6cbb146e402dd21ecf64f93bca9c8d9b8358e7dcc6218db0227b0a444e20b2ff"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/testing.md",
+    "bytes": 5842,
+    "sha256": "8e1fb07f8743d7cce3bf9436dff1ab3cafac0a7dc5c71d293ad90033cc38f71c"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/writing-a-hook.md",
+    "bytes": 9217,
+    "sha256": "4aa9260be8813126752425d6e86abbdbfc27d239234d9e8a0aa1bb9a13c3f9b5"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/07-contributing/writing-a-skill.md",
+    "bytes": 8142,
+    "sha256": "c7e047127a3d83b943b531ab2007eea2d59065fdcbd094eb9189133bc2cf2ca7"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/08-reference/changelog.md",
+    "bytes": 2524,
+    "sha256": "b1fd8f88c1299e6a3f595207b414f8aa610bfa2cffab14586fea662e687ebfd6"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/08-reference/faq.md",
+    "bytes": 10518,
+    "sha256": "85f2145fcbfb6272f02d758011a0986b62f56ca1dfe53dff62c2587ac0c1a702"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/08-reference/glossary.md",
+    "bytes": 11459,
+    "sha256": "8f63e4e1e48c665782f3851658594a9d31d2c630996ea0cc96e59b5d390cc1e9"
+  },
+  {
+    "path": "GodotMaker-non-pk/docs/zh/wiki/Home.md",
+    "bytes": 3895,
+    "sha256": "3e897d4de8a06448ecd201fc6a6ce858af204fe197e517ff6cc684d9f9badae8"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/__init__.py",
+    "bytes": 54,
+    "sha256": "fc6c154d1ffba80d919d8d2b1071e96e6157d77e77a5a0c61032b98bf0614f26"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_asset_access.py",
+    "bytes": 1901,
+    "sha256": "a12eccafdf01b15b26a6b752d814981d55d38f4fe5df204dcc40cb667db50f36"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_clean_workspace.py",
+    "bytes": 1801,
+    "sha256": "2070a63f2938bb19876ee59f542aa4f32d50bc92315fd7ca9be659a8308e6ee0"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_completion.py",
+    "bytes": 4032,
+    "sha256": "77d1e27bf33396e6b6aff4dfb4b460dd9dc2114bcbb491ddba42f44150237637"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_file_permissions.py",
+    "bytes": 14397,
+    "sha256": "9d66e589378ef18ac5ff09bc2046ef88689ccf9eecc6011bacbd7be6f41e3a6c"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_stage_prerequisites.py",
+    "bytes": 6984,
+    "sha256": "02cf4e65d2e0101c9a2e47a58904d8eeb29a00f39ad33b4d893f7e96c3fb4355"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/check_worker_report.py",
+    "bytes": 19828,
+    "sha256": "f0a317e0a27966bc83b37f8cb3df3dc858de038de1d75a6d184e5f45e341a5c5"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/log_agent_tool.py",
+    "bytes": 9023,
+    "sha256": "5e1872d7f0bec42354aedbd0c41ba8c86483d2cd63be2c3dec856108c845fd2e"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/log_compaction.py",
+    "bytes": 1561,
+    "sha256": "b3497afb7f516db35aa60918ca96b353df49ba6a43e02ba6bbf09d29e0aac1b7"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/log_subagent.py",
+    "bytes": 11821,
+    "sha256": "b86c32c981435bbd80a39bb29159511809b77f4bfdf8280faf7a175f605dcaf3"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/__init__.py",
+    "bytes": 6153,
+    "sha256": "50b842495cf8ebb406b8dd064520d00147575697296d4380aeb763fa6228b8ba"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/collector.py",
+    "bytes": 2422,
+    "sha256": "54510624c3c5be20bfd378e8bc7c39e57fcac85239e5145758f96ebbca3e6c52"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/diagnostics.py",
+    "bytes": 11116,
+    "sha256": "62048939df5cd77ec951127cfe2e2ece521e4386dc4b19f225690a620b1f9249"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/highlights.py",
+    "bytes": 4125,
+    "sha256": "716e5cbae87383a5498a88426560c2bc06191f7c5d977e769011199daa58fe96"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/outcome.py",
+    "bytes": 12486,
+    "sha256": "446d4be52fba898aa29b00c2205b4a9d8872b4e76b9049ef6e607d4ade72313d"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/reporter.py",
+    "bytes": 18688,
+    "sha256": "2e187b3497641614a6b8d2034ec216791ee9b303a2770e28c4ca261993586f16"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/schema.py",
+    "bytes": 4811,
+    "sha256": "51042c8a2acd33784b65d3c02b918ddb95af919a4c4339c173614a11a2898728"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/metrics/state.py",
+    "bytes": 1404,
+    "sha256": "4bac2af2d58aad92360e27e9bf7549ff664721d530705769071515d7741002b1"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/on_subagent_stop.py",
+    "bytes": 1987,
+    "sha256": "ff231a2aa14bfed9b1ed9a84bc7222d2636afc9c1acf6d036fe0c261186efe30"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/playability_contract.py",
+    "bytes": 7882,
+    "sha256": "5736a8ec3881b7ceb082133751bcaa95c7e8e8ec3d137393ab1215b5a6528b11"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/session_start.py",
+    "bytes": 2025,
+    "sha256": "8848494ac7adc682670858c39c0e2eeabe3f922e4d5787a444c523982bb09d2f"
+  },
+  {
+    "path": "GodotMaker-non-pk/hooks/stage_reminder.py",
+    "bytes": 12184,
+    "sha256": "395f111685cabb921b5b79531ce889729068093ae69142063858737fd893df2d"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260507120000_introduce_tag_based_pipeline.py",
+    "bytes": 21167,
+    "sha256": "5a4df48345ad1a9f45d5ff95170c5e1faf0c7668a5e3cdd2a95410d5071504ed"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260510163525_addons_gdunit4_capital_u.py",
+    "bytes": 5502,
+    "sha256": "b4e6cde1d93b9b80d4035ab703bd73ef592846da7cd7b4df194eee7198b977d3"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260514160000_asset_model_config.py",
+    "bytes": 3314,
+    "sha256": "c2622e1c27d66ae40c8426225a2bd8ea750adfe1dd5b767d426af22e710cb6c3"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260521191628_add_style_md.py",
+    "bytes": 4196,
+    "sha256": "56fbaac634c5b917216827ee6fb77a5e26e1bc4f4aab74e24956396378b0bb70"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260528004107_visual_asset_contract.py",
+    "bytes": 5435,
+    "sha256": "d3411f55188846986986a3c7e3536c619a18bda5e783748a99ae72c4a3b202e5"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260610061543_add_asset_producer_model.py",
+    "bytes": 1639,
+    "sha256": "cb1208dd727106a5b403526f41b80ad28b54bf5e896964831b9efa5dca73cf41"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260708145839_disable_engine_file_logging.py",
+    "bytes": 2910,
+    "sha256": "93c49c8c175e2b880c3d31e3fc7c8581248d6f4f8d8cfcb86b1568e55ba2e67a"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/20260916120000_replace_style_with_design.py",
+    "bytes": 10275,
+    "sha256": "6e20ccb84355c06343de7cb191606c9bd8f54846fb17882facb97ae860f0427b"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/README.md",
+    "bytes": 11582,
+    "sha256": "401c08b554ebae1e75ac05e4c5cd128408e1822f0d3f61200209388fa31462a5"
+  },
+  {
+    "path": "GodotMaker-non-pk/migrations/_helpers.py",
+    "bytes": 1090,
+    "sha256": "b72d6e8b39160c374f3f73a649bf62bcf8ed82652330cb249349bb814adccdb9"
+  },
+  {
+    "path": "GodotMaker-non-pk/mkdocs.yml",
+    "bytes": 6381,
+    "sha256": "b90bfe24ae2d2999677e36805e06e82c889da68f8a5340015d219cf15608ccd3"
+  },
+  {
+    "path": "GodotMaker-non-pk/pyproject.toml",
+    "bytes": 549,
+    "sha256": "59413d2cb5457567b595dd807d467d4172c4d75e7e091144ce1045a7f88d6d9a"
+  },
+  {
+    "path": "GodotMaker-non-pk/requirements-review.lock",
+    "bytes": 288,
+    "sha256": "515fc0ed038d87fb4cbdd1bd166210082da53c9c3de77208fbbac6ae3c21b955"
+  },
+  {
+    "path": "GodotMaker-non-pk/scripts/install-hooks.sh",
+    "bytes": 1622,
+    "sha256": "a434fc76c4078818c53663ccabd1ad2a4aa068f53e36ed64054cbce81bbbb757"
+  },
+  {
+    "path": "GodotMaker-non-pk/scripts/pre-commit",
+    "bytes": 1968,
+    "sha256": "8581fdd98b29310298a33cbc66d34826c0d271ae875e259fc4899b341f5d735e"
+  },
+  {
+    "path": "GodotMaker-non-pk/scripts/pre-push",
+    "bytes": 1216,
+    "sha256": "b53761c0ab55eb81b68ffb5e07fc21f0dfa7f6bd1e5f7b032ab842ca70d2f045"
+  },
+  {
+    "path": "GodotMaker-non-pk/shell/_read_config.sh",
+    "bytes": 1284,
+    "sha256": "fea42969b4b23e46a48b50d939eacedfa2726f5100f1a7b541bddd518a31540a"
+  },
+  {
+    "path": "GodotMaker-non-pk/shell/publish.ps1",
+    "bytes": 1858,
+    "sha256": "176f3ae2facaf2c5caa8ccf1e36181a2ac2373ecafe79f2ff1fc305604f6f607"
+  },
+  {
+    "path": "GodotMaker-non-pk/shell/publish.sh",
+    "bytes": 992,
+    "sha256": "f9db36fb463dfaad97284c89df2ce9bc9d0e598c5c4adc83499a79798bb4ff04"
+  },
+  {
+    "path": "GodotMaker-non-pk/shell/report.bat",
+    "bytes": 865,
+    "sha256": "87ab181fabfcf8cd3da53bc24723e2d5394ea87b5aec92f7b91b352ad76d5015"
+  },
+  {
+    "path": "GodotMaker-non-pk/shell/report.sh",
+    "bytes": 893,
+    "sha256": "56fcdf8ef5dccad0d24362a01fa6ec028a7d8958c5262bedde745846d02e0a24"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/animation-planning.md",
+    "bytes": 2833,
+    "sha256": "427226bbce655ad24884ba0d5424a85d7302692b7a3f32303542358b23a63d97"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset-skill-contract.md",
+    "bytes": 6984,
+    "sha256": "9a399e5e913b4568b4ce8cc56708843201a35b5959c7684ee66dc33c6aacebae"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset-validation-ladder.md",
+    "bytes": 760,
+    "sha256": "ff29b81f3a8a84abd9b45e767ac16121ab7bf83963a86b1538ae1c8ddc7c336b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/__init__.py",
+    "bytes": 1926,
+    "sha256": "d236dd55be625ad67a6cc458484b36f213f5cb008dde030dadbdbe2014a1b832"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/_asset_paths.py",
+    "bytes": 2247,
+    "sha256": "7d033351a97458e6df08fcfdb9b1a1cd79dbeca839bc55e266a5064c129c8ea5"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/atlas_texture.py",
+    "bytes": 9657,
+    "sha256": "bad48c663f84f45dddf5228410a10d1a24e8477dba42541e49316aed4758e7f9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/contract.py",
+    "bytes": 8419,
+    "sha256": "72fa2df364cd671d5ced3ae52b20b00d5f10f3e97f05b149ddbb1069529648c3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/registry.py",
+    "bytes": 15966,
+    "sha256": "4b0b62577a89fe85f8c2148632c7e20f96247be7532b184fa316265477bf05ae"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/sprite_frames.py",
+    "bytes": 6492,
+    "sha256": "ca7ef656ff9bae233669c40a6419f86d91d7c648ee212698cf6a172fc7914562"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/stylebox_texture.py",
+    "bytes": 10787,
+    "sha256": "e77d09cca8ac6b60e239af02a8d7d7da2f49ed85674c9c0f112dcf73ba7ba7af"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/texture2d.py",
+    "bytes": 1827,
+    "sha256": "a024a621543ef1908c91d370363541ab6a75e370e5788a30d45192a5f20aaf37"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/theme.py",
+    "bytes": 37888,
+    "sha256": "b45ad6aa40c82db8ec23611f962d9c7c0b83957f2a340a496002df15de75f855"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/tileset.py",
+    "bytes": 21777,
+    "sha256": "0f59e6391fdc0f829a7518df44046caf261a43d715d457c4d0f268e7c665f594"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_compiler/tileset_compiler.gd",
+    "bytes": 6881,
+    "sha256": "c8fb41b4ef7c54aaab3e81b0959247d72ff434c4bbc4fb4ff502e189f2fb0915"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/__init__.py",
+    "bytes": 1948,
+    "sha256": "c20484c28a916ccd193bbc904ef9721b9e32a35bf6400af596e10f455fe2339d"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/_bridge.py",
+    "bytes": 2722,
+    "sha256": "79dbba92d6f185dbf1e9fe27db2dfa148136427e5806f79ab1d49a09baa5a1ac"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/errors.py",
+    "bytes": 168,
+    "sha256": "a865d3cd2f036b889157d9d8cb0d257675743eb06698eb4b9fefe8148e949c33"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/godot_probe.py",
+    "bytes": 10985,
+    "sha256": "0ae77b0932dc6802313a200393517648a5a90502983b9157b5b7277074fa47e5"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/probe.gd",
+    "bytes": 17107,
+    "sha256": "db04260131777b356815267388691f3700b05591abe124e994b43648d30457a7"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/sprite_frames.py",
+    "bytes": 3297,
+    "sha256": "6005d3a5f39a22afbe8b3cc6fde366cc78db1b5dd8a5a371d071dcea7a87f822"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/structure.py",
+    "bytes": 17675,
+    "sha256": "4642cdf20f4c2c56a6a5f20b9a4fdc99404c39baf9af88d38211397e0692ef40"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/asset_validation/tileset.py",
+    "bytes": 18081,
+    "sha256": "098924fc785defcf990db1b50fe0fdf681321f4720d62691cb24ba57b3973bbb"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/godot-artifact-compiler-contract.md",
+    "bytes": 605,
+    "sha256": "ac1d2675103cf038944f4cd15ba0215909c69e3f8b420b85d58f1974f4aafb30"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/missing_family_standalone_validation.py",
+    "bytes": 44594,
+    "sha256": "fd6424350beda702805dc5ce28a917a35e9278335a6f78d8fae9f34e5d1f9039"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/request/character-bundle.json",
+    "bytes": 704,
+    "sha256": "0af6d59bf8f3a3a875fb6f4a37e2e44188cf0e80f0dfd9856b18464a3e97d775"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/request/screen-reference.json",
+    "bytes": 177,
+    "sha256": "ea2ba377d763ca0597205b26f89ed75d786a7ac16439ac035658163d0e6217ee"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/result/character-bundle.json",
+    "bytes": 873,
+    "sha256": "37be134e298953ddc9a8022f182e68b24de10965647112bfed4d8cb5abc99b84"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/result/screen-reference.json",
+    "bytes": 400,
+    "sha256": "4bdd288f8484b12e72ea54194258d4b3b99ef63a97c1e1ede7cb28fbe8cc27cd"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/result/tileset.json",
+    "bytes": 389,
+    "sha256": "da65ae5ff5db8fc3ce07d38bea30989093617eb1db48e7fa0f4a00e756977849"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/result/ui-kit-multi-output.json",
+    "bytes": 731,
+    "sha256": "bf54f7c4454236fe1963915986baf16e5bc26e2aaa166b3aad79556759d7feed"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/samples/theme-recipe.json",
+    "bytes": 674,
+    "sha256": "c90401fe064665d361d968db83c5c96d848162b2fda4b3ba6e46271f0aef2a95"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/schema/asset-skill-request.schema.json",
+    "bytes": 3452,
+    "sha256": "df2058b6b8e8746883e2804f44dfc09912530f662371ed1636194a947e5793fd"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/schema/asset-skill-result.schema.json",
+    "bytes": 4387,
+    "sha256": "ded9e65d54d56eeb3a292033f6b6dffc2f301e59ecf270c8b1903a98ffabb8fe"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/schema/theme-recipe.schema.json",
+    "bytes": 1805,
+    "sha256": "84c80ccd34467b83769fa4ac289603308837db4ee9778a06949b9c48565d27b0"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/_shared/ui_card_standalone_validation.py",
+    "bytes": 12787,
+    "sha256": "f8f2a1a19d522614a77d4b321fe993fd3de5bd0e1d7deb1030b9ea6861f7fa13"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/background-map/SKILL.md",
+    "bytes": 6656,
+    "sha256": "df8ae076061a68cd47c282fed69eb5140f33da48b77f74619244dfc00746f320"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/background-map/fixtures/representative-result.json",
+    "bytes": 514,
+    "sha256": "dcbd05760aed9d7c4870af2b3882d477498bcaed1b588112125a3c3c95305036"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/background-map/standalone_validation.py",
+    "bytes": 2648,
+    "sha256": "195e12f67c7a75752e403e9271d66c84920d330392043c3958a54cfc524f0a74"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/card-kit/SKILL.md",
+    "bytes": 7250,
+    "sha256": "71d82733d51ad43c78fdc55f95a9df3e986606ae52fa66718dc8a263c249c324"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/card-kit/fixtures/representative-request.json",
+    "bytes": 1167,
+    "sha256": "6842263be415f827b24e56758fb470a83e291be4c91f978f76b9770c38b3a969"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/card-kit/fixtures/representative-result.json",
+    "bytes": 1002,
+    "sha256": "d25734af2cbdb42a7918976cf705039cf81b7d9d88338825d1dbe2993a9f71d5"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/card-kit/standalone_validation.py",
+    "bytes": 1895,
+    "sha256": "da5cd82b57d0530353298d676268cddff45461e7ffd24a38acf7b45569926a4a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/character-bundle/SKILL.md",
+    "bytes": 10332,
+    "sha256": "d8a3e232a6352637d2f673a723f616025476f333989105657a02dcba296faf91"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/character-bundle/fixtures/valid-request.json",
+    "bytes": 751,
+    "sha256": "eee8a0f70f83c790e82249633ebe434c3a1476a4147ef45d6c45cd61c685af62"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/character-bundle/fixtures/valid-resolved-request.json",
+    "bytes": 1217,
+    "sha256": "cc028a7da550d94692df669a1909fd6621620208d161a333cffb5fa5c877c003"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/character-bundle/fixtures/valid-result.json",
+    "bytes": 882,
+    "sha256": "ec95526d75e4201e0903aafdc7c29b5d4c98e4b1c3b790caba741ed097f13ea4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/character-bundle/standalone_validation.py",
+    "bytes": 1610,
+    "sha256": "8db5f1729be0b1281f7c8b5a7d7865c5488467cc77c0f1de1c210acea206d459"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/SKILL.md",
+    "bytes": 9328,
+    "sha256": "a292b68c747b91ce696ac32b09a61e365590e7bfbebcfe822401ce284e0b16cc"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/fixtures/representative-result.json",
+    "bytes": 762,
+    "sha256": "7407e7e1af967981170c40622f73a48431550ba98b3e0c52e27893ef3710c6a7"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/samples/atlas/market-props.json",
+    "bytes": 396,
+    "sha256": "122f5c14c7f968f7380666aa3153893810955e44f3922d02c84e3ffa05a92587"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/samples/atlas/market-props.png",
+    "bytes": 256,
+    "sha256": "47cb8caab83e911ec268eace1876d272e187689bff8fca7b06afb0d7e84b8941"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/samples/declaration/spec.json",
+    "bytes": 358,
+    "sha256": "06c64458da176f3492adbb6f3b1f3b605b70a9273202957c8668b9034bae5154"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/samples/result/market-props.json",
+    "bytes": 762,
+    "sha256": "7407e7e1af967981170c40622f73a48431550ba98b3e0c52e27893ef3710c6a7"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/compact-prop-pack/standalone_validation.py",
+    "bytes": 1612,
+    "sha256": "e9d37bf4b38f18d38a507f30f3c1c9adb4048f1beecbdb07f3ff5a8139c3898e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/SKILL.md",
+    "bytes": 12487,
+    "sha256": "cf12620e070cba966755fd202b13990f1afa9bfb68a4a64ccd9745460b3d9e54"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/fixtures/animated-request.json",
+    "bytes": 469,
+    "sha256": "8709ea046e31836d1f257b5fc474847ca7bc2e474748d949965e8f1f1585df0b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/fixtures/animated-result.json",
+    "bytes": 490,
+    "sha256": "6117ed7d528c5a0a07cd36784d4e5ad74f79347561efc5dd86e4b9efdc13448c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/fixtures/static-request.json",
+    "bytes": 188,
+    "sha256": "8e227772f764f5a82459c4b572e9bb86d80f51f0ac14a7088caaa789fa4be259"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/fixtures/static-result.json",
+    "bytes": 476,
+    "sha256": "08c13aa5b67098af3f17fa4f65e548f4ac6c2eda9aa14c6aedad312e28233733"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/fx-bundle/standalone_validation.py",
+    "bytes": 1596,
+    "sha256": "3236180b280d621671107c598ad9be6f3269b018923df3c3adc9eccdb430e946"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/SKILL.md",
+    "bytes": 7290,
+    "sha256": "228470c79027ad88ac064c446a8fe964f114cc80510e4664f32a08cac8c2a351"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/fixtures/representative-request.json",
+    "bytes": 536,
+    "sha256": "d26c044cae5547d27db6a40dde500e91bd087edce9191801cf6bee7fbcbbcc56"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/fixtures/representative-result.json",
+    "bytes": 932,
+    "sha256": "a4ae7e44634264af11bac05befeed52e285510e68ad63ef5b81ed4897aa3c196"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/fixtures/representative-single-request.json",
+    "bytes": 537,
+    "sha256": "c588b2dd81444e30e59116d48be702b56108508b3ba03d6df8e79849225e1b21"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/fixtures/representative-single-result.json",
+    "bytes": 1174,
+    "sha256": "20e042e46b509fe393e673ed8dcc2ca9297a1d2479a3276005c1decb8fad049a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/platform-strip/standalone_validation.py",
+    "bytes": 1606,
+    "sha256": "68908d181e0d5776701d2058e1ec6721e42ef72f116eecfc4f5d83fa5c36ff9c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/SKILL.md",
+    "bytes": 10471,
+    "sha256": "0f3c1efd4ae1a142abed14d3973de49a205ff815aab4834d62e756a2adf5cc1e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/fixtures/representative-result.json",
+    "bytes": 895,
+    "sha256": "caae3d0f53d6d00decd4c43378e5251cfe8a723f0527576d3d27f2de5aee164a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/samples/atlas/market-scene.json",
+    "bytes": 408,
+    "sha256": "9dcf68e723ec6944b9d6c225460106b4dd2f0c6c6f54703d8fe38c7962674b67"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/samples/atlas/market-scene.png",
+    "bytes": 418,
+    "sha256": "b2e86a01807d2e07e8019d98e2482f8d64df8a35b07604567140ac9b919ea130"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/samples/declaration/spec.json",
+    "bytes": 387,
+    "sha256": "2d126d449adef7e2de51eced4f13a7db748e64d7f9da3c1ce1bb4b071015de41"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/samples/result/market-scene.json",
+    "bytes": 775,
+    "sha256": "c3fce77fb84f4021cc9ffc81f2068d9301c09da4371d620d207056a0aad980d4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/scene-prop-set/standalone_validation.py",
+    "bytes": 1606,
+    "sha256": "49fba0481fd81b984566f1b780d457af18fded6fc6e4360bbdd344ed175cddd9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/screen-reference/SKILL.md",
+    "bytes": 6472,
+    "sha256": "e3ffe7b87780323d21e73cdb08cc7173ef5922b07900789724cf13c414c3a34e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/screen-reference/fixtures/representative-result.json",
+    "bytes": 398,
+    "sha256": "f26bad52d4f82ae6c2d4ac552d35e9115ba3d2fdbe5710de176af30037a0bca1"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/screen-reference/standalone_validation.py",
+    "bytes": 1610,
+    "sha256": "1c1fe260730af1bdab2e2a368e41a73e44798be44f06a202a2ee7f6b9f90017a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/tileset/SKILL.md",
+    "bytes": 9907,
+    "sha256": "8adaf7a8582423805e7be491c16ed93decab789a7d8e2f96d9e42f5a9fb2444a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/tileset/fixtures/orthogonal-square-recipe.json",
+    "bytes": 1158,
+    "sha256": "e733b5cb38129b6bcbeafbb5b56d0a59b13fde42317c997f52d382d2029f0541"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/tileset/fixtures/representative-result.json",
+    "bytes": 465,
+    "sha256": "f08ae71adfe8d8321d44c81bc283e9e2efb6c71e5359fd5ca1361058b30a3b92"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/tileset/schema/request.schema.json",
+    "bytes": 1416,
+    "sha256": "769aef08885e7b0d2c785e2370a2fe1c0ea4825883185d59c57da5dd1c946883"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/tileset/standalone_validation.py",
+    "bytes": 9696,
+    "sha256": "c049b57c9ee814bea7b66528268b115d050779184ec53597420041d7c91952b0"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/SKILL.md",
+    "bytes": 11153,
+    "sha256": "ef9e9ca7b2413f7d265b21be1e648237cd1610995b2e57359d429d0abab5d1dd"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/fixtures/representative-request.json",
+    "bytes": 19974,
+    "sha256": "338e2f53f90623a924ff1ae84e38b48a83cf44e9e7f744f2989497a4690094f9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/fixtures/representative-result.json",
+    "bytes": 9940,
+    "sha256": "31f82ac09aa5dafc01d104e78a08db0963ebdb151d3c7671c4d73a1494a66d5f"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/references/source-sheet-scheme.json",
+    "bytes": 9832,
+    "sha256": "d4a5e25e21f3ed4d02d5834188e77250b951f913598848b20a61c974d600a994"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/references/theme-baseline.md",
+    "bytes": 4383,
+    "sha256": "6f942b426f62ea0d0eb77c9574deaf15af6e3f26b0ee1197141d9705cce73fc1"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/assets/ui-kit/standalone_validation.py",
+    "bytes": 1887,
+    "sha256": "5d662dbe8a4c82b681b78c0c9c34a005b51fe560a443a79e34a78291afbc80bd"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/analyst-dispatch.md",
+    "bytes": 3208,
+    "sha256": "1108d2f87604aab201e399a2d1883060a156da7d68c657337ddb82a7db53ef8c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/bound-review.md",
+    "bytes": 4621,
+    "sha256": "e9c4f83afd40d4a581fe1ffe7e68e839eff74d86b60e7be8914301af985182c6"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/manifest.json",
+    "bytes": 983,
+    "sha256": "e26a63fd1bf5f157d55688615ca2825d57067c9fb4c8783e25eb7368fe8e2b34"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/repair-attempt-accounting.md",
+    "bytes": 2444,
+    "sha256": "304175e9d338c602674a542717d5a3d180ad3f9c39db4da626e2bbdb6f8ac60f"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/reviewer-dispatch.md",
+    "bytes": 2816,
+    "sha256": "a2f5a0510554d9edb4be273e6add06eb35bcd4996645b348d0a1c7ea50ef4130"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/reviewer-finding-triage.md",
+    "bytes": 2158,
+    "sha256": "2f0162cd58b70c3011e507b8555f59f8e8dd6b26c79dbccf0e7b18c5eb2a0486"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/verifier-dispatch.md",
+    "bytes": 2599,
+    "sha256": "20f1dcf09994925269a48e5ea2b8baf6e6b536f752b6e3d843b3fe78d3b01ef9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/_shared/worker-dispatch.md",
+    "bytes": 15269,
+    "sha256": "ab21ed2c0b5c527353e882c1441ab36f6554f177870b324c501cad746527be04"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/game-planner/SKILL.md",
+    "bytes": 15028,
+    "sha256": "f7bc69b8261f2a533ae4c47f55e35fcd3ab359e0e36ff3a484120a9577a75d80"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gdtoolkit/SKILL.md",
+    "bytes": 8787,
+    "sha256": "553cd11bbfc80f541f51f4e11c9958e8ca8904c4d694087114bc1a4d2de95ae4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gdunit-driver/SKILL.md",
+    "bytes": 13361,
+    "sha256": "e311b03e72cc562c580d591293a626e3a8a20e67aef0589398d25157f1eddb42"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/SKILL.md",
+    "bytes": 11050,
+    "sha256": "4495f1574805eea63af95a0f74ec850e804240f8828226e1f4c56ae0bf5bcd67"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/evals/evals.json",
+    "bytes": 3611,
+    "sha256": "985946dca7448f827f1fb8cd95734b275d96b53cfb280fecea429849cf86b6ad"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/gotchas-examples.md",
+    "bytes": 7474,
+    "sha256": "745d5df8ecf867f31f999ba6853cdc2f0ad10df3cd2bafbcf88e15eed880e6b4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/gotchas.md",
+    "bytes": 4078,
+    "sha256": "d4fb6023249b2f52fd71989d656cd2b792f88aa053bdd6e26d01cada84f208ae"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/component.md",
+    "bytes": 5751,
+    "sha256": "cddf6dc27bb2e100277c5711a2ce6b16b3610232172004bc4d1fba558ce4fe4b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/debug.md",
+    "bytes": 7165,
+    "sha256": "6dcace0daefcaeeaea539c4519994bf6a6f6694bf0588af65d0f965b47e32546"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/entity.md",
+    "bytes": 9460,
+    "sha256": "d264dc4f4f376d9b798272d8c1debc27fa50af19c99896a8d5688ab875522074"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/patterns.md",
+    "bytes": 12635,
+    "sha256": "9e7105c78aeba0f4ade3750b84a6a8ba90ca7b781332239052f67a059c21d99c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/query.md",
+    "bytes": 12793,
+    "sha256": "8a448627642aec7dffcf5845a4ff0ee1fa72dc10db5493b5009f83bba1b3095f"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/system.md",
+    "bytes": 13329,
+    "sha256": "a23f0ece6a4946d008b84cc54052e1be370ba7f4c94e17e435c1efaac6d560fa"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gecs/references/world.md",
+    "bytes": 9038,
+    "sha256": "5efd6755486984ea5867e5088d3f957b7143aa29af124c61429a79be406166f4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-accept/SKILL.md",
+    "bytes": 6127,
+    "sha256": "0b076637e1373ea5f98c03b38c60d00bb5501a20f01a36c20472ca9a4e66b841"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/SKILL.md",
+    "bytes": 13013,
+    "sha256": "4ef3437518330e88e1d37751067d0d450238098d927de8f5eee69a70472e9162"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/asset-curation.md",
+    "bytes": 1064,
+    "sha256": "f9855d6b829b864a9d869d42324d429fdb8c639f2340f4566213df5ddf37ebf9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/asset-planner.md",
+    "bytes": 2405,
+    "sha256": "1009158a22a9e6e5f387fff0d8bf6a13139ebb17c7fc835883b86ff3831ae8fe"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/asset-result-registration.md",
+    "bytes": 2694,
+    "sha256": "a2e01b048619d51c4c02427a1543dad4034fa11079f865c4dbe16b16ad63401f"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/asset-runtime-pipeline.md",
+    "bytes": 517,
+    "sha256": "82d67b49aaf3f21ee0c783be734a52e1376555830db94f0dac0329db2fe59098"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/providers/codex.md",
+    "bytes": 6824,
+    "sha256": "a4d948897d45b9d403bf4ce05fc79cf18af8b1b83d38ed095fd4390aade1ce68"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/providers/gemini.md",
+    "bytes": 1289,
+    "sha256": "9a78c301951c09cd77f6d8794e5e2c76792cd9b10fde24a35bd595dfbd834117"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/providers/native.md",
+    "bytes": 1438,
+    "sha256": "8d76c97d4d38a4062e851d913359919f6dcf08242cc6885cd53710495228f618"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/providers/openai.md",
+    "bytes": 1683,
+    "sha256": "67a328c074b91038c8d99dd17f6d6401f95e5456f3aa3a16a7f9a09ae52fcff3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-asset/references/providers/wan.md",
+    "bytes": 3729,
+    "sha256": "77ff0a68e03b8e7ac2294a4f6915eb57bc450c3777a33c864d44d3e4ae485469"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-build/SKILL.md",
+    "bytes": 14616,
+    "sha256": "7a1d2dd8e716007f8ae1e62cfa37567b10466f3b6c19ceaf1c34d704c74a4be8"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-evaluate/SKILL.md",
+    "bytes": 21885,
+    "sha256": "2ff18f6604054abba38da056e6002e6bcbfde74af247146e3b6b95d2aee48869"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-finalize/SKILL.md",
+    "bytes": 16017,
+    "sha256": "8df46a1dc3ed569d81c9a0c45a2275df44325380ce6a2724a4cd08cbeeb5b83a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-fixgap/SKILL.md",
+    "bytes": 21647,
+    "sha256": "3dfd717a6cf1e024bcc86c2ed9e450cbf034b7277659b3aee7b618f73c725361"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-gdd/SKILL.md",
+    "bytes": 19991,
+    "sha256": "3a9d719cb9c5ef65f346d6b76e8f6ae9477cc360875691318ac6a71e489d2f4d"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-rescue/SKILL.md",
+    "bytes": 8653,
+    "sha256": "6b43c0c3d861c126ad74c4fd8eb0ae1b47172e71e95e54264c2b6594d7a79289"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-rescue/references/diagnostic-checklist.md",
+    "bytes": 6060,
+    "sha256": "f5393dd51109375db77528ba74718ec81697a51841399a17ef9dd30dd496ef2c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-scaffold/SKILL.md",
+    "bytes": 7883,
+    "sha256": "9b7ea1c88e30adec45c8b8ea7c32685348fc22a9a949e91e6587395b06c2c93b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/gm-verify/SKILL.md",
+    "bytes": 7939,
+    "sha256": "aad008b48a6a36535b552e74f1c015f7186a2b9aa5d039d64a7f2e4302326296"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/SKILL.md",
+    "bytes": 1720,
+    "sha256": "ae5c5b0d44865f70a1ae4ebcfef920984f7c68bb95703b78b0c175ad794d8af3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/csharp.md",
+    "bytes": 17347,
+    "sha256": "e681b9521ac905405131dd731f7a16cf8fb8d7f6e47808dfe41a6acc9d0bf748"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/gdscript.md",
+    "bytes": 24890,
+    "sha256": "3d9bff9cb4bf2710e724c98fc6e2b2fbbfa42d609d708d3e9d0042edb578243a"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/tools/class_list.py",
+    "bytes": 13522,
+    "sha256": "3b0285877554dcdc95685a137b032d4b9b99e0c6313909e8aff781c1f5a64e03"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/tools/ensure_doc_api.sh",
+    "bytes": 4076,
+    "sha256": "e26489bea9e4c270602eaef2d7d7112adc7639d6dc1fad7ee422f62eed440650"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-api/tools/godot_api_converter.py",
+    "bytes": 24078,
+    "sha256": "54885f3a92aa7440e1734a8830b09b851508783ab20c580eeff49a0b2a593f68"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-e2e/SKILL.md",
+    "bytes": 15666,
+    "sha256": "14bffd4e8ce286ecb09567c4727379a0855fb6816534ef7524688c44e8cfb063"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-e2e/references/api-reference.md",
+    "bytes": 35516,
+    "sha256": "e8126ab602bd67a486b5d487d9d104c8d30e23ed8fcf0678e45faefa4cf7c6e1"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/godot-e2e/references/testing-patterns.md",
+    "bytes": 26473,
+    "sha256": "b1644a4b6bd62013de801309f9f58db29934d4f3b8061b5924852cb8ffd4625c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/headless-build/SKILL.md",
+    "bytes": 1838,
+    "sha256": "75411e27b67b42f3ad10c4218e494c8f63aa27ac2269e123026f154197d167d8"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/input-mapper/SKILL.md",
+    "bytes": 2927,
+    "sha256": "c3671fb8520303504175082a1f7a145892589277ba5b032f4cf996993d07a1f2"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/input-mapper/references/serialization.md",
+    "bytes": 3856,
+    "sha256": "136f55906e8393378636feaf563b5d5172022d085d0ad4b7942e7090b921b769"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/mcp-driver/SKILL.md",
+    "bytes": 4644,
+    "sha256": "37bf9846339802966d17135540c05c73ead135661f2afd3589f99dfc7d7e1dd5"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/mcp-driver/references/debug-patterns.md",
+    "bytes": 8403,
+    "sha256": "924c5e09fe610d5beab168d229c649e350a31be17f0cca8f44ed8cb080a6c397"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/mcp-driver/references/tools.md",
+    "bytes": 9902,
+    "sha256": "6982eaf1b021a28aee80f6d6712c7f1df3e223b0c575142c94972a3fa427451e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/mcp-driver/references/workflow.md",
+    "bytes": 6899,
+    "sha256": "77ea9dd90340d7cafd949f73d2a8f139beff2b860ac199e36bcd0ceba2e30b14"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/phantom-camera/SKILL.md",
+    "bytes": 8488,
+    "sha256": "f451b2cd019b019a1e29e4c3dff269d48f7cb70c78152f5240c3707231eb59a1"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/SKILL.md",
+    "bytes": 8412,
+    "sha256": "d148f275da9a9ea52a394851c5e62ca15640e439ff8a1c3514b82518985d614e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/references/addons.md",
+    "bytes": 3522,
+    "sha256": "16f00acb3996433b524b8731f929ab01a8ae9ad51a6884a0d024a21090dbd4d6"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/references/project_settings.md",
+    "bytes": 2953,
+    "sha256": "347bcc34448e42624ec63d34ad50a204cb7b729f716c9decd9bcff957590b619"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/claude.md.tmpl",
+    "bytes": 2561,
+    "sha256": "73086195960bf9ce9b94b6f4e368e085bfee45f892aae175bdfb013cb2beac0f"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/component.tmpl",
+    "bytes": 239,
+    "sha256": "41b820594c3e9c2353ba549469c6ce576bb2cebc8a2d063700be4cf0795d18a3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/gitignore.tmpl",
+    "bytes": 198,
+    "sha256": "1362e812f3132aba7b08064428fc7b1fa1bc5a4a8ff9b6302e06086a1218ac83"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/main_scene.tmpl",
+    "bytes": 66,
+    "sha256": "3e74a62379ca7bf1006fa061a5923c74ae8142d413b43c6ac0634c67755b2876"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/project.godot.tmpl",
+    "bytes": 1190,
+    "sha256": "b4457cff04a01dab79a53768c0141970b0b366a26c5ab47876d4cbc544ef3797"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/system.tmpl",
+    "bytes": 423,
+    "sha256": "1997ff843b6578b407945073118fd5eb7ac9c983c8c4794f50989e99c442518e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/test_example.tmpl",
+    "bytes": 388,
+    "sha256": "2c72c114dc046460efe082f2b88379560e0f677e7fc42be539cb92ee3c5a8099"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/project-scaffold/templates/world_scene.tmpl",
+    "bytes": 127,
+    "sha256": "6ecd978557c6209ff7b5689b3a9fdad3b4bf6044e6863b891195827c63443d0c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/screenshot/SKILL.md",
+    "bytes": 6098,
+    "sha256": "5be1ebea481cef04ef9c31fe2f8ddec4d22061023b342761f5fa1fa9a10e48d3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/SKILL.md",
+    "bytes": 7365,
+    "sha256": "b8cf30897792d4a797726ec1091da692d7524829b5d918c7eec97f21565a1cf2"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/scripts/criteria.md",
+    "bytes": 2429,
+    "sha256": "8c7bf1a4182f3c7e96c3a447adb0a1d864ed98dc9d35d5f654463bbef8cf1d65"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/scripts/dynamic_prompt.md",
+    "bytes": 1681,
+    "sha256": "f0fa83042a5431099a18904fb81f6feacd43b5cd7c4790142109a93cb091b312"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/scripts/question_prompt.md",
+    "bytes": 845,
+    "sha256": "9d97e05a5e19ba2f2cf955dcde649b5f5eb3497af956e4a5a8bda15a8c03c5d4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/scripts/static_prompt.md",
+    "bytes": 1522,
+    "sha256": "d92cb04a93bafdc1a0432887dd5639ad112ce03d2b2b0c6c4a0b9fcc1b97c8f9"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/core/visual-qa/scripts/visual_qa.py",
+    "bytes": 8994,
+    "sha256": "c66204bf8c6fdef0f460e7d784f833383ea6f305c78ea2147dbe640334b91c27"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/animation/SKILL.md",
+    "bytes": 1581,
+    "sha256": "c1a9f16ec8bc181218cf0879da2bf3fc35f3a62f6787878e69113873510b10df"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/animation/checklist.md",
+    "bytes": 3298,
+    "sha256": "2fa33fabb9f9438080b97ec5922bae1c38f25e584b1911b8930621cf75e719e2"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/animation/gotchas.md",
+    "bytes": 5341,
+    "sha256": "f14e01becefc6f41660f8a06f080aaacc5e8d26b81e3540571315761db42d05e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/audio/SKILL.md",
+    "bytes": 1310,
+    "sha256": "4c7c4fe56ce484fe9e85b2b4ca8e2afc23dad7579fad2d9c8c5cc6d71893ac95"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/audio/checklist.md",
+    "bytes": 1976,
+    "sha256": "4cc9de957dc390178f8c50f36408cd70990e3b9cdd54142d78b2534a3bad0274"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/audio/gotchas.md",
+    "bytes": 3308,
+    "sha256": "2ca06eeebf47c79ed831b8c36f3f84dbb2c0c57fd111ba151ad57c6e8bb1546d"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/navigation/SKILL.md",
+    "bytes": 1458,
+    "sha256": "122dd36607813cd66e0debf276fcd6b01dc578ea0f6e53cedf7fe8ef88e6c5d5"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/navigation/checklist.md",
+    "bytes": 3354,
+    "sha256": "811c6c04cad70b1082ba58041521e24828086a81ae0cf5d89b83878cc81e4c31"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/navigation/gotchas.md",
+    "bytes": 4010,
+    "sha256": "636e1554e007309015604349e89cd26d658bc0170ba9914a5846c9b1d0ed1041"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/particles/SKILL.md",
+    "bytes": 1420,
+    "sha256": "96dafefdb211a1242725989167474ea2ad81d2bd5437c05e28d05f725295523b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/particles/checklist.md",
+    "bytes": 2130,
+    "sha256": "6fd01775531dcdd8fd1456575826c4f54c349be63ef43a3f3d41bc3a9d004c5c"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/particles/gotchas.md",
+    "bytes": 4512,
+    "sha256": "609e2c66ffc6a9f33b2092ea9aa9700f06a0ff700e81d27c0afe86e7ecd7e0f3"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/physics/SKILL.md",
+    "bytes": 1201,
+    "sha256": "3f2e825d0af5c757aef5736ed3972ba6d8a095e5318174a66b49c6c8cf960f47"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/physics/checklist.md",
+    "bytes": 1964,
+    "sha256": "c9c6ac75272a549a013a058f168b13fceb33de440a317ecdb024f8cbccd6e324"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/physics/gotchas.md",
+    "bytes": 4724,
+    "sha256": "c28470ff11150b01454fa735cfb34c6105c7a9b406a36daa8a5d4ecc9f7e4b55"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/shader/SKILL.md",
+    "bytes": 1216,
+    "sha256": "65231aa4ab7fa72039f74a146e51983c4490b6340f82c340cc931f761b4f57c6"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/shader/checklist.md",
+    "bytes": 2208,
+    "sha256": "f99428f9872d2033a8487a132c8578e414c301e4a0afcc44af381d5b965056e4"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/shader/gotchas.md",
+    "bytes": 4139,
+    "sha256": "1c27513581d162651e6426d5d1b847b3943a07a4fc95e4e213030221fa8928d1"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/tilemap/SKILL.md",
+    "bytes": 1381,
+    "sha256": "d0faf3e468f0b0d0692c38c9bc8d552f63da2d099c87ac729f4f4edb7a63374e"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/tilemap/checklist.md",
+    "bytes": 2586,
+    "sha256": "b853be6eaf5e90ab06d0af7ca4ac4ffb53711e2aa7cdd82f7764bb77eee73c0d"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/tilemap/gotchas.md",
+    "bytes": 3927,
+    "sha256": "b2a55de75ba999af7f30daf2ee4b45905b9b3467d762ec1bc6433c0518a36d45"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/ui/SKILL.md",
+    "bytes": 1253,
+    "sha256": "8e076080c298458ab6e079090aeb6959bb14f01e6f64effd7ae449ebc6ef1a13"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/ui/checklist.md",
+    "bytes": 3832,
+    "sha256": "1276f13d9650c747c07e81d795d13a148e3f9534dda4f71b2af637c3ca1d7d8b"
+  },
+  {
+    "path": "GodotMaker-non-pk/skills/reviewer/ui/gotchas.md",
+    "bytes": 8652,
+    "sha256": "deec171de5513326e82358ac9292177e527473a821be191943ed229b32341cf7"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/ASSETS.md",
+    "bytes": 7600,
+    "sha256": "fe029ac69f4679061caad6db1d9f12f5b67b033c15f367c7545c386b4c5465d4"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/DESIGN.md",
+    "bytes": 4291,
+    "sha256": "ac614136ddd33ed9fa9190bdaa7dd9875e63dfe3cf2bc8429b265dc46549feed"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/GAP.md",
+    "bytes": 2402,
+    "sha256": "6d0f677cdad1cd565d7dafc48e74313a942b2765929802cfb2ae24159096539f"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/GDD.md",
+    "bytes": 5174,
+    "sha256": "fa3038db7f40ec1d24ebadd838fdb7365737d66f5bef9f1b8006ad162dfde887"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/MEMORY.md",
+    "bytes": 1185,
+    "sha256": "f99e1cc59e4cfa564034d35f9dbf4ec2ff17295a8a6981d41d4e03adea18d492"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/PLAN.md",
+    "bytes": 8335,
+    "sha256": "ad5b9d65e489ceadaebc775ea7a5b09f669b2826fb71e5325eca001db968bb3b"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/ROADMAP.md",
+    "bytes": 2444,
+    "sha256": "17b6d3890fc07b9de9a2b1f576f8050d3a1b9164607ecf3d7fa522406d3c1de4"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/SCENES.md",
+    "bytes": 2786,
+    "sha256": "c302baf4d0397292d1e70d690be04c61e751314e9a5ebab8c6907eec0ed4f66d"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/STRUCTURE.md",
+    "bytes": 6725,
+    "sha256": "080193d39124080ab02b438db439c37d2f606e6d394abd94c492616a2b4c5dce"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/TOC.md",
+    "bytes": 2908,
+    "sha256": "1f4be9a3f66d612625f4f58b594fbe5064d4c8f28567ff5d3266eaf0ab507fdd"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/game-claude.md",
+    "bytes": 3598,
+    "sha256": "b6aaa3a69f5f93072f9542254791d9cfdb638e6ad6400726478b5890a2fb5bff"
+  },
+  {
+    "path": "GodotMaker-non-pk/templates/memory_subsystem.md",
+    "bytes": 837,
+    "sha256": "231e30ddb99657bee32bd508621faf41a3bf71b9ab49794051944a533764b8b6"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/agent_runtimes/test_opencode_hooks_plugin.py",
+    "bytes": 10317,
+    "sha256": "7f02a0e78b2b882c9f2d062c08000e115c7cf25f8649e941a821b001c75ed1e0"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/conftest.py",
+    "bytes": 1598,
+    "sha256": "7137450db523b202724c7dc28db54e50024e54d1cb17e761ad08354aaf1211be"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/fixtures/orthogonal_tileset_tilemap.tscn",
+    "bytes": 128,
+    "sha256": "3f2f44fdc125f2e9ed9a3c73b438ee8a1ffe08c979bcc7ea37181ca824ca0589"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_animated_bundle_skill_contracts.py",
+    "bytes": 19715,
+    "sha256": "607148a7e61d71e054758d3889e151981c818cccc38cc55369730d80b18b7b13"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_asset_compiler_registry.py",
+    "bytes": 42334,
+    "sha256": "793fad2f980ec309f75274120b40a77adc7da57fc6eb36f1cee49f99497e08aa"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_atlas_texture_compiler.py",
+    "bytes": 7139,
+    "sha256": "06194083ede06ee95246b6be0a98c34aaa772adbbae1ea656f1b5130021c25a6"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_missing_family_standalone_validation.py",
+    "bytes": 51552,
+    "sha256": "775298f1e517f74deaea7f38f1c800140a6ea0daca5831a2f73804742a17e425"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_scene_prop_set_processing_contract.py",
+    "bytes": 5130,
+    "sha256": "6018941b28f0a1af1abf1a64495867eb7fa9261c1eb3e5c8d544ee75a7a5b2de"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_sprite_frames_compiler.py",
+    "bytes": 9698,
+    "sha256": "2f0740cf8da8c85ba998785a9a9ea686a098ceaf0fdea92bed69f854e88b0972"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_stylebox_texture_compiler.py",
+    "bytes": 5783,
+    "sha256": "7dfd40efec0842d21f6bddce36090785faa13ba26dd52a44a1420e7ab915aee3"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_theme_compiler.py",
+    "bytes": 17829,
+    "sha256": "4e2ba66e89ad34a0eb3fe05a9f932cd509acf18ac727ff60c4b9053f6a99de05"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_tileset_compiler.py",
+    "bytes": 37896,
+    "sha256": "935ca24ce58218bf8808888e15041d23b4cef73414bf00f25701822e13b5d3fa"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_tileset_skill_contract.py",
+    "bytes": 16129,
+    "sha256": "c95ee977c9cda31737c35b4cf3053e6cfdf9d8ce882c4e4fa9e368e887b6f8b6"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/assets/test_ui_card_skill_contract.py",
+    "bytes": 34534,
+    "sha256": "599b04bd5398e622c24dadb28d4dca9b35d8bfcc87b76c39e56751994b71542c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/README.md",
+    "bytes": 1572,
+    "sha256": "dd9100572155a5c8502bceea5cf0e0237390fa7944ad58f7cb8ba2ed5deb4abd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/SPEC.md",
+    "bytes": 4042,
+    "sha256": "405aabdee84fc16cae23de641ceb3660aead08d32622f53a6bac112007976d51"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/game.gd",
+    "bytes": 3478,
+    "sha256": "af2f9c2b5c0b6634913f5dfbe92e9979ee5c833624d972d33c19102f41e9fff8"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/game.gd.uid",
+    "bytes": 20,
+    "sha256": "bd2a0ceba69189cd4897b38964aacfe6dfc4b63dfc37cd53ca1b0b70e0bddee0"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/one_room_loop.tscn",
+    "bytes": 8479,
+    "sha256": "65241987900c10d3e958886dbdf91b9e4f22bbf7e3b37face039d90ef5ff8066"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/player.gd",
+    "bytes": 312,
+    "sha256": "67e499bd13266a0d840ae215321605d1cce04a4c93a2d2917e9fbbe87af8a0b0"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/player.gd.uid",
+    "bytes": 19,
+    "sha256": "7925071b67db3b33765edd3a259acef8666587eea1c4473980ffdc992ee27f93"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/project.godot",
+    "bytes": 1153,
+    "sha256": "6b07c77a0ba6e95bb293b3afdbe28fe66f991e72ea3bef3cbe72e5409a31704b"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/tests/cases.json",
+    "bytes": 1111,
+    "sha256": "da24e6abc75422d56ea3e06a965c0b9bb0e18d5bfd30bbb3ba6f4ff44917bf37"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/tests/smoke_runner.gd",
+    "bytes": 10980,
+    "sha256": "0cea8f9907d2fdfbaab8318da74a0f9d7592e9c6b359c11511fe2675164e251a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/tests/smoke_runner.gd.uid",
+    "bytes": 18,
+    "sha256": "ffdd8c769920e2062ba348b91592257ca6f9c009734ffd74127480181f5707fa"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/variant.gd",
+    "bytes": 187,
+    "sha256": "4a2b8085687830aefbf55411a3ca83393a9711d572ff4957070bdb159e3a59bd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/fixtures/one_room_loop/variant.gd.uid",
+    "bytes": 20,
+    "sha256": "210b0f490c6294ddbbca042e70cc0e5f73ba76113aacbd684b7e64990f5280f8"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/helpers.py",
+    "bytes": 4908,
+    "sha256": "15ebd8aa653da8e6ebee21d04bfc609286085c00a2b8f3da1a812dd654d38500"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_asset_producer_outcome.py",
+    "bytes": 20936,
+    "sha256": "66450f65c22a2a9dd498f063135c8cf85a2f8b9ffc37b6a0c659ab1e73baf67e"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_check_asset_access.py",
+    "bytes": 1268,
+    "sha256": "229028dceb26259c7239feef8063c6203d16257611ff9dc3193356be8959c394"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_check_completion.py",
+    "bytes": 6248,
+    "sha256": "248e39d6d9c9a38ba5b17118c4d0c5efe8e5d7ca406eac4cb776c32b4904af65"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_check_file_permissions.py",
+    "bytes": 26191,
+    "sha256": "2ecc7e02a186e3c031d2db6d2021c2a48a125745903eeee60cf019bff0ab31db"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_check_stage_prerequisites.py",
+    "bytes": 6513,
+    "sha256": "971148e5fb92acad25d2c2d6b72640b86fa2fbe407d6eb3b223233fa727e2ca1"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_check_worker_report.py",
+    "bytes": 13907,
+    "sha256": "3606123b2290ac84dd1d383bec7443417740b51805db837afe138e5ee42e2d10"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_log_agent_tool.py",
+    "bytes": 10967,
+    "sha256": "04ad23526e6e6c024fd116786b6249ebbc777e087caa6ae90be05fc942e8b8f9"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_log_compaction.py",
+    "bytes": 4071,
+    "sha256": "80635906e967b511f59a50c458ba28667c2354ff808bb8dbeba4ece613db0dd1"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_metrics.py",
+    "bytes": 11346,
+    "sha256": "8983b534865fb03add51c4c50e87d8672acd649a281fba6b882fddec41d428dd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_playability_contract.py",
+    "bytes": 6271,
+    "sha256": "33db909b80565077f581c1e62e2c9653b6e82cb36c371a2088bd8e8377704d3c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_session_start.py",
+    "bytes": 3248,
+    "sha256": "2e6a6e36a406a3231b1946c5b9a7c340dc19611788b0948d90f3ba2533f2a9b9"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_stage_reminder.py",
+    "bytes": 21984,
+    "sha256": "cd1a13ae11bfd72473c8e2423ceaaa53133290a7f78c0ea09420cbcfa79c41df"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/hooks/test_worker_error_diagnostics.py",
+    "bytes": 11097,
+    "sha256": "2c8a23e203f31751931a8ef2622cddce6917b7c439e90c078909fef9ce361c3f"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/integration/test_review_smoke.py",
+    "bytes": 1603,
+    "sha256": "70fdc9a5ccc80f9e4bbb8f51c424200a81c8970e0a64055299b9bc07b15c0314"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_addon_path_casing.py",
+    "bytes": 5388,
+    "sha256": "d136df20400876a63df70cd9c18b43f2e8bd01034c93670b3e517b46ee46ab42"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_agents.py",
+    "bytes": 2708,
+    "sha256": "5f73d63be6e5991c63ccb429dea4f08ae0ad8f41e80ad7fbc5e6a7debc8c6f3f"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_asset_runtime_contract_docs.py",
+    "bytes": 2153,
+    "sha256": "d3901bc2592bbd9a248937cb4eb8a713af968c27e7b1477e053fe81f78fd7f4d"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_asset_skill_contract_docs.py",
+    "bytes": 13527,
+    "sha256": "f0f6b6d44b630ec8f50cc847d3e169221c20dbbc9407ac437c856b998912ee0c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_audit_workflow.py",
+    "bytes": 7715,
+    "sha256": "0b5730c2b3e438487c40591ed05f4f9ead3c2c39735fdebfde3f361e641072cd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_config_consistency.py",
+    "bytes": 3430,
+    "sha256": "e6d3bc35b7920d2b504bf81b71ea5a3a917fd93e24ae7dcfdc502f630f4ede4b"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_design_md_contract.py",
+    "bytes": 9049,
+    "sha256": "01012801446983fe4e50d562064d1a9a78b70d30bb79a7ca493a88e78fec639c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_docs_encoding.py",
+    "bytes": 1255,
+    "sha256": "59ce852d8da8834345a53e88a0c59109f725a041a38ef9c2a6e1f3af4b326ea9"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_e2e_conftest_templates.py",
+    "bytes": 2951,
+    "sha256": "fdb945a940c7f3ace4f05cc6f8293365023344f6e4d7838507a0e0324272eaca"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_fixgap_evaluate_handoff_contract.py",
+    "bytes": 1061,
+    "sha256": "26d00252293748bb51345be549e16d7647168950291b10bea59854133bacaca8"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_fixgap_visual_contract.py",
+    "bytes": 2904,
+    "sha256": "0255bee96c030e441cc71f04eff7fce183d7c0f3b71a7a145414105025f27d84"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_gm_build_verify_feedback.py",
+    "bytes": 1310,
+    "sha256": "0e5f43ad0a9511a84f4c59fc3af6b2f9d619fb0d907781a074d77b7bad40a5fe"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_gm_rescue.py",
+    "bytes": 4966,
+    "sha256": "2a87a4456d09d7b5aa5fdaf2a10f03d1566c438226c6af608957a58668ce1004"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_hook_scripts.py",
+    "bytes": 401,
+    "sha256": "7e139558eaf303b737368a6623669cfe41cf2cdfbaed5450ec4f9a163da7dfca"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_pipeline_e2e.py",
+    "bytes": 24414,
+    "sha256": "1edcdaa2009fe65dce833a50185b57e88eb327825f2e39ad23057b60d983b335"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_playable_unit_contract_docs.py",
+    "bytes": 5960,
+    "sha256": "fa6fe1cf04f35a9834bf29f326416f56497859a35aeeb3ae2579a37431538ca4"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_repair_attempt_accounting.py",
+    "bytes": 3704,
+    "sha256": "d710d782febc911fc8ad909bcd268b634468e1aca7f45d6759349961d5e82340"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_reviewer_finding_triage.py",
+    "bytes": 1342,
+    "sha256": "90b7a3295dd036dd400ec42f69a12091e8902cb96f2e70776f0a41dcdb199de7"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_scaffold_project_godot.py",
+    "bytes": 1216,
+    "sha256": "0c35a90479fcb684af7d166aa8a42f0d05c5887398d35e3a50d50262a36734de"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_skill_context_fork.py",
+    "bytes": 1436,
+    "sha256": "61f8938ea3ce612cee3292f04f2b25275d0d13dc7fdc1963d95a0b686f520916"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_ui_card_asset_skills.py",
+    "bytes": 5845,
+    "sha256": "d324861a1bfae4c5825585b27288bdaad4564770552030eea17abcc5cc57bd0a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_verifier_godot_path_docs.py",
+    "bytes": 838,
+    "sha256": "afd82ced78493528be4d08b4fb063324aab109fb6f2733b66a4d2253de6f649a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_verify_report_fixtures.py",
+    "bytes": 20652,
+    "sha256": "62b3151eda14026943479b98163c8cd252f87597d0d338912e1a6a8215ce8587"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/test_visual_qa_script.py",
+    "bytes": 4324,
+    "sha256": "0d14878ca9b629fdf75e0a07caacf823c23fbcc1b35065cb366b4dba60e0dd88"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/conftest.py",
+    "bytes": 76,
+    "sha256": "301a5894f8050063224649a40117bb0ef0eeb2a90491867d3854d10995c08a6c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_addon_versions.py",
+    "bytes": 4936,
+    "sha256": "990041de23cfc9ef310afc8573d6daeb9c8b8f60b7190fd5f1320ebf0baf7091"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_append_stage_event.py",
+    "bytes": 7842,
+    "sha256": "1591304e528e1e4e57dc2c97060137083b28aad02bf46a47fb17519682c8ade0"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_action_batch_merge.py",
+    "bytes": 10050,
+    "sha256": "ba9b702dc81d4f94e96246d3535a7f29153eda4963bb21ba87c56a628f9d9cef"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_action_process.py",
+    "bytes": 30893,
+    "sha256": "d8586b69284ad4c082ee28f868f600590e5dea5ff78df4ab4199dd462c54290a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_atlas_assemble.py",
+    "bytes": 14929,
+    "sha256": "46ac181533710ef636e75b9235559544898a6a5b0efad308afcb849825a2fbc1"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_connected_component_recovery.py",
+    "bytes": 5380,
+    "sha256": "33ec8a024825a09c6891f1418b29b2569a42fd60a89e3e5dc5a36c7f93fd03e9"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_curation_select.py",
+    "bytes": 4891,
+    "sha256": "1dd80b8277c843fab2aba417689de191847caaf5064735fd09552eb7041bf856"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_family_closure.py",
+    "bytes": 18276,
+    "sha256": "6e302bd089f0b32225df4d97f28dac623852f5d9742192b54a7a92c5438d6974"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_image_finalize.py",
+    "bytes": 14460,
+    "sha256": "4e1ed7960942272001f0962587a627eda9ce1159cf796120dce8ef79a51f9196"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_layout_guide.py",
+    "bytes": 1827,
+    "sha256": "8864cadfbbb99b13f35a0cfe36062c7bfbfc1cc75078d56768a0284561b519ef"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_result_registration.py",
+    "bytes": 22917,
+    "sha256": "c2df5dee35d74e2bf4a137b036d0308f75f64480b73013634cafc8fc823951b5"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_scene_prop_set_validate.py",
+    "bytes": 4322,
+    "sha256": "1dcc0e993d2f30c87b7487620869bd6aed8096836f181409e64b5e158472af33"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_sheet_process.py",
+    "bytes": 20561,
+    "sha256": "fd0c4e1301b2ce757576e89c17621c2318eb16a008efd1c27dddd9f775a4d723"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_skill_contract_check.py",
+    "bytes": 17774,
+    "sha256": "d0b4bb48c5e1f7ffaa356668fbc56acb715d9633acbc420b00ab071b211cefe9"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_source_generate.py",
+    "bytes": 25151,
+    "sha256": "c7a38f24a3f66c09d231c925744cd1831d2f8bcf3deda79e6849b9aa3c9f77cb"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_tileset_profile.py",
+    "bytes": 16329,
+    "sha256": "0461f95e905bf18570be2204d3428e5c53a9c3b6b94ac35cdf45fb4a1f51e282"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_asset_user_preflight.py",
+    "bytes": 5811,
+    "sha256": "69ce8167bdded976f05700e6a09c814b631d882846a62c074d542a801cfc724f"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_bound_workflow.py",
+    "bytes": 19329,
+    "sha256": "cadec63b55ff8d1477386f56c1b0768fbc59fdfb25e087699bfe4d1b9bdf835c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_check_classname.py",
+    "bytes": 6419,
+    "sha256": "ee52c33568004202273471c41176c1c004ed96ee3f757e01e03feaca6c765a59"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_check_doc_i18n.py",
+    "bytes": 2162,
+    "sha256": "647ad8f544daf87b20df189457dd1299b4901ba7ffd5e058052fcf579fd40e5d"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_check_env.py",
+    "bytes": 30294,
+    "sha256": "15b042ad05c3dbd77625aed9c3108611bcdacf864e9fd24a388b6850dcb19272"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_check_project.py",
+    "bytes": 25944,
+    "sha256": "fcdb3179242a9941c4627660847a13b5422742f3297dba60c9fc0e6e53afbc10"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_codex_image_claim.py",
+    "bytes": 18675,
+    "sha256": "80ae5dd7473e8ccb94491081fbef450d49adcfac8ecef387b7c87646f28b8d69"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_magenta_cleanup_contract.py",
+    "bytes": 3712,
+    "sha256": "e5ea6ed8e45d5ef9049df065b84c24ac392c150b8b0e6f9fdef054d531c9470d"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migrate.py",
+    "bytes": 49797,
+    "sha256": "7da005def97fb587b25b2f0d4b244ba7dd526cadaa7141abaa6b49d220dd5257"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_add_style_md.py",
+    "bytes": 2502,
+    "sha256": "6a600acc61bf7edbc338871942b989372dfecc45e3e4b8918645ff135c6faeed"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_addons_gdunit4_capital_u.py",
+    "bytes": 10491,
+    "sha256": "de1d3e89bfebd851a8b7331405707415ab7e58356d3b280d6a752cebdc04e69c"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_asset_model_config.py",
+    "bytes": 3019,
+    "sha256": "f494d3b774a0ccb628631bf81defbc61e655bc41dae9c32c988c3f64ed219df2"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_asset_producer_model.py",
+    "bytes": 1661,
+    "sha256": "6929eb79c7b889e4377a68200b24bd00cccdf4ef53ba70c0eaa5b205fc06e7a4"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_disable_engine_file_logging.py",
+    "bytes": 4248,
+    "sha256": "271da102540f285473d9c1a300dbd28d357131bdc880080c04d9f26530f96327"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_introduce_tag_based_pipeline.py",
+    "bytes": 32276,
+    "sha256": "9760f7d12ada554f49268b2ab552b6ba303684f72775f7d209667447d17d3025"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_replace_style_with_design.py",
+    "bytes": 13935,
+    "sha256": "34417214e8c989fe6d570f7d71baf60a81a6611af8587e9fc812ced11dc63850"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_migration_visual_asset_contract.py",
+    "bytes": 5812,
+    "sha256": "cba066f90a175269a5bf30edae402ee1bca7b8ce642d3c2bea2c3a4c2573e98a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_pi_runtime.py",
+    "bytes": 4439,
+    "sha256": "292055c15181cc24fbb3e0e5269ecd22a907d4371e0eb95000c16fecaabf6502"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_publish.py",
+    "bytes": 90205,
+    "sha256": "987374c95d0b9d03212ea241accdd23c1b00c9c5532aed5f9718bf35b6366cab"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_publish_shared.py",
+    "bytes": 20451,
+    "sha256": "582366ddf8a1dc17031257e941887ed347fd494cb1550fb29fff6b36f3a55dbf"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_published_layout_asset_tools.py",
+    "bytes": 4219,
+    "sha256": "0b385a6b4ee804811567334a68e9c4ceaeedc3427303905dc74a8f29e3bb4edd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_review_support.py",
+    "bytes": 24365,
+    "sha256": "ca50bb02dcfe1ca0d73d586855808ee99a75055da907009dc246358308c37eae"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_run_verify.py",
+    "bytes": 34238,
+    "sha256": "f8ffe2fe560cefc97392c656969dae4091ee99b62f4d658791d1eb400a0cf333"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_seal_tag.py",
+    "bytes": 75826,
+    "sha256": "7da68da649738b98914fcb4e4f5ed775c4b816e34810651ed2342b30178cf43d"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_visual_qa_model_selector.py",
+    "bytes": 1725,
+    "sha256": "d33586709965891f6b9e7bc15b939dfeeff31850c65481f06cfba047d406a74d"
+  },
+  {
+    "path": "GodotMaker-non-pk/tests/tools/test_wan_live_smoke.py",
+    "bytes": 2135,
+    "sha256": "a946c448ca49066f80e508e857c64943058b42bb6ca50f9a984fb20e3fa3f51b"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/_version.py",
+    "bytes": 581,
+    "sha256": "af26c655d6b93b7acb36db855529a1457f561b9923298334003f91db5c383cc3"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/agent_runtime.py",
+    "bytes": 7976,
+    "sha256": "fcfc96390679b0e9a7162eae277fd9d0a3ea24fe578d9a9b28bc45c7dafc4305"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/append_stage_event.py",
+    "bytes": 14787,
+    "sha256": "1c013be440d3314095bcde65631ed810bac91d913536b7b1d88516c6b827d5db"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_action_batch_merge.py",
+    "bytes": 12699,
+    "sha256": "30dcc23e33983f78ef3e10847985acb4375635ecc67dfa0b5cd8816b52e32d89"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_action_process.py",
+    "bytes": 43642,
+    "sha256": "e631be38e7305e890b86457a5772fef84993a6baa1ebcc775e7c3113ce6e265e"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_animated_bundle_contract_check.py",
+    "bytes": 19746,
+    "sha256": "a4e25d72364c5c6bcd92c455ff04e173a97a0937333030eef55452b929cc0ff0"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_atlas_assemble.py",
+    "bytes": 17277,
+    "sha256": "5d722e142d2924ea74107be557a3785e0dcb6063f41988c09f00620987b63a22"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_build_record.py",
+    "bytes": 8357,
+    "sha256": "51671dde99edd4d1d4705a236566f1f5b31dcb33271558ae0f4f4966c0e450cb"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_connected_component_recovery.py",
+    "bytes": 14646,
+    "sha256": "ab7d7f1fdabb8fd6fe6cbc88e2cf4576e9ac0571d05fddabe66f4fe9f5327fc3"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_curation_select.py",
+    "bytes": 5945,
+    "sha256": "da5cbeefa8e848c7d1dedc4f6e4b722c3f6de67478317f432ae5f9c605201dd2"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_family_registry.py",
+    "bytes": 16042,
+    "sha256": "4795db53f57d30183268ad48cad15deadb78488ed2d863219e7ddd4c09c2df88"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_image_finalize.py",
+    "bytes": 13581,
+    "sha256": "59c091855a3f7d1924df6dbfb9aed43d6cb931ef06c58fdbdaa88dd486e93544"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_layout_guide.py",
+    "bytes": 5799,
+    "sha256": "5f66a0040a1a74518395a424ef1966321a2a4f6ac1e89a1cce0184e3718fc7d6"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_output_paths.py",
+    "bytes": 5508,
+    "sha256": "4501f0c4bdd51d16202b33d6dfbfdb04907f03ed0029268d2ca687abaa9ff2f7"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_result_registration.py",
+    "bytes": 27530,
+    "sha256": "ac8df5a958c09358b6ff210c0c92b139feb116cb7ca719ca69091dd71cf43c35"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_runtime_path.py",
+    "bytes": 2534,
+    "sha256": "437d1db97797b079c93e421d226d6fe1e5665a2bf0bfb646fc08f284973e0746"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_scene_prop_set_validate.py",
+    "bytes": 5034,
+    "sha256": "bf459fdb1e456803ac2d8e886455394cd45a3fa60119ae974aa14466eb8439dd"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_sheet_process.py",
+    "bytes": 32629,
+    "sha256": "a408b2a2d98ae4738002e2022988f8e8086675c5fad887f068faac70c4ba8f83"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_skill_contract_check.py",
+    "bytes": 17243,
+    "sha256": "e34d446be03058db31ce0fcbfb6c809c439760cdf0339c0f0c191f04eda60a74"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_source_generate.py",
+    "bytes": 33131,
+    "sha256": "bf6eeb99dccc89d639fabf531f4b1bcedc1c5d6cf086e0b8f9096a7bc3270089"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_tileset_contract_check.py",
+    "bytes": 6764,
+    "sha256": "af59aa82a0a29a3eb4d270b08ad5594c5d9dce62b9613be71658f49f88d1a724"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_tileset_profile.py",
+    "bytes": 40813,
+    "sha256": "a4607853f78a8592d7e41841cffe2d9b169285ded3e2aaf62eb0d846cf0cf0a4"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_ui_card_contract_check.py",
+    "bytes": 24220,
+    "sha256": "c54962a8db72ca70df9cf92cca0e6df785ce13143f7470587d0b099b00c51a75"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_ui_card_validate.py",
+    "bytes": 1917,
+    "sha256": "db7d165554c30cd149e260da77ef60736bcbc7a2380a3b5bbb1a37377eb64ea3"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_ui_source_sheet_plan.py",
+    "bytes": 15889,
+    "sha256": "4bae85c0aab3cfc03b90d3bc686925e7b2860c311ecb64471c6d9c2a75fb49bb"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_ui_stylebox_plan.py",
+    "bytes": 11138,
+    "sha256": "e2e3d0cc1ba44c87f48c151f93366d6064a88837158aa2f12113d9ad85287b73"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_ui_theme_recipe.py",
+    "bytes": 19403,
+    "sha256": "0e9c283477bd82a17dd436ae4464ab8456f9388e713adb4e7f029d4b53990449"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/asset_user_preflight.py",
+    "bytes": 6730,
+    "sha256": "5e8cc923d342c9b9e395647a8b176c25c1a4732637c8fe8a1f87fba81112bd0e"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/check_classname.py",
+    "bytes": 5827,
+    "sha256": "082684c361c63fa7477882a2870b6996e7180f55eb7d790c0935ba5333dcaa0a"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/check_doc_i18n.py",
+    "bytes": 4048,
+    "sha256": "0b6ab22968cb17daf19e3f622343b09f527016b2d8017e42b3bd6027a0e5b977"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/check_env.py",
+    "bytes": 26133,
+    "sha256": "c96fa437609c5f5838bc2988089653527ed5c9bf9f9dc2b9fa94b80b5e79c0ef"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/check_project.py",
+    "bytes": 21795,
+    "sha256": "aa43d9eb1971ef3766fa41d3c57628421e8d958b40c7ec8edc84c04508902fa3"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/codex_image_claim.py",
+    "bytes": 16181,
+    "sha256": "0aeb86d693765c57b3bafcc19897a6a6bc79d6af982c399a1296ffaf1ea10f53"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/gm_review.py",
+    "bytes": 4560,
+    "sha256": "90ab2131e08279daf34da75137ec81e56a06f87bddf8b38f975d86cccadf8dd7"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/godot_output.py",
+    "bytes": 2630,
+    "sha256": "4bc9b0dc2f08d0de2fecb74e21fafd25c7a80158af8f7bf6b9546898940418a2"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/migrate.py",
+    "bytes": 19007,
+    "sha256": "3193d199acbf10582e28aad2aaaec8af3a2a94ea02e5b4fbc748418f05fb6021"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/project_config.py",
+    "bytes": 2693,
+    "sha256": "9ce9fa20ce9c121f922075cccb241673f7bc822dc664788b523b99b13c2b74d2"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/publish.py",
+    "bytes": 61549,
+    "sha256": "92025c6f4a43e34d64c668174719c627f211084ccf5c5f847e64237d84d1b1de"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/requirements.txt",
+    "bytes": 62,
+    "sha256": "ebccdf4cdf0036caa8df7d9be0e233500eaed46865f92b79d4a86cf34b920c19"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/review_support.py",
+    "bytes": 73964,
+    "sha256": "ff9bab09d6f1400e0d3fc1560881f9bcae8ca08e767c2401bb8260dc9b49fac7"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/run_verify.py",
+    "bytes": 31514,
+    "sha256": "e01deea1c3c3a81fdb13dbb4b5d82cabe4a108812c5a9c79c89ae2ae828fe085"
+  },
+  {
+    "path": "GodotMaker-non-pk/tools/seal_tag.py",
+    "bytes": 68490,
+    "sha256": "7e20a490756a7b775e256d6e23b8c2fa7f8f8b5ea6945fdfb6d21cae2ab8a8dd"
+  }
+]

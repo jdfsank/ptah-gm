@@ -1,0 +1,94 @@
+[gd_resource type="SpriteFrames" load_steps=31 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_01.png" id="1_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_02.png" id="2_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_03.png" id="3_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_04.png" id="4_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_05.png" id="5_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_idle_idle_06.png" id="6_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_01.png" id="7_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_02.png" id="8_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_03.png" id="9_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_04.png" id="10_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_05.png" id="11_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_06.png" id="12_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_07.png" id="13_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_move_move_08.png" id="14_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_01.png" id="15_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_02.png" id="16_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_03.png" id="17_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_04.png" id="18_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_05.png" id="19_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_06.png" id="20_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_07.png" id="21_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_melee_attack_melee_attack_08.png" id="22_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_01.png" id="23_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_02.png" id="24_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_03.png" id="25_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_04.png" id="26_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_05.png" id="27_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_06.png" id="28_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_07.png" id="29_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/character-bundle/dealer_frames/dealer_frames_cast_cast_08.png" id="30_texture"]
+
+[resource]
+animations = [
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("1_texture")},
+{"duration": 1.0, "texture": ExtResource("2_texture")},
+{"duration": 1.0, "texture": ExtResource("3_texture")},
+{"duration": 1.0, "texture": ExtResource("4_texture")},
+{"duration": 1.0, "texture": ExtResource("5_texture")},
+{"duration": 1.0, "texture": ExtResource("6_texture")}
+],
+"loop": true,
+"name": &"idle",
+"speed": 6.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": ExtResource("7_texture")},
+{"duration": 1.0, "texture": ExtResource("8_texture")},
+{"duration": 1.0, "texture": ExtResource("9_texture")},
+{"duration": 1.0, "texture": ExtResource("10_texture")},
+{"duration": 1.0, "texture": ExtResource("11_texture")},
+{"duration": 1.0, "texture": ExtResource("12_texture")},
+{"duration": 1.0, "texture": ExtResource("13_texture")},
+{"duration": 1.0, "texture": ExtResource("14_texture")}
+],
+"loop": true,
+"name": &"move",
+"speed": 10.0
+},
+{
+"frames": [
+{"duration": 2.0, "texture": ExtResource("15_texture")},
+{"duration": 1.0, "texture": ExtResource("16_texture")},
+{"duration": 1.0, "texture": ExtResource("17_texture")},
+{"duration": 1.0, "texture": ExtResource("18_texture")},
+{"duration": 1.0, "texture": ExtResource("19_texture")},
+{"duration": 1.0, "texture": ExtResource("20_texture")},
+{"duration": 1.0, "texture": ExtResource("21_texture")},
+{"duration": 2.0, "texture": ExtResource("22_texture")}
+],
+"loop": false,
+"name": &"melee_attack",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 2.0, "texture": ExtResource("23_texture")},
+{"duration": 1.0, "texture": ExtResource("24_texture")},
+{"duration": 1.0, "texture": ExtResource("25_texture")},
+{"duration": 1.0, "texture": ExtResource("26_texture")},
+{"duration": 1.0, "texture": ExtResource("27_texture")},
+{"duration": 1.0, "texture": ExtResource("28_texture")},
+{"duration": 1.0, "texture": ExtResource("29_texture")},
+{"duration": 2.0, "texture": ExtResource("30_texture")}
+],
+"loop": false,
+"name": &"cast",
+"speed": 10.0
+}
+]

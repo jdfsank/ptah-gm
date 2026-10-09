@@ -1,0 +1,96 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DESIGN.md</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>DESIGN.md</h1><p>只读源快照 · SHA-256 e5c8000f5c62d1aebafeb148e67b5890227187f3793640705b4183639b2aa12a</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> # DESIGN: Velvet Eclipse / 绯月赌城</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> ## Visual Identity</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> A moonlit gothic casino castle in rich illustrated, cel-shaded fantasy art. Indigo stone, burgundy curtains and aged-gold ornament surround a silver-violet-haired hunter; warm candles and luminous purple cards guide the eye toward the playable foreground.</span>
+<span class="line" id="L6"><a href="#L6">   6</a> </span>
+<span class="line" id="L7"><a href="#L7">   7</a> Sources: GDD.md §§4–7 and the eight inspected, user-supplied concepts identified in ASSETS.md. Their palette, character identity and architectural motifs guide original art; their pixel treatment, incidental lettering and extra systems do not expand the approved game.</span>
+<span class="line" id="L8"><a href="#L8">   8</a> </span>
+<span class="line" id="L9"><a href="#L9">   9</a> ## Image Style</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> ### 1. Medium And Rendering</span>
+<span class="line" id="L12"><a href="#L12">  12</a> </span>
+<span class="line" id="L13"><a href="#L13">  13</a> Use expressive non-pixel illustration with clear character poses and ornate painted architecture.</span>
+<span class="line" id="L14"><a href="#L14">  14</a> - Preserve illustrated shading and costume folds rather than reducing actors to geometric symbols.</span>
+<span class="line" id="L15"><a href="#L15">  15</a> - Keep heroine, dealers, props and scenery within one coherent rendering family.</span>
+<span class="line" id="L16"><a href="#L16">  16</a> - Do not claim exact pixel-art or one-to-one reproduction of the concepts.</span>
+<span class="line" id="L17"><a href="#L17">  17</a> </span>
+<span class="line" id="L18"><a href="#L18">  18</a> ### 2. Color And Value</span>
+<span class="line" id="L19"><a href="#L19">  19</a> </span>
+<span class="line" id="L20"><a href="#L20">  20</a> Dark indigo and wine-red surroundings make gold, candlelight and magic accents legible.</span>
+<span class="line" id="L21"><a href="#L21">  21</a> - Use burgundy curtains, purple moonlight and fine aged-gold trim throughout the castle.</span>
+<span class="line" id="L22"><a href="#L22">  22</a> - Reserve bright magenta/pink for readable card magic and selected emphasis.</span>
+<span class="line" id="L23"><a href="#L23">  23</a> - Distinguish the spectral dealer with the references&#x27; cool cyan/green spectral treatment.</span>
+<span class="line" id="L24"><a href="#L24">  24</a> </span>
+<span class="line" id="L25"><a href="#L25">  25</a> ### 3. Shape And Silhouette</span>
+<span class="line" id="L26"><a href="#L26">  26</a> </span>
+<span class="line" id="L27"><a href="#L27">  27</a> Gothic arches and layered balconies frame identifiable, separated combat silhouettes.</span>
+<span class="line" id="L28"><a href="#L28">  28</a> - Keep the heroine&#x27;s short silver-violet hair, dark hunter outfit, flowing wine/violet accents and slender gold-accented sword recognizable.</span>
+<span class="line" id="L29"><a href="#L29">  29</a> - Give skeletal dealers tall, readable silhouettes with role-specific equipment and spectral treatment.</span>
+<span class="line" id="L30"><a href="#L30">  30</a> - Let the Royal Dealer dominate through a large regal skeletal silhouette without hiding the heroine.</span>
+<span class="line" id="L31"><a href="#L31">  31</a> </span>
+<span class="line" id="L32"><a href="#L32">  32</a> ### 4. Line And Edge</span>
+<span class="line" id="L33"><a href="#L33">  33</a> </span>
+<span class="line" id="L34"><a href="#L34">  34</a> Crisp actor contours and fine decorative edges distinguish the foreground from distant architecture.</span>
+<span class="line" id="L35"><a href="#L35">  35</a> - Keep sword, hands, card corners and character outlines readable against dark stone.</span>
+<span class="line" id="L36"><a href="#L36">  36</a> - Concentrate intricate linework in gold borders, carved fixtures and costume accents, as in the supplied concepts.</span>
+<span class="line" id="L37"><a href="#L37">  37</a> - Do not simulate pixel art by quantizing or pixelating the illustration.</span>
+<span class="line" id="L38"><a href="#L38">  38</a> </span>
+<span class="line" id="L39"><a href="#L39">  39</a> ### 5. Material And Texture</span>
+<span class="line" id="L40"><a href="#L40">  40</a> </span>
+<span class="line" id="L41"><a href="#L41">  41</a> Stone, velvet, metal and spectral glow should read as different materials.</span>
+<span class="line" id="L42"><a href="#L42">  42</a> - Give masonry carved depth, curtains visible folds and gold trim fine worn highlights.</span>
+<span class="line" id="L43"><a href="#L43">  43</a> - Use warm wax-light accents around chandeliers, candles and the save shrine.</span>
+<span class="line" id="L44"><a href="#L44">  44</a> - Keep magical cards and the ghost hand luminous rather than stone-like.</span>
+<span class="line" id="L45"><a href="#L45">  45</a> </span>
+<span class="line" id="L46"><a href="#L46">  46</a> ### 6. Lighting And Shadow</span>
+<span class="line" id="L47"><a href="#L47">  47</a> </span>
+<span class="line" id="L48"><a href="#L48">  48</a> Cool moonlight and warm candlelight coexist, with combat effects remaining distinct.</span>
+<span class="line" id="L49"><a href="#L49">  49</a> - Use purple/blue ambient light behind warm local candle highlights.</span>
+<span class="line" id="L50"><a href="#L50">  50</a> - Light platform tops clearly enough to identify landing surfaces.</span>
+<span class="line" id="L51"><a href="#L51">  51</a> - Make boss phase two visibly change arena lighting without obscuring attacks or health information.</span>
+<span class="line" id="L52"><a href="#L52">  52</a> </span>
+<span class="line" id="L53"><a href="#L53">  53</a> ### 7. Space, Perspective, And Depth</span>
+<span class="line" id="L54"><a href="#L54">  54</a> </span>
+<span class="line" id="L55"><a href="#L55">  55</a> The game reads as side-on action layered over deep castle interiors.</span>
+<span class="line" id="L56"><a href="#L56">  56</a> - Keep distant arches, windows and towers behind independent actors and foreground platforms.</span>
+<span class="line" id="L57"><a href="#L57">  57</a> - Separate foreground rails, curtains and chandeliers into distinct depth layers.</span>
+<span class="line" id="L58"><a href="#L58">  58</a> - No source concept may replace the assembled interactive room as a full-screen gameplay image.</span>
+<span class="line" id="L59"><a href="#L59">  59</a> </span>
+<span class="line" id="L60"><a href="#L60">  60</a> ### 8. Composition And Visual Hierarchy</span>
+<span class="line" id="L61"><a href="#L61">  61</a> </span>
+<span class="line" id="L62"><a href="#L62">  62</a> Heroine, threats, landing edges and the next usable interaction lead the composition.</span>
+<span class="line" id="L63"><a href="#L63">  63</a> - Preserve clear space around the current combat and jump corridor.</span>
+<span class="line" id="L64"><a href="#L64">  64</a> - Distinguish Lobby, Gallery and Save Room through foreground arrangement and lighting even when their distant plate is shared.</span>
+<span class="line" id="L65"><a href="#L65">  65</a> - Keep prompts and HUD clear of important platform edges and attack warnings.</span>
+<span class="line" id="L66"><a href="#L66">  66</a> </span>
+<span class="line" id="L67"><a href="#L67">  67</a> ### 9. Detail Density And Abstraction</span>
+<span class="line" id="L68"><a href="#L68">  68</a> </span>
+<span class="line" id="L69"><a href="#L69">  69</a> Rich architectural detail supports a concise, readable playable layer.</span>
+<span class="line" id="L70"><a href="#L70">  70</a> - Preserve casino identity through card suits, curtains, roulette imagery and gold ornament.</span>
+<span class="line" id="L71"><a href="#L71">  71</a> - Simplify tiny decorative detail before sacrificing character pose or projectile clarity.</span>
+<span class="line" id="L72"><a href="#L72">  72</a> - Treat chips as visual dressing; their presence must not imply an inventory or currency system.</span>
+<span class="line" id="L73"><a href="#L73">  73</a> </span>
+<span class="line" id="L74"><a href="#L74">  74</a> ## UI Visual Language</span>
+<span class="line" id="L75"><a href="#L75">  75</a> </span>
+<span class="line" id="L76"><a href="#L76">  76</a> Gold/purple frames and card-suit motifs carry the castle&#x27;s visual identity into clear Chinese-first UI.</span>
+<span class="line" id="L77"><a href="#L77">  77</a> - Use dark surfaces and restrained gold trim around important information.</span>
+<span class="line" id="L78"><a href="#L78">  78</a> - Give health and card energy visually distinct bars with readable text, rather than color alone.</span>
+<span class="line" id="L79"><a href="#L79">  79</a> - Keep Chinese labels prominent; the game title may be bilingual.</span>
+<span class="line" id="L80"><a href="#L80">  80</a> - Use readable headings, short labels and separated controls; avoid the concepts&#x27; dense miniature text.</span>
+<span class="line" id="L81"><a href="#L81">  81</a> - Differentiate selected, disabled and active controls visibly.</span>
+<span class="line" id="L82"><a href="#L82">  82</a> - Make the discovered map, Moonstep badge, interaction prompts and save status truthful to current state.</span>
+<span class="line" id="L83"><a href="#L83">  83</a> - Do not add portrait, inventory, shop or costume-selection panels from the reference montage.</span>
+<span class="line" id="L84"><a href="#L84">  84</a> </span>
+<span class="line" id="L85"><a href="#L85">  85</a> ## Do</span>
+<span class="line" id="L86"><a href="#L86">  86</a> </span>
+<span class="line" id="L87"><a href="#L87">  87</a> - Reuse the references&#x27; identifiable mood and motifs through original illustrated assets.</span>
+<span class="line" id="L88"><a href="#L88">  88</a> - Preserve a genuine visual change when Moonstep is acquired and when the boss enters phase two.</span>
+<span class="line" id="L89"><a href="#L89">  89</a> - Make damage, recovery, defeat and a safe checkpoint understandable through visuals.</span>
+<span class="line" id="L90"><a href="#L90">  90</a> </span>
+<span class="line" id="L91"><a href="#L91">  91</a> ## Don&#x27;t</span>
+<span class="line" id="L92"><a href="#L92">  92</a> </span>
+<span class="line" id="L93"><a href="#L93">  93</a> - Substitute flat shapes, still actor cutouts or full-screen reference art for required illustrated assets and animation.</span>
+<span class="line" id="L94"><a href="#L94">  94</a> - Bake gameplay actors, HUD, interactive relics or collision surfaces into distant backdrops.</span>
+<span class="line" id="L95"><a href="#L95">  95</a> - Copy incidental reference branding, promise extra costumes, or imply gambling/payment functionality.</span>
+</pre>

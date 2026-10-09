@@ -1,0 +1,29 @@
+name: Pinned real Godot review checks
+
+# Explicitly triggered only on a trusted, pre-provisioned Linux runner.
+# This workflow never downloads or installs Godot or Python dependencies.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  headless:
+    runs-on: [self-hosted, linux, godot-4.6.3]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check pinned, preinstalled environment
+        run: |
+          godot --version | grep '^4.6.3.stable.official.7d41c59c4$'
+          test "$(sha256sum "$(command -v godot)" | cut -d' ' -f1)" = f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3
+          python -c 'import pytest; assert pytest.__version__ == "8.4.2"'
+      - name: Run actual engine positive and negative cases
+        env:
+          GM_REAL_GODOT: '1'
+        run: python -m pytest tests/integration/test_review_smoke.py -q
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: actual-godot-review-evidence
+          path: review-evidence/

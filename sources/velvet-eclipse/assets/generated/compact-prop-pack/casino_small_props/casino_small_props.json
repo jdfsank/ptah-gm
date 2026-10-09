@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "atlas_path": "res://assets/generated/compact-prop-pack/casino_small_props/casino_small_props.png",
+  "regions": [
+    {
+      "name": "candle",
+      "rect": [
+        352,
+        0,
+        40,
+        80
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "chip",
+      "rect": [
+        144,
+        0,
+        48,
+        32
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "enemy_card",
+      "rect": [
+        64,
+        0,
+        64,
+        96
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "heart_gem",
+      "rect": [
+        208,
+        0,
+        48,
+        48
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "moonstep",
+      "rect": [
+        272,
+        0,
+        64,
+        64
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    },
+    {
+      "name": "player_card",
+      "rect": [
+        0,
+        0,
+        48,
+        72
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "nine_slice": null
+    }
+  ]
+}

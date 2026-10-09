@@ -1,0 +1,71 @@
+{
+  "type": "Semantic model, extraction snapshot and jsdom interaction tests; not rendered browser QA",
+  "counts": {
+    "objects": 21,
+    "behaviors": 38,
+    "instances": 93,
+    "spawnRules": 9,
+    "sources": 338,
+    "ledger": 455,
+    "unmapped": 0
+  },
+  "checks": [
+    {
+      "name": "Neutral contract accepts current source catalog and both noncombat fixtures",
+      "status": "pass"
+    },
+    {
+      "name": "Model rejects duplicate IDs, broken refs, fake source writeback and unmapped facts",
+      "status": "pass"
+    },
+    {
+      "name": "Extraction finite denominators: input, state, resources, UI, reverse ownership",
+      "status": "pass"
+    },
+    {
+      "name": "Source snapshot links resolve to actual line anchors, thumbnails exist",
+      "status": "pass"
+    },
+    {
+      "name": "Definition, placed instance, spawn marker and ephemeral rule stay distinct",
+      "status": "pass"
+    },
+    {
+      "name": "Source values and behavior types are faithful",
+      "status": "pass"
+    },
+    {
+      "name": "Migration preserves old values, unknown fields and original bytes",
+      "status": "pass"
+    },
+    {
+      "name": "Every semantic definition and all 38 behavior views render without runtime errors",
+      "status": "pass"
+    },
+    {
+      "name": "Player definition accessible from spawn independently of room, enemies include ranged placement",
+      "status": "pass"
+    },
+    {
+      "name": "Type-specific panels do not force continuous/response/interaction into attack timeline",
+      "status": "pass"
+    },
+    {
+      "name": "Read-only behavior fields and optional Narrative are honest",
+      "status": "pass"
+    },
+    {
+      "name": "Coverage filter reaches inputs, state, resources, source pages and method",
+      "status": "pass"
+    },
+    {
+      "name": "Legacy storage is not overwritten on load; reopening migrates explicitly, saving preserves backup",
+      "status": "pass"
+    },
+    {
+      "name": "Phone semantic selection, coverage, DNA drawer and method close paths",
+      "status": "pass"
+    }
+  ],
+  "browserQA": "Not performed: cloud browser cannot reach the executor loopback preview. No screenshot or engine-playability claim."
+}

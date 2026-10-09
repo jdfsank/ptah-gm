@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "orphan retained and blocks preview",
+    "explicit reassociation preserves existing note",
+    "navigation syncs scope and reveals hidden entrance without invalidating preview",
+    "cancel has zero POST and pending",
+    "background to pointer-drag synchronizes target and notes",
+    "unknown initial hash renders fallback"
+  ],
+  "status": "PASS",
+  "limitations": "jsdom, mocked status; no real browser or GM run"
+}

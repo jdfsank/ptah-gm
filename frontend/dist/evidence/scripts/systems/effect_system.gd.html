@@ -1,0 +1,46 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>scripts/systems/effect_system.gd</title><style>body{background:#12111c;color:#ddd;font:14px/1.6 monospace;padding:20px}a{color:#bfa4f6}.line{display:block;min-width:max-content}.line:target{background:#443552}pre{overflow:auto}header{position:sticky;left:0}h1{font:18px sans-serif;overflow-wrap:anywhere}</style><header><a href="javascript:history.back()">返回工作台</a><h1>scripts/systems/effect_system.gd</h1><p>只读源快照 · SHA-256 2457f962c449d03426492b9f8fbbe2d15b448ef16020671c57a8433bc685e415</p></header><pre><span class="line" id="L1"><a href="#L1">   1</a> class_name EffectSystem extends System</span>
+<span class="line" id="L2"><a href="#L2">   2</a> </span>
+<span class="line" id="L3"><a href="#L3">   3</a> @export var runtime: Node = null</span>
+<span class="line" id="L4"><a href="#L4">   4</a> </span>
+<span class="line" id="L5"><a href="#L5">   5</a> func setup() -&gt; void:</span>
+<span class="line" id="L6"><a href="#L6">   6</a> 	assert(is_instance_valid(runtime))</span>
+<span class="line" id="L7"><a href="#L7">   7</a> </span>
+<span class="line" id="L8"><a href="#L8">   8</a> func sub_systems() -&gt; Array[Array]:</span>
+<span class="line" id="L9"><a href="#L9">   9</a> 	return [[q.with_all([C_Effect, C_Visual]).enabled(), _effects], [q.with_all([C_Projectile]).enabled(), _projectiles], [q.with_all([C_Hitbox]).enabled(), _hitboxes]]</span>
+<span class="line" id="L10"><a href="#L10">  10</a> </span>
+<span class="line" id="L11"><a href="#L11">  11</a> func _effects(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L12"><a href="#L12">  12</a> 	for entity in entities:</span>
+<span class="line" id="L13"><a href="#L13">  13</a> 		if not entity.enabled:</span>
+<span class="line" id="L14"><a href="#L14">  14</a> 			continue</span>
+<span class="line" id="L15"><a href="#L15">  15</a> 		var effect: C_Effect = entity.get_component(C_Effect)</span>
+<span class="line" id="L16"><a href="#L16">  16</a> 		effect.remaining = maxf(0.0, effect.remaining - delta)</span>
+<span class="line" id="L17"><a href="#L17">  17</a> 		var visual: C_Visual = entity.get_component(C_Visual)</span>
+<span class="line" id="L18"><a href="#L18">  18</a> 		var ratio: float = effect.remaining / maxf(effect.duration, 0.001)</span>
+<span class="line" id="L19"><a href="#L19">  19</a> 		visual.tint.a = effect.color.a * (1.0 if effect.kind.ends_with(&quot;warning&quot;) else ratio)</span>
+<span class="line" id="L20"><a href="#L20">  20</a> 		if is_instance_valid(visual.node):</span>
+<span class="line" id="L21"><a href="#L21">  21</a> 			if effect.kind == &quot;ghost_hand&quot;:</span>
+<span class="line" id="L22"><a href="#L22">  22</a> 				visual.node.position.y = lerpf(-25.0, 150.0, pow(1.0 - ratio, 4.0))</span>
+<span class="line" id="L23"><a href="#L23">  23</a> 				visual.node.rotation = sin((1.0 - ratio) * PI) * 0.16</span>
+<span class="line" id="L24"><a href="#L24">  24</a> 			elif not effect.kind.ends_with(&quot;warning&quot;):</span>
+<span class="line" id="L25"><a href="#L25">  25</a> 				visual.node.scale = Vector2.ONE * (1.0 + (1.0 - ratio) * 0.25)</span>
+<span class="line" id="L26"><a href="#L26">  26</a> 		if effect.remaining &lt;= 0.0:</span>
+<span class="line" id="L27"><a href="#L27">  27</a> 			runtime.request_removal(entity.id)</span>
+<span class="line" id="L28"><a href="#L28">  28</a> </span>
+<span class="line" id="L29"><a href="#L29">  29</a> func _projectiles(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L30"><a href="#L30">  30</a> 	for entity in entities:</span>
+<span class="line" id="L31"><a href="#L31">  31</a> 		if not entity.enabled:</span>
+<span class="line" id="L32"><a href="#L32">  32</a> 			continue</span>
+<span class="line" id="L33"><a href="#L33">  33</a> 		var projectile: C_Projectile = entity.get_component(C_Projectile)</span>
+<span class="line" id="L34"><a href="#L34">  34</a> 		projectile.remaining = maxf(0.0, projectile.remaining - delta)</span>
+<span class="line" id="L35"><a href="#L35">  35</a> 		if projectile.consumed or projectile.remaining &lt;= 0.0:</span>
+<span class="line" id="L36"><a href="#L36">  36</a> 			runtime.request_removal(entity.id)</span>
+<span class="line" id="L37"><a href="#L37">  37</a> </span>
+<span class="line" id="L38"><a href="#L38">  38</a> func _hitboxes(entities: Array[Entity], _components: Array, delta: float) -&gt; void:</span>
+<span class="line" id="L39"><a href="#L39">  39</a> 	for entity in entities:</span>
+<span class="line" id="L40"><a href="#L40">  40</a> 		if not entity.enabled:</span>
+<span class="line" id="L41"><a href="#L41">  41</a> 			continue</span>
+<span class="line" id="L42"><a href="#L42">  42</a> 		var hitbox: C_Hitbox = entity.get_component(C_Hitbox)</span>
+<span class="line" id="L43"><a href="#L43">  43</a> 		hitbox.active_left = maxf(0.0, hitbox.active_left - delta)</span>
+<span class="line" id="L44"><a href="#L44">  44</a> 		if hitbox.active_left &lt;= 0.0:</span>
+<span class="line" id="L45"><a href="#L45">  45</a> 			runtime.request_removal(entity.id)</span>
+</pre>

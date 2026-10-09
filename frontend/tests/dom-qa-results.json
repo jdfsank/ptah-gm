@@ -1,0 +1,61 @@
+{
+  "type": "DOM event tests using jsdom, not rendered browser QA",
+  "testedAt": "2026-10-08T07:56:31.604Z",
+  "checks": [
+    {
+      "name": "Overview imports actual five rooms and contextual DNA",
+      "status": "pass"
+    },
+    {
+      "name": "Blank scene cancellation, missing entrance/floor, place objects, singleton guard",
+      "status": "pass"
+    },
+    {
+      "name": "Instance coordinate boundaries, locks and manual grouped undo",
+      "status": "pass"
+    },
+    {
+      "name": "Transition target/spawn edits update graph source and protect missing destinations",
+      "status": "pass"
+    },
+    {
+      "name": "Timing fields change phases, reject invalid numbers and preview UI exists",
+      "status": "pass"
+    },
+    {
+      "name": "AI rule proposal excludes locked/gameplay, apply atomic, undo complete, unknown input graceful",
+      "status": "pass"
+    },
+    {
+      "name": "AI stale revision disables apply after manual edit; cancellation no mutation",
+      "status": "pass"
+    },
+    {
+      "name": "AI shared timing scope stays explicit and grouped undo works",
+      "status": "pass"
+    },
+    {
+      "name": "Browser-local save/reopen/reset and immutable source snapshot",
+      "status": "pass"
+    },
+    {
+      "name": "Incompatible local version never overwrites current scene",
+      "status": "pass"
+    },
+    {
+      "name": "Runtime transient assets are read-only with source provenance",
+      "status": "pass"
+    },
+    {
+      "name": "WebMCP registration contract and valid/invalid navigation use visible state (mocked context)",
+      "status": "pass"
+    },
+    {
+      "name": "Phone workflow: scene selection drawer, tabs, close, placement cancel, template and no duplicate",
+      "status": "pass"
+    }
+  ],
+  "errors": [],
+  "browserQA": "Not completed: cloud browser returned ERR_CONNECTION_REFUSED for executor loopback preview; portable environment has no managed preview forwarding. No screenshots fabricated.",
+  "webMCP": "Mocked registry contract only; a supported native WebMCP browser context was unavailable."
+}
