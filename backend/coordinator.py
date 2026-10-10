@@ -1192,17 +1192,18 @@ class Coordinator(GenericWorkflow):
                         "productionAuthorized": False,
                         "message": "Test records deliberately cannot confirm the production GM spec gate.",
                     }
+                    self._update(job_id, gmSpecificationConfirmation=gm_confirmation)
                     if spec_confirmed(worktree):
                         raise WorkflowError(
                             409, "TEST_GATE", "测试记录不得通过生产规格确认。"
                         )
                 else:
                     gm_confirmation = confirm_spec(worktree, packet["approvalEventId"])
+                    self._update(job_id, gmSpecificationConfirmation=gm_confirmation)
                     if not spec_confirmed(worktree):
                         raise WorkflowError(
                             409, "GM_GATE", "真实 GM 规格确认没有满足当前版本。"
                         )
-                self._update(job_id, gmSpecificationConfirmation=gm_confirmation)
                 for relative in (
                     ".godotmaker/frontend-approval.json",
                     ".godotmaker/stage.jsonl",

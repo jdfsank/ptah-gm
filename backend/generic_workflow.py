@@ -587,7 +587,7 @@ class GenericWorkflow:
             return packet
 
     def _execute_generic(self, job_id, cancel):
-        from .general_gm_integration import confirm_spec, register, spec_confirmed, spec_ref
+        from .general_gm_integration import GMIntegrationError, confirm_spec, register, spec_confirmed, spec_ref
         from tools.git_baseline import capture_inventory
 
         _, canonical, git, identifier, now = _core()
@@ -647,10 +647,12 @@ class GenericWorkflow:
             if self.test_data:
                 gm_confirmation = {"status": "BLOCKED", "testData": True, "productionAuthorized": False,
                     "message": "Synthetic test approval cannot pass production GM specification gate."}
+                self._update(job_id, gmSpecificationConfirmation=gm_confirmation)
                 if spec_confirmed(worktree):
                     _failure("TEST_GATE", "测试记录不得进入生产 GM 门。")
             else:
                 gm_confirmation = confirm_spec(worktree, packet["approvalEventId"])
+                self._update(job_id, gmSpecificationConfirmation=gm_confirmation)
                 if not spec_confirmed(worktree):
                     _failure("GM_GATE", "GM non-pk 未确认当前用户规格。")
             protected_paths = [*SPEC_FILES, "design/game.json", "studio/runtime.gd", ".gitignore",
@@ -742,6 +744,7 @@ class GenericWorkflow:
         except Exception as exc:
             uncertain = (started and not stopped) or getattr(exc, "code", None) == "VERIFICATION_UNCERTAIN"
             self._update(job_id, status="UNCERTAIN" if uncertain else ("CANCELLED" if cancel.is_set() else "FAILED"),
+                failureCode=getattr(exc, "code", None) or ("GM_INTEGRATION" if isinstance(exc, GMIntegrationError) else None),
                 message=str(exc)[:2000])
 
     @staticmethod

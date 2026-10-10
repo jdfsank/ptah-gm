@@ -13,15 +13,16 @@ import os
 import stat
 import subprocess
 import sys
-import threading
 from collections.abc import Mapping
 from pathlib import Path
+
+from .gm_module_loading import PINNED_MODULE_LOCK
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GM_TOOLS = REPO_ROOT / "sources" / "GodotMaker-non-pk" / "tools"
 GM_REVIEW = GM_TOOLS / "gm_review.py"
 APPROVAL_BINDING_REL = Path(".godotmaker") / "frontend-approval.json"
-_LOAD_LOCK = threading.RLock()
+_LOAD_LOCK = PINNED_MODULE_LOCK
 
 
 class GMIntegrationError(RuntimeError):
@@ -33,14 +34,14 @@ def _load_review_support():
     if not path.is_file() or path.resolve() != path:
         raise GMIntegrationError("Pinned GM review support is unavailable")
     name = "_ptah_pinned_general_gm_review_support"
-    module = sys.modules.get(name)
-    if module is not None:
-        return module
     # review_support uses historical bare imports. Temporarily bind those names
     # to the exact pinned sibling modules, then restore the host interpreter's
     # namespace so another project cannot inherit these aliases.
-    dependencies = ("agent_runtime", "git_baseline", "frontend_approval")
+    dependencies = ("agent_runtime", "git_baseline", "frontend_approval", "append_stage_event")
     with _LOAD_LOCK:
+        module = sys.modules.get(name)
+        if module is not None:
+            return module
         saved = {dep: sys.modules.get(dep) for dep in dependencies}
         try:
             for dep in dependencies:
@@ -267,8 +268,8 @@ def spec_confirmed(project_dir: Path) -> bool:
             and review._spec_confirmation_matches(event, spec, current_ref, project)
             for event in events
         )
-    except Exception:  # noqa: BLE001 - An unavailable pinned approval consumer fails closed.
-        return False
+    except Exception as exc:  # noqa: BLE001 - Inspection errors still block production.
+        raise GMIntegrationError(f"GM 规格确认记录复核失败：{exc}") from exc
 
 
 __all__ = [

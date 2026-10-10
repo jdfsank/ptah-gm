@@ -24,6 +24,7 @@ import sys
 import uuid
 
 from agent_runtime import detect_agent, godotmaker_yaml, read_godot_path
+from append_stage_event import validate_fields
 from git_baseline import identity_bytes, identity_file
 from frontend_approval import (
     ApprovalContext, ApprovalError, consume_frontend_approval,
@@ -619,7 +620,6 @@ def read_events(project: Path) -> list[dict]:
         value = strict_json(line)
         if not isinstance(value, dict) or not isinstance(value.get("role"), str) or not isinstance(value.get("ts"), str):
             raise ReviewError(f"Invalid stage event on line {number}")
-        from append_stage_event import validate_fields
         try:
             dt.datetime.fromisoformat(value["ts"].replace("Z", "+00:00"))
             validate_fields(value["role"], {k: v for k, v in value.items() if k not in {"role", "ts"}})

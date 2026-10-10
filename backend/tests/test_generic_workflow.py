@@ -67,10 +67,11 @@ class Planner:
 
 
 class Producer:
-    def __init__(self, path, mode):
-        self.path, self.mode = Path(path), mode
+    def __init__(self, owner, path, mode):
+        self.owner, self.path, self.mode = owner, Path(path), mode
 
     def run(self, packet, cancel_event=None, reference_images=None, on_process_started=None):
+        self.owner.producer_started.set()
         if self.mode == "normal":
             script = self.path / "scripts/player.gd"
             script.parent.mkdir(parents=True, exist_ok=True)
@@ -103,6 +104,7 @@ class GenericWorkflowTests(unittest.TestCase):
         self.planner_status = "completed"
         self.planner_diagnostics = {}
         self.producer_mode = "normal"
+        self.producer_started = threading.Event()
         self.coordinator = self._new_coordinator()
         self.operator = self.coordinator.operator_id
 
@@ -117,7 +119,7 @@ class GenericWorkflowTests(unittest.TestCase):
             state_root=self.state_root,
             test_data=True,
             planner_driver_factory=lambda path: Planner(self, path),
-            generic_driver_factory=lambda path: Producer(path, self.producer_mode),
+            generic_driver_factory=lambda path: Producer(self, path, self.producer_mode),
             generic_verifier=passing_verifier,
         )
 
@@ -465,6 +467,26 @@ class GenericWorkflowTests(unittest.TestCase):
                 self.assertEqual(job["status"], "FAILED", job)
                 self.assertIn(expected_fragment, job.get("message", ""))
                 self.assertNotIn("candidate", job)
+
+    def test_gm_inspection_failure_is_saved_and_stops_before_production_driver(self):
+        from backend.general_gm_integration import GMIntegrationError
+
+        proposal = self._create(text="Make a harbor exploration prototype.")
+        with patch(
+            "backend.general_gm_integration.spec_confirmed",
+            side_effect=GMIntegrationError("pinned stage event reader is unavailable"),
+        ):
+            job = self._dispatch(proposal)
+
+        self.assertEqual(job["status"], "FAILED", job)
+        self.assertEqual(job["failureCode"], "GM_INTEGRATION")
+        self.assertEqual(
+            job["gmSpecificationConfirmation"]["status"], "BLOCKED"
+        )
+        self.assertIn("Synthetic test approval", job["gmSpecificationConfirmation"]["message"])
+        self.assertNotIn("candidate", job)
+        self.assertNotIn("sessionEvidence", job)
+        self.assertFalse(self.producer_started.is_set())
 
     def test_producer_cannot_write_through_a_parent_directory_symlink(self):
         self.coordinator.close()

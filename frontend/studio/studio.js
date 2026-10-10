@@ -755,6 +755,7 @@ export class StudioApp {
     hide($('#reconcile-area'), this.job.status !== 'UNCERTAIN');
     const candidate = this.job.candidate || this.job.response?.candidate;
     if (candidate) { this.renderCandidate(candidate); hide($('#candidate-area'), false); } else hide($('#candidate-area'));
+    this.renderFailedInitialRecovery(this.job, evidence);
     if ((this.packet?.operationKind || this.job.operationKind) === 'INITIALIZATION' && this.job.status === 'PUBLISHED') {
       const nextProposal = this.job.nextProposal || this.job.response?.nextProposal;
       if (nextProposal) { this.proposal = nextProposal; this.renderProposal(); }
@@ -766,6 +767,41 @@ export class StudioApp {
     if (this.job.projectId && (this.snapshot?.projectId || this.snapshot?.id) !== this.job.projectId) this.ensureWorkbench(this.job.projectId).catch(() => {});
     if (TERMINAL.has(this.job.status)) this.stopPolling();
     this.renderWorkflowStages(); this.renderWorkflowStatus();
+  }
+  renderFailedInitialRecovery(job, root) {
+    if (job?.status !== 'FAILED' || this.canEnterIteration() || this.stage !== 'initial' || this.proposal || job.projectId !== this.projectId) return;
+    const packet = job.packet || job.response?.packet || (job.packetId && (this.workspace?.packets || []).find(item =>
+      item.projectId === this.projectId && [item.id, item.packetId].includes(job.packetId)));
+    const approved = packet?.approvedProposal;
+    if (!packet || packet.projectId !== this.projectId || !approved || (approved.projectId && approved.projectId !== this.projectId) || typeof approved.text !== 'string' || !approved.text.trim()) return;
+    const button = el('button', 'button secondary', '沿用原输入重新策划'); button.type = 'button'; button.dataset.action = 'restore-approved-input';
+    const projectId = this.projectId, jobId = job.id, packetId = packet.id || packet.packetId;
+    button.addEventListener('click', () => {
+      if (this.projectId !== projectId || this.job?.id !== jobId || this.job?.status !== 'FAILED' || this.canEnterIteration() || this.stage !== 'initial' || this.proposal) return;
+      const currentPacket = this.job.packet || this.job.response?.packet || (this.job.packetId && (this.workspace?.packets || []).find(item => item.projectId === projectId && [item.id, item.packetId].includes(this.job.packetId)));
+      if (!currentPacket || currentPacket.projectId !== projectId || (currentPacket.id || currentPacket.packetId) !== packetId || currentPacket.approvedProposal !== approved) return;
+      const packetAssets = Array.isArray(currentPacket.assets) ? currentPacket.assets : [];
+      const rawAssets = Array.isArray(approved.assets) ? approved.assets : Array.isArray(approved.assetIds) ? approved.assetIds : packetAssets;
+      const assets = [...new Map(rawAssets.map(item => {
+        const id = typeof item === 'string' ? item : item?.id;
+        if (typeof id !== 'string' || !id || (item?.projectId && item.projectId !== projectId)) return null;
+        const metadata = typeof item === 'object' ? item : packetAssets.find(candidate => candidate?.id === id) || {};
+        return [id, { id, name: metadata.name || '参考图片', purpose: metadata.purpose || 'reference', mimeType: metadata.mimeType || '' }];
+      }).filter(Boolean))].map(([, item]) => item);
+      const currentText = $('#concept').value;
+      const currentAssetIds = this.assets.map(asset => asset.id).filter(Boolean).sort();
+      const restoredAssetIds = assets.map(asset => asset.id).sort();
+      const assetsDiffer = currentAssetIds.length > 0 && JSON.stringify(currentAssetIds) !== JSON.stringify(restoredAssetIds);
+      if ((currentText.trim() && currentText !== approved.text) || assetsDiffer) {
+        this.notify('当前概念或参考图已有编辑，已保留。可直接提交当前输入；如需取回原输入，先清空当前内容和参考图。');
+        return;
+      }
+      $('#concept').value = approved.text;
+      this.assets = assets; this.renderAssets(); this.renderWorkflowStages(); this.queueConceptDraftSave();
+      this.notify('已恢复原策划输入和本项目参考图。你可以修改后再提交；系统没有自动启动策划或制作。');
+      $('#concept').focus(); $('#concept-form')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    });
+    root.append(el('div', 'notice', '首个 Demo 制作失败。可从原批准表单取回策划输入，修改后重新开始策划。'), button);
   }
   renderEvidence(verification, root) {
     const card = el('div', 'evidence-card'); card.append(el('h3', '', `运行验证：${verification.status || '状态未知'}`));
