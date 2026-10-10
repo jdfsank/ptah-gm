@@ -747,12 +747,19 @@ export class StudioApp {
   }
   renderJob() {
     if (!this.job) return; hide($('#job-panel'), false); setStatus($('#job-status'), this.job.status);
-    $('#job-message').textContent = this.job.message || (this.job.sessionId ? `制作会话已建立：${this.job.sessionId}` : '正在等待服务更新进度。');
+    const productionFailure = ['FAILED', 'UNCERTAIN'].includes(this.job.status) && this.job.productionFailure && typeof this.job.productionFailure === 'object' ? this.job.productionFailure : null;
+    const originalMessage = this.job.message;
+    $('#job-message').textContent = (typeof productionFailure?.message === 'string' && productionFailure.message) || originalMessage || (this.job.sessionId ? `制作会话已建立：${this.job.sessionId}` : '正在等待服务更新进度。');
     const evidence = $('#job-evidence'); evidence.replaceChildren();
+    if (productionFailure) this.renderProductionFailure(this.job, evidence);
+    if (productionFailure && typeof originalMessage === 'string' && originalMessage && originalMessage !== productionFailure.message) {
+      const prior = el('details', 'production-failure-history'); prior.append(el('summary', '', '原失败记录'), el('p', '', originalMessage)); evidence.append(prior);
+    }
     if (this.job.verification) this.renderEvidence(this.job.verification, evidence);
     const canCancel = ['QUEUED', 'DISPATCHING', 'RUNNING', 'VERIFYING', 'PROJECTING'].includes(this.job.status);
     hide($('#cancel-area'), !canCancel);
-    hide($('#reconcile-area'), this.job.status !== 'UNCERTAIN');
+    const reconcileRequested = !!productionFailure && (productionFailure.terminationConfirmed !== true || String(productionFailure.nextAction || '').toUpperCase() === 'RECONCILE');
+    hide($('#reconcile-area'), this.job.status !== 'UNCERTAIN' && !reconcileRequested);
     const candidate = this.job.candidate || this.job.response?.candidate;
     if (candidate) { this.renderCandidate(candidate); hide($('#candidate-area'), false); } else hide($('#candidate-area'));
     this.renderFailedInitialRecovery(this.job, evidence);
@@ -768,8 +775,33 @@ export class StudioApp {
     if (TERMINAL.has(this.job.status)) this.stopPolling();
     this.renderWorkflowStages(); this.renderWorkflowStatus();
   }
+  renderProductionFailure(job, root) {
+    const failure = job?.productionFailure;
+    if (!failure || !['FAILED', 'UNCERTAIN'].includes(job.status)) return;
+    const card = el('section', 'notice production-failure'); card.setAttribute('aria-label', '制作执行诊断');
+    card.append(el('h3', '', '制作执行诊断'));
+    if (typeof failure.message === 'string' && failure.message) card.append(el('p', '', failure.message));
+    const details = el('dl', 'planning-diagnostic');
+    if (typeof failure.code === 'string' && failure.code) details.append(el('dt', '', '诊断代码'), el('dd', '', failure.code));
+    if (typeof failure.nativeStatus === 'string' && failure.nativeStatus) details.append(el('dt', '', '原生状态'), el('dd', '', failure.nativeStatus));
+    if (failure.connectionInterrupted === true) details.append(el('dt', '', '连接记录'), el('dd', '', '期间有连接中断记录'));
+    const seconds = Number(failure.elapsedSeconds);
+    if (failure.elapsedSeconds != null && failure.elapsedSeconds !== '' && Number.isFinite(seconds) && seconds >= 0) {
+      const rounded = Math.round(seconds), minutes = Number((rounded / 60).toFixed(1));
+      details.append(el('dt', '', '耗时'), el('dd', '', rounded >= 60 ? `${rounded} 秒（${minutes} 分钟）` : `${rounded} 秒`));
+    }
+    details.append(el('dt', '', '停止状态'), el('dd', '', failure.terminationConfirmed === true ? '制作停止已确认' : '制作停止待核实'));
+    if (details.childNodes.length) card.append(details);
+    if (failure.effectsMayHaveOccurred === true) card.append(el('p', 'notice', '部分改动可能保留在隔离工程中，但尚未验证，也未生成可审阅候选。'));
+    const nextActionLabels = { RECONCILE: '向服务对账', CHECK_SERVICE: '先修复服务，再手动重新策划', NEW_PLANNING: '可手动提交新策划；之后仍需审阅确认', RETRY_FROM_APPROVED_INPUT: '沿用原输入重新策划', REVIEW: '查看当前作业诊断' };
+    const nextAction = failure.terminationConfirmed !== true ? 'RECONCILE' : typeof failure.nextAction === 'string' ? failure.nextAction.toUpperCase() : '';
+    if (nextActionLabels[nextAction]) card.append(el('p', 'muted', `建议下一步：${nextActionLabels[nextAction]}`));
+    root.append(card);
+  }
   renderFailedInitialRecovery(job, root) {
-    if (job?.status !== 'FAILED' || this.canEnterIteration() || this.stage !== 'initial' || this.proposal || job.projectId !== this.projectId) return;
+    const failure = job?.productionFailure;
+    const recoveryMustWait = !!failure && (failure.terminationConfirmed !== true || String(failure.nextAction || '').toUpperCase() === 'RECONCILE');
+    if (job?.status !== 'FAILED' || recoveryMustWait || this.canEnterIteration() || this.stage !== 'initial' || this.proposal || job.projectId !== this.projectId) return;
     const packet = job.packet || job.response?.packet || (job.packetId && (this.workspace?.packets || []).find(item =>
       item.projectId === this.projectId && [item.id, item.packetId].includes(job.packetId)));
     const approved = packet?.approvedProposal;
@@ -777,7 +809,9 @@ export class StudioApp {
     const button = el('button', 'button secondary', '沿用原输入重新策划'); button.type = 'button'; button.dataset.action = 'restore-approved-input';
     const projectId = this.projectId, jobId = job.id, packetId = packet.id || packet.packetId;
     button.addEventListener('click', () => {
-      if (this.projectId !== projectId || this.job?.id !== jobId || this.job?.status !== 'FAILED' || this.canEnterIteration() || this.stage !== 'initial' || this.proposal) return;
+      const currentFailure = this.job?.productionFailure;
+      const currentRecoveryMustWait = !!currentFailure && (currentFailure.terminationConfirmed !== true || String(currentFailure.nextAction || '').toUpperCase() === 'RECONCILE');
+      if (this.projectId !== projectId || this.job?.id !== jobId || this.job?.status !== 'FAILED' || currentRecoveryMustWait || this.canEnterIteration() || this.stage !== 'initial' || this.proposal) return;
       const currentPacket = this.job.packet || this.job.response?.packet || (this.job.packetId && (this.workspace?.packets || []).find(item => item.projectId === projectId && [item.id, item.packetId].includes(this.job.packetId)));
       if (!currentPacket || currentPacket.projectId !== projectId || (currentPacket.id || currentPacket.packetId) !== packetId || currentPacket.approvedProposal !== approved) return;
       const packetAssets = Array.isArray(currentPacket.assets) ? currentPacket.assets : [];

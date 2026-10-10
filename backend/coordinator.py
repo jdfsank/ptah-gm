@@ -373,7 +373,8 @@ class Coordinator(GenericWorkflow):
                 "name": "GM 游戏制作工作区", "operatorId": self.operator_id,
                 "testData": self.test_data, "productionAuthorized": self.production_authorized,
                 "projects": [project], "proposals": proposals, "packets": packets,
-                "jobs": self._all_project("job", project_id), "capabilities": self.capabilities(),
+                "jobs": [self._diagnosed_job(job) for job in self._all_project("job", project_id)],
+                "capabilities": self.capabilities(),
             }
             value.update(self.iteration_status(project_id))
             return value
@@ -1079,7 +1080,7 @@ class Coordinator(GenericWorkflow):
 
     def get_job(self, job_id):
         with self.lock:
-            return self._get("job", job_id)
+            return self._diagnosed_job(self._get("job", job_id))
 
     def _update(self, job_id, **fields):
         with self.transaction():

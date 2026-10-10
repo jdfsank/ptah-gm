@@ -28,6 +28,7 @@ from .object_protocol import (
 )
 
 WORKFLOW = "objects-v1"
+PRODUCTION_TIMEOUT_SECONDS = 1800
 PLANNING_ACTIVE = {"PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"}
 SPEC_FILES = ("SPEC.md", "GDD.md", "PLAN.md", "STRUCTURE.md", "SCENES.md", "DESIGN.md", "ASSETS.md")
 
@@ -122,6 +123,61 @@ def planning_failure(result, error=None):
     return failure
 
 
+def production_failure(result):
+    """Summarize an incomplete maker session without exposing its private output."""
+    result = result if isinstance(result, dict) else {}
+    diagnostics = result.get("diagnostics") or {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    stopped = diagnostics.get("childTerminationConfirmed") is True
+    status = result.get("status")
+    if status not in {"completed", "timeout", "cancelled", "uncertain", "server_exited", "failed"}:
+        status = None
+    elapsed = diagnostics.get("elapsedSeconds")
+    if type(elapsed) not in {int, float} or not math.isfinite(elapsed) or elapsed < 0:
+        elapsed = None
+    failure = {
+        "code": "PRODUCTION_FAILED", "message": "制作 session 未完成，后端验证尚未开始，没有可发布候选。",
+        "nativeStatus": status, "elapsedSeconds": elapsed, "terminationConfirmed": stopped,
+        "effectsMayHaveOccurred": diagnostics.get("effectsMayHaveOccurred") is True,
+        "connectionInterrupted": False,
+        "nextAction": "NEW_PLANNING" if stopped else "RECONCILE",
+    }
+    if not stopped:
+        failure.update(code="PRODUCTION_UNCERTAIN", message="制作停止尚未确认；项目继续独占，请先向服务对账。")
+        return failure
+    if diagnostics.get("approvalRequests") or diagnostics.get("protocolErrors"):
+        failure.update(code="PRODUCTION_RESTRICTED", nextAction="CHECK_SERVICE",
+            message="制作遇到执行权限或原生协议问题；请检查服务诊断，后端验证尚未开始。")
+        return failure
+    messages = [str(diagnostics.get("error") or ""), json.dumps(diagnostics.get("nativeErrors") or []),
+                json.dumps(diagnostics.get("nativeTurnError") or {})]
+    # Cache/plugin warnings are not evidence about the model response stream.
+    messages.extend(str(line) for line in diagnostics.get("stderr", [])
+                    if "responses_retry" in str(line) or "stream disconnected" in str(line)
+                    or "stream connection failed" in str(line))
+    native_text = "\n".join(messages).lower()
+    # A reconnect notification is a companion event, not proof that network
+    # waiting consumed the run or caused its eventual failure.
+    failure["connectionInterrupted"] = "reconnecting" in native_text
+    if any(marker in native_text for marker in ("unauthorized", "authentication", "invalid api key")):
+        failure.update(code="PRODUCTION_AUTH", nextAction="CHECK_SERVICE",
+            message="制作的模型服务登录或凭据不可用；请恢复连接配置，后端验证尚未开始。")
+    elif any(marker in native_text for marker in ("stream disconnected", "stream connection failed", "transport error",
+            "network error", "error sending request", "connection failed", "connection reset")):
+        failure.update(code="PRODUCTION_TIMEOUT" if status == "timeout" else "PRODUCTION_NETWORK",
+            connectionInterrupted=True,
+            message=("制作达到运行时限；期间模型连接中断并尝试重连，后端验证尚未开始，没有可发布候选。"
+                     if status == "timeout" else "制作期间模型连接中断，session 未完成，后端验证尚未开始。"))
+    elif status == "timeout":
+        failure.update(code="PRODUCTION_TIMEOUT", message=(
+            "制作达到运行时限；期间出现过模型重连记录，后端验证尚未开始，没有可发布候选。"
+            if failure["connectionInterrupted"] else
+            "制作达到运行时限，session 未完成，后端验证尚未开始，没有可发布候选。"))
+    elif status == "cancelled":
+        failure.update(code="PRODUCTION_CANCELLED", message="制作已取消，后端验证尚未开始，没有可发布候选。")
+    return failure
+
+
 class GenericWorkflow:
     """Mix-in: persistence and concurrency primitives are owned by Coordinator."""
 
@@ -140,6 +196,16 @@ class GenericWorkflow:
     def get_proposal(self, proposal_id):
         with self.lock:
             return self._diagnosed_proposal(self._get("proposal", proposal_id))
+
+    @staticmethod
+    def _diagnosed_job(job):
+        """Derive older maker failures on reads while keeping stored history intact."""
+        result = job.get("sessionEvidence")
+        if (job.get("workflow") != WORKFLOW or job.get("status") not in {"FAILED", "UNCERTAIN", "CANCELLED"}
+                or job.get("productionFailure") or not isinstance(result, dict)
+                or result.get("status") == "completed"):
+            return job
+        return {**job, "productionFailure": production_failure(result)}
 
     def _diagnosed_proposal(self, proposal):
         """Expose older failure evidence on reads without rewriting old records."""
@@ -678,7 +744,7 @@ class GenericWorkflow:
             self._update(job_id, status="RUNNING", baseCommit=base, originalBaseCommit=original_base,
                 gmSpecificationConfirmation=gm_confirmation, message="新的制作 session 正在落实已批准的对象计划。")
             driver = self.generic_driver_factory(worktree) if self.generic_driver_factory else (
-                self.driver_factory(worktree) if self._custom_driver else CodexDriver(worktree, timeout=900,
+                self.driver_factory(worktree) if self._custom_driver else CodexDriver(worktree, timeout=PRODUCTION_TIMEOUT_SECONDS,
                     execution_profile="managed_workspace_write", disabled_mcp_servers=["godot-mcp"]))
             reference_images = [self.project_asset_file(packet["projectId"], asset)[0]
                 for asset in packet.get("assets", [])]
@@ -690,12 +756,16 @@ class GenericWorkflow:
             stopped = result.get("diagnostics", {}).get("childTerminationConfirmed") is True
             self._update(job_id, sessionId=result.get("sessionId"), sessionEvidence=result)
             if not stopped:
-                self._update(job_id, status="UNCERTAIN", message="制作停止未确认，项目继续独占。")
+                failure = production_failure(result)
+                self._update(job_id, status="UNCERTAIN", productionFailure=failure,
+                    failureCode=failure["code"], message=failure["message"])
                 return
             if self._check_cancel(job_id, cancel):
                 return
             if result.get("status") != "completed":
-                _failure("PRODUCTION_FAILED", "制作 session 没有完成，没有可发布候选。")
+                failure = production_failure(result)
+                self._update(job_id, productionFailure=failure)
+                _failure(failure["code"], failure["message"])
             self._check_generic_protected(worktree, base, protected)
             changed = self._audit_generic(worktree, base, packet["document"], protected)
             if not changed and not packet["dataOnlyUpdate"]:

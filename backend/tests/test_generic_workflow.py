@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.coordinator import Coordinator, WorkflowError
-from backend.generic_workflow import timeout_clarification
+from backend.generic_workflow import production_failure, timeout_clarification
 from backend.object_protocol import ObjectProtocolError, parse_planner_response, validate_change_request, validate_document
 from backend.tests.test_object_protocol import sample_document
 
@@ -86,6 +86,8 @@ class Producer:
             (self.path / "scripts").rename(self.path / "scripts-original")
             (self.path / "scripts").symlink_to(outside, target_is_directory=True)
             (self.path / "scripts/player.gd").write_text("extends Node2D\n", encoding="utf-8")
+        if self.owner.producer_result is not None:
+            return copy.deepcopy(self.owner.producer_result)
         return {"status": "completed", "diagnostics": {"childTerminationConfirmed": True}}
 
 
@@ -105,6 +107,8 @@ class GenericWorkflowTests(unittest.TestCase):
         self.planner_diagnostics = {}
         self.producer_mode = "normal"
         self.producer_started = threading.Event()
+        self.verifier_started = threading.Event()
+        self.producer_result = None
         self.coordinator = self._new_coordinator()
         self.operator = self.coordinator.operator_id
 
@@ -114,13 +118,17 @@ class GenericWorkflowTests(unittest.TestCase):
         self.temp.cleanup()
 
     def _new_coordinator(self):
+        def verifier(project, document, **kwargs):
+            self.verifier_started.set()
+            return passing_verifier(project, document, **kwargs)
+
         return Coordinator(
             REPO_ROOT,
             state_root=self.state_root,
             test_data=True,
             planner_driver_factory=lambda path: Planner(self, path),
             generic_driver_factory=lambda path: Producer(self, path, self.producer_mode),
-            generic_verifier=passing_verifier,
+            generic_verifier=verifier,
         )
 
     def _wait_proposal(self, proposal_id, statuses, timeout=6):
@@ -487,6 +495,114 @@ class GenericWorkflowTests(unittest.TestCase):
         self.assertNotIn("candidate", job)
         self.assertNotIn("sessionEvidence", job)
         self.assertFalse(self.producer_started.is_set())
+
+    def test_stopped_production_timeout_keeps_partial_edit_unpublished(self):
+        self.producer_result = {
+            "status": "timeout",
+            "response": "private native response that must remain out of the summary",
+            "diagnostics": {
+                "elapsedSeconds": 1800.0,
+                "childTerminationConfirmed": True,
+                "effectsMayHaveOccurred": True,
+                "nativeErrors": [{"message": "Reconnecting... 1/5"}],
+                "approvalRequests": [],
+                "protocolErrors": [],
+            },
+        }
+        proposal = self._create(text="Make a harbor exploration prototype.")
+        job = self._dispatch(proposal)
+
+        self.assertEqual(job["status"], "FAILED", job)
+        self.assertEqual(job["failureCode"], "PRODUCTION_TIMEOUT")
+        self.assertEqual(job["sessionEvidence"]["status"], "timeout")
+        failure = job["productionFailure"]
+        self.assertEqual(failure["nativeStatus"], "timeout")
+        self.assertTrue(failure["terminationConfirmed"])
+        self.assertTrue(failure["effectsMayHaveOccurred"])
+        self.assertTrue(failure["connectionInterrupted"])
+        self.assertEqual(failure["code"], "PRODUCTION_TIMEOUT")
+        self.assertIn("重连记录", failure["message"])
+        self.assertEqual(failure["nextAction"], "NEW_PLANNING")
+        self.assertIn("productionFailure", job)
+        job_folder = self.state_root / "jobs" / job["id"]
+        self.assertTrue((job_folder / "worktree/scripts/player.gd").is_file())
+        self.assertFalse(self.verifier_started.is_set())
+        self.assertNotIn("candidate", job)
+        self.assertEqual(self.coordinator._get("project", proposal["projectId"])["publicationRevision"], 0)
+        self.assertFalse(any(c.get("jobId") == job["id"] for c in self.coordinator._all("candidate")))
+        self.assertNotIn(self.producer_result["response"], json.dumps(failure, ensure_ascii=False))
+
+    def test_unconfirmed_production_timeout_keeps_exclusivity_and_requires_reconcile(self):
+        self.producer_result = {
+            "status": "timeout",
+            "diagnostics": {"elapsedSeconds": 1800.0, "childTerminationConfirmed": False},
+        }
+        proposal = self._create(text="Make a harbor exploration prototype.")
+        job = self._dispatch(proposal)
+
+        self.assertEqual(job["status"], "UNCERTAIN", job)
+        self.assertEqual(job["failureCode"], "PRODUCTION_UNCERTAIN")
+        self.assertEqual(job["productionFailure"]["nextAction"], "RECONCILE")
+        with self.assertRaises(WorkflowError) as busy:
+            self.coordinator.create_concept(operator_id=self.operator,
+                project_id=proposal["projectId"], expected_publication_revision=0,
+                text="Do not dispatch while the prior maker session is uncertain.")
+        self.assertEqual(busy.exception.code, "PROJECT_BUSY")
+        with self.assertRaises(WorkflowError) as reconcile:
+            self.coordinator.reconcile_job(operator_id=self.operator, job_id=job["id"])
+        self.assertEqual(reconcile.exception.code, "LEASE_UNKNOWN")
+        self.assertEqual(self.coordinator.get_job(job["id"])["status"], "UNCERTAIN")
+        self.assertFalse(self.verifier_started.is_set())
+        self.assertNotIn("candidate", job)
+
+    def test_legacy_failed_job_diagnosis_is_read_only(self):
+        proposal = self._create(text="Create a project for historical failure diagnostics.")
+        job_id = "job-legacy-generic-timeout"
+        legacy = {
+            "id": job_id,
+            "projectId": proposal["projectId"],
+            "workflow": "objects-v1",
+            "status": "FAILED",
+            "message": "制作 session 没有完成，没有可发布候选。",
+            "sessionEvidence": {
+                "status": "timeout",
+                "diagnostics": {"childTerminationConfirmed": True, "elapsedSeconds": 1800.0},
+            },
+        }
+        with self.coordinator.transaction():
+            self.coordinator._put("job", legacy)
+        original = self.coordinator.db.execute(
+            "SELECT payload FROM entities WHERE kind='job' AND id=?", (job_id,)
+        ).fetchone()[0]
+
+        read_job = self.coordinator.get_job(job_id)
+        self.assertEqual(read_job["productionFailure"]["code"], "PRODUCTION_TIMEOUT")
+        workspace_job = next(j for j in self.coordinator.project_workspace(proposal["projectId"])["jobs"]
+                             if j["id"] == job_id)
+        self.assertEqual(workspace_job["productionFailure"], read_job["productionFailure"])
+        current = self.coordinator.db.execute(
+            "SELECT payload FROM entities WHERE kind='job' AND id=?", (job_id,)
+        ).fetchone()[0]
+        self.assertEqual(current, original)
+
+    def test_production_failure_summary_sanitizes_time_and_ignores_plugin_cache_warning(self):
+        secret = "sk-live-do-not-display"
+        for elapsed in (float("nan"), float("inf"), True):
+            with self.subTest(elapsed=elapsed):
+                failure = production_failure({
+                    "status": "timeout",
+                    "response": secret,
+                    "diagnostics": {
+                        "elapsedSeconds": elapsed,
+                        "childTerminationConfirmed": True,
+                        "error": "invalid api key: " + secret,
+                        "stderr": ["plugin cache network warning: responses_retry cache refresh failed"],
+                    },
+                })
+                self.assertIsNone(failure["elapsedSeconds"])
+                self.assertEqual(failure["code"], "PRODUCTION_AUTH")
+                self.assertFalse(failure["connectionInterrupted"])
+                self.assertNotIn(secret, json.dumps(failure, ensure_ascii=False))
 
     def test_producer_cannot_write_through_a_parent_directory_symlink(self):
         self.coordinator.close()
