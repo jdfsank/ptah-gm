@@ -1,0 +1,1422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "studio.project-view.v1.schema.json",
+  "type": "object",
+  "$defs": {
+    "frozenDiscussion": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "role": { "const": "user" },
+              "text": { "type": "string" },
+              "answers": { "type": ["array", "object"] },
+              "at": { "type": "string" }
+            },
+            "required": ["role"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": { "const": "planner" },
+              "questions": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+              "at": { "type": "string" }
+            },
+            "required": ["role", "questions"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "properties": {
+    "schemaVersion": {
+      "const": "studio.project-view.v1"
+    },
+    "storeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "serviceInstanceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "throughSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    },
+    "step": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attention": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "allowedActions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "apiVersion": {
+      "enum": [
+        "objects-v1"
+      ]
+    },
+    "workspaceId": {
+      "enum": [
+        "local",
+        "test"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "testData": {
+      "type": "boolean"
+    },
+    "productionAuthorized": {
+      "type": "boolean"
+    },
+    "projects": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {},
+          "title": {},
+          "titleExplicit": {},
+          "workflow": {},
+          "templateId": {},
+          "publicationRevision": {},
+          "snapshotId": {},
+          "createdAt": {},
+          "updatedAt": {},
+          "archived": {},
+          "executionBackend": {},
+          "protocolVersion": {}
+        },
+        "additionalProperties": false,
+        "maxProperties": 100
+      }
+    },
+    "proposals": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {},
+          "projectId": {},
+          "workflow": {},
+          "revision": {},
+          "status": {},
+          "text": {},
+          "summary": {},
+          "publicationRevision": {},
+          "baseCommit": {},
+          "initializationRequired": {},
+          "templateId": {},
+          "questions": {},
+          "decisions": {},
+          "document": {},
+          "tasks": {},
+          "requirements": {},
+          "currentDocument": {},
+          "changeRequest": {},
+          "assets": {},
+          "discussion": {},
+          "testData": {},
+          "productionAuthorized": {},
+          "createdAt": {},
+          "updatedAt": {},
+          "profileSnapshot": {},
+          "attemptId": {},
+          "feedback": {},
+          "feedbackDecisions": {},
+          "reviewedPlanRef": {},
+          "packetId": {},
+          "roles": {},
+          "acceptance": {},
+          "gmSpecRef": {},
+          "specInventory": {},
+          "templateInventory": {},
+          "sourceRefs": {},
+          "objectChanges": {},
+          "scope": {},
+          "planningFailure": {},
+          "schemaVersion": {},
+          "protocolVersion": {},
+          "blockers": {},
+          "planningRecovery": {},
+          "planningTerminationConfirmed": {},
+          "planningEvidence": {},
+          "planningLease": {},
+          "repairBase": {},
+          "visualReferences": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "required": [
+                "assetId",
+                "intent",
+                "targetObjectIds",
+                "preserve",
+                "unknown"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "assetId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "intent": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "targetObjectIds": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                  }
+                },
+                "preserve": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "unknown": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "maxProperties": 100
+      }
+    },
+    "packets": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {},
+          "packetId": {},
+          "jobId": {},
+          "projectId": {},
+          "proposalId": {},
+          "proposalRevision": {},
+          "publicationRevision": {},
+          "workflow": {},
+          "operationKind": {},
+          "templateId": {},
+          "baseCommit": {},
+          "document": {},
+          "tasks": {},
+          "changeRequest": {},
+          "objectChanges": {},
+          "assets": {},
+          "gmSpecRef": {},
+          "specInventory": {},
+          "templateInventory": {},
+          "sourceRefs": {},
+          "scope": {},
+          "requirements": {},
+          "acceptance": {},
+          "roles": {},
+          "decisions": {},
+          "approvalEventId": {},
+          "approvedProposal": {},
+          "testData": {},
+          "dataOnlyUpdate": {},
+          "productionAuthorized": {},
+          "createdAt": {},
+          "reviewedPlanRef": {},
+          "feedbackDecisions": {},
+          "feedback": {},
+          "repairBase": {},
+          "visualReferences": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "required": [
+                "assetId",
+                "intent",
+                "targetObjectIds",
+                "preserve",
+                "unknown"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "assetId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "intent": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "targetObjectIds": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                  }
+                },
+                "preserve": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "unknown": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              }
+            }
+          },
+          "userText": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "discussion": { "$ref": "#/$defs/frozenDiscussion" },
+          "userDiscussion": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "const": "user"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": [
+                    "array",
+                    "object"
+                  ]
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false,
+        "maxProperties": 100
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {},
+          "packetId": {},
+          "projectId": {},
+          "operationKind": {},
+          "workflow": {},
+          "status": {},
+          "idempotencyKey": {},
+          "createdAt": {},
+          "updatedAt": {},
+          "message": {},
+          "testData": {},
+          "productionAuthorized": {},
+          "attemptId": {},
+          "productionAttemptId": {},
+          "verificationAttemptId": {},
+          "inputCommit": {},
+          "gmConfirmationRef": {},
+          "executionBackend": {},
+          "verification": {},
+          "verificationFailure": {},
+          "productionFailure": {},
+          "artifactRef": {},
+          "changedFiles": {},
+          "candidate": {},
+          "snapshot": {},
+          "decisionEventId": {},
+          "experienceDecisions": {},
+          "profileSnapshot": {}
+        },
+        "additionalProperties": false,
+        "maxProperties": 100
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "interactiveFrontendConfirmation": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "READY",
+                "BLOCKED"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "sessionDispatch": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "READY",
+                "BLOCKED"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "godotVerification": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "READY",
+                "BLOCKED"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "semanticProjection": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "READY",
+                "BLOCKED"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "iterationReady": {
+      "type": "boolean"
+    },
+    "iterationReadyReason": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "iterationReadyTestOnly": {
+      "type": "boolean"
+    },
+    "project": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {},
+        "title": {},
+        "titleExplicit": {},
+        "workflow": {},
+        "templateId": {},
+        "publicationRevision": {},
+        "snapshotId": {},
+        "createdAt": {},
+        "updatedAt": {},
+        "archived": {},
+        "executionBackend": {},
+        "protocolVersion": {}
+      },
+      "additionalProperties": false,
+      "maxProperties": 100
+    },
+    "proposal": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {},
+        "projectId": {},
+        "workflow": {},
+        "revision": {},
+        "status": {},
+        "text": {},
+        "summary": {},
+        "publicationRevision": {},
+        "baseCommit": {},
+        "initializationRequired": {},
+        "templateId": {},
+        "questions": {},
+        "decisions": {},
+        "document": {},
+        "tasks": {},
+        "requirements": {},
+        "currentDocument": {},
+        "changeRequest": {},
+        "assets": {},
+        "discussion": {},
+        "testData": {},
+        "productionAuthorized": {},
+        "createdAt": {},
+        "updatedAt": {},
+        "profileSnapshot": {},
+        "attemptId": {},
+        "feedback": {},
+        "feedbackDecisions": {},
+        "reviewedPlanRef": {},
+        "packetId": {},
+        "roles": {},
+        "acceptance": {},
+        "gmSpecRef": {},
+        "specInventory": {},
+        "templateInventory": {},
+        "sourceRefs": {},
+        "objectChanges": {},
+        "scope": {},
+        "planningFailure": {},
+        "schemaVersion": {},
+        "protocolVersion": {},
+        "blockers": {},
+        "planningRecovery": {},
+        "planningTerminationConfirmed": {},
+        "planningEvidence": {},
+        "planningLease": {},
+        "repairBase": {},
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "maxProperties": 100
+    },
+    "packet": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {},
+        "packetId": {},
+        "jobId": {},
+        "projectId": {},
+        "proposalId": {},
+        "proposalRevision": {},
+        "publicationRevision": {},
+        "workflow": {},
+        "operationKind": {},
+        "templateId": {},
+        "baseCommit": {},
+        "document": {},
+        "tasks": {},
+        "changeRequest": {},
+        "objectChanges": {},
+        "assets": {},
+        "gmSpecRef": {},
+        "specInventory": {},
+        "templateInventory": {},
+        "sourceRefs": {},
+        "scope": {},
+        "requirements": {},
+        "acceptance": {},
+        "roles": {},
+        "decisions": {},
+        "approvalEventId": {},
+        "approvedProposal": {},
+        "testData": {},
+        "dataOnlyUpdate": {},
+        "productionAuthorized": {},
+        "createdAt": {},
+        "reviewedPlanRef": {},
+        "feedbackDecisions": {},
+        "feedback": {},
+        "repairBase": {},
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        },
+        "userText": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "discussion": { "$ref": "#/$defs/frozenDiscussion" },
+        "userDiscussion": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "const": "user"
+              },
+              "text": {
+                "type": "string"
+              },
+              "answers": {
+                "type": [
+                  "array",
+                  "object"
+                ]
+              },
+              "at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "maxProperties": 100
+    },
+    "job": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {},
+        "packetId": {},
+        "projectId": {},
+        "operationKind": {},
+        "workflow": {},
+        "status": {},
+        "idempotencyKey": {},
+        "createdAt": {},
+        "updatedAt": {},
+        "message": {},
+        "testData": {},
+        "productionAuthorized": {},
+        "attemptId": {},
+        "productionAttemptId": {},
+        "verificationAttemptId": {},
+        "inputCommit": {},
+        "gmConfirmationRef": {},
+        "executionBackend": {},
+        "verification": {},
+        "verificationFailure": {},
+        "productionFailure": {},
+        "artifactRef": {},
+        "changedFiles": {},
+        "candidate": {},
+        "snapshot": {},
+        "decisionEventId": {},
+        "experienceDecisions": {},
+        "profileSnapshot": {}
+      },
+      "additionalProperties": false,
+      "maxProperties": 100
+    },
+    "snapshot": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {},
+        "projectId": {},
+        "title": {},
+        "sourceCommit": {},
+        "baseCommit": {},
+        "publicationRevision": {},
+        "jobId": {},
+        "packetId": {},
+        "candidateId": {},
+        "workflow": {},
+        "summary": {},
+        "decisions": {},
+        "verification": {},
+        "testData": {},
+        "productionAuthorized": {},
+        "artifactRef": {},
+        "document": {},
+        "catalog": {},
+        "createdAt": {},
+        "playable": {},
+        "kind": {},
+        "materializationStatus": {},
+        "assets": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object"
+          }
+        },
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "maxProperties": 100
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true,
+        "maxProperties": 100
+      }
+    },
+    "previews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "artifactRef": {
+            "type": "object"
+          },
+          "attemptId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "STOP_REQUESTED",
+              "UNKNOWN",
+              "STOPPED",
+              "FAILED"
+            ]
+          },
+          "result": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "artifactRef",
+          "attemptId",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "observations": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "maxProperties": 30
+    },
+    "sessionPreferences": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "roles": {
+          "type": "object",
+          "properties": {
+            "planner": {
+              "type": "object",
+              "properties": {
+                "modelKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "effort": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "maxDurationSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7200
+                    },
+                    "softTotalTokens": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 1,
+                      "maximum": 2000000
+                    }
+                  },
+                  "required": [
+                    "maxDurationSeconds",
+                    "softTotalTokens"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "modelKey",
+                "effort",
+                "limits"
+              ],
+              "additionalProperties": false
+            },
+            "producer": {
+              "type": "object",
+              "properties": {
+                "modelKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "effort": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "maxDurationSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7200
+                    },
+                    "softTotalTokens": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 1,
+                      "maximum": 2000000
+                    }
+                  },
+                  "required": [
+                    "maxDurationSeconds",
+                    "softTotalTokens"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "modelKey",
+                "effort",
+                "limits"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "revision",
+        "roles"
+      ],
+      "additionalProperties": false
+    },
+    "sessionCatalog": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "catalog"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runnerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "catalogRevision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "observedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nativeVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "environment": {
+          "type": [
+            "string",
+            "object",
+            "null"
+          ]
+        },
+        "models": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "properties": {
+              "modelKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "modelProvider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supportedReasoningEfforts": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "object"
+                  ]
+                }
+              },
+              "inputModalities": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "defaultReasoningEffort": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isDefault": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "modelKey",
+              "modelProvider",
+              "supportedReasoningEfforts",
+              "inputModalities"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "runnerOnline": {
+          "type": "boolean"
+        },
+        "catalogFresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "storeId",
+        "projectId",
+        "runnerId",
+        "catalogRevision",
+        "observedAt",
+        "nativeVersion",
+        "environment",
+        "models",
+        "available",
+        "capabilities"
+      ],
+      "additionalProperties": false
+    },
+    "feedback": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true,
+        "maxProperties": 100
+      }
+    },
+    "catalog": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "maxProperties": 500
+    },
+    "document": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "publicationRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workbenchResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "itemId",
+          "kind",
+          "objectId",
+          "status",
+          "workflowStatus",
+          "technicalVerification",
+          "userAcceptance"
+        ],
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "field",
+              "feedback",
+              "operation"
+            ]
+          },
+          "objectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "workflowStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "technicalVerification": {
+            "type": "string"
+          },
+          "userAcceptance": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "repairContext": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "projectId": {
+          "type": "string"
+        },
+        "sourceCommit": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "REPAIR"
+        },
+        "document": {
+          "type": "object"
+        },
+        "catalog": {
+          "type": "object"
+        },
+        "assets": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object"
+          }
+        },
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "storeId",
+    "projectId",
+    "throughSequence",
+    "phase",
+    "step",
+    "attention",
+    "allowedActions",
+    "apiVersion",
+    "workspaceId",
+    "name",
+    "testData",
+    "productionAuthorized",
+    "projects",
+    "proposals",
+    "packets",
+    "jobs",
+    "capabilities",
+    "iterationReady",
+    "iterationReadyReason",
+    "project",
+    "proposal",
+    "packet",
+    "job",
+    "snapshot",
+    "candidates",
+    "observations",
+    "previews",
+    "sessionPreferences",
+    "sessionCatalog",
+    "feedback",
+    "serviceInstanceId"
+  ],
+  "additionalProperties": false
+}

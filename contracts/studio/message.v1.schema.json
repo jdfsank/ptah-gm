@@ -1,0 +1,2689 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ptah.studio/contracts/studio/message.v1.schema.json",
+  "title": "Studio message v1",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/command"
+    },
+    {
+      "$ref": "#/$defs/receipt"
+    },
+    {
+      "$ref": "#/$defs/event"
+    },
+    {
+      "$ref": "#/$defs/executionReport"
+    },
+    {
+      "$ref": "#/$defs/reportAck"
+    },
+    {
+      "$ref": "#/$defs/error"
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expected": {
+      "type": "object",
+      "properties": {
+        "preferencesRevision": {
+          "$ref": "#/$defs/revision"
+        },
+        "publicationRevision": {
+          "$ref": "#/$defs/revision"
+        },
+        "proposalRevision": {
+          "$ref": "#/$defs/revision"
+        },
+        "sourceCommit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "feedback": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "feedbackId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "objectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "category": {
+            "enum": [
+              "general",
+              "bug",
+              "visual",
+              "behavior"
+            ]
+          }
+        },
+        "required": [
+          "feedbackId",
+          "objectId",
+          "message",
+          "category"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "workbenchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "kind": {
+              "const": "set-lock"
+            },
+            "objectId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "before": {
+              "enum": [
+                "fixed",
+                "nudge",
+                "free"
+              ]
+            },
+            "lock": {
+              "enum": [
+                "fixed",
+                "nudge",
+                "free"
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "objectId",
+            "before",
+            "lock"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "const": "move"
+            },
+            "objectId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "before": {
+              "$ref": "#/$defs/position"
+            },
+            "requested": {
+              "$ref": "#/$defs/position"
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "lock": {
+              "enum": [
+                "fixed",
+                "nudge",
+                "free"
+              ]
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "objectId",
+            "requested"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "const": "new-scene"
+            },
+            "sceneId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "template": {
+              "enum": [
+                "blank",
+                "minimal"
+              ]
+            },
+            "bounds": {
+              "$ref": "#/$defs/positivePair"
+            },
+            "connections": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "sceneId",
+            "name",
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "const": "new-instance"
+            },
+            "instanceId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "definitionId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "sceneId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "requestedPosition": {
+              "$ref": "#/$defs/position"
+            },
+            "size": {
+              "$ref": "#/$defs/positivePair"
+            },
+            "anchor": {
+              "$ref": "#/$defs/normalizedPair"
+            },
+            "lock": {
+              "enum": [
+                "fixed",
+                "nudge",
+                "free"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "instanceId",
+            "name",
+            "definitionId",
+            "sceneId",
+            "requestedPosition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "const": "delete-instance"
+            },
+            "objectId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "objectId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "const": "transition"
+            },
+            "objectId": {
+              "$ref": "#/$defs/stableId"
+            },
+            "from": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "sceneId": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^(?:[a-z0-9][a-z0-9_-]{0,63})?$"
+            },
+            "entryId": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^(?:[a-z0-9][a-z0-9_-]{0,63})?$"
+            },
+            "condition": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "mode": {
+              "enum": [
+                "未设置",
+                "无过渡",
+                "共享预设",
+                "unset",
+                "none",
+                "preset"
+              ]
+            },
+            "presetId": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^(?:[a-z0-9][a-z0-9_-]{0,63})?$"
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "operationId",
+            "kind"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "sceneId"
+              ]
+            },
+            {
+              "required": [
+                "entryId"
+              ]
+            },
+            {
+              "required": [
+                "condition"
+              ]
+            },
+            {
+              "required": [
+                "mode"
+              ]
+            },
+            {
+              "required": [
+                "presetId"
+              ]
+            }
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "position": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "positivePair": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "normalizedPair": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "command": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "command"
+        },
+        "type": {
+          "enum": [
+            "project.create",
+            "project.settings.update",
+            "session.preferences.update",
+            "concept.submit",
+            "iteration.submit",
+            "proposal.revise",
+            "proposal.freeze",
+            "production.start",
+            "execution.cancel",
+            "execution.reconcile",
+            "preview.start",
+            "preview.stop",
+            "candidate.accept",
+            "candidate.reject",
+            "proposal.assets.attach",
+            "production.recover"
+          ]
+        },
+        "storeId": {
+          "$ref": "#/$defs/id"
+        },
+        "projectId": {
+          "$ref": "#/$defs/id"
+        },
+        "commandId": {
+          "$ref": "#/$defs/id"
+        },
+        "expected": {
+          "$ref": "#/$defs/expected"
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "type",
+        "storeId",
+        "commandId"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "project.create"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/projectCreate"
+              }
+            },
+            "required": [
+              "payload"
+            ],
+            "not": {
+              "required": [
+                "projectId"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "project.settings.update"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/projectSettings"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "session.preferences.update"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/preferences"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "concept.submit"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/concept"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "preferencesRevision",
+                      "publicationRevision",
+                      "sourceCommit"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "iteration.submit"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/iteration"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "preferencesRevision",
+                      "publicationRevision",
+                      "sourceCommit"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "proposal.revise"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/revise"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "preferencesRevision",
+                      "publicationRevision",
+                      "sourceCommit"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "proposal.freeze"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/freeze"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "proposalRevision",
+                      "publicationRevision"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "production.start"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/start"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "preferencesRevision",
+                      "publicationRevision"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "execution.cancel"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/executionControl"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "execution.reconcile"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/executionControl"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "preview.start"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/previewStart"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "preview.stop"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/previewStop"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "candidate.accept",
+                  "candidate.reject"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/candidateDecision"
+              }
+            },
+            "required": [
+              "payload",
+              "projectId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "proposal.assets.attach"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/attachAssets"
+              },
+              "expected": {
+                "allOf": [
+                  {
+                    "required": [
+                      "proposalRevision",
+                      "publicationRevision"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "payload",
+              "projectId",
+              "expected"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "production.recover"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/recoverProduction"
+              },
+              "expected": {
+                "required": [
+                  "publicationRevision"
+                ]
+              }
+            },
+            "required": [
+              "projectId",
+              "payload",
+              "expected"
+            ]
+          }
+        }
+      ]
+    },
+    "projectCreate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "projectSettings": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "archived": {
+          "type": "boolean"
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "preferences": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "enum": [
+            "planner",
+            "producer"
+          ]
+        },
+        "modelKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "maxDurationSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7200
+            },
+            "softTotalTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 2000000
+            }
+          },
+          "required": [
+            "maxDurationSeconds",
+            "softTotalTokens"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "role",
+        "modelKey",
+        "effort",
+        "limits"
+      ],
+      "additionalProperties": false
+    },
+    "concept": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "assetRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "feedback": {
+          "$ref": "#/$defs/feedback"
+        },
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "text",
+        "assetRefs"
+      ],
+      "additionalProperties": false
+    },
+    "iteration": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "assetRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "targetObjectIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "objectId": {
+                "$ref": "#/$defs/id"
+              },
+              "fieldId": {
+                "$ref": "#/$defs/id"
+              },
+              "value": {}
+            },
+            "required": [
+              "objectId",
+              "fieldId",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "feedback": {
+          "$ref": "#/$defs/feedback"
+        },
+        "operations": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/workbenchOperation"
+          }
+        },
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "text",
+        "assetRefs",
+        "targetObjectIds",
+        "fields",
+        "feedback"
+      ],
+      "additionalProperties": false
+    },
+    "revise": {
+      "type": "object",
+      "properties": {
+        "proposalId": {
+          "$ref": "#/$defs/id"
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionId": {
+                "$ref": "#/$defs/id"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            },
+            "required": [
+              "questionId",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "supplement": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "feedback": {
+          "$ref": "#/$defs/feedback"
+        },
+        "assetRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "visualReferences": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": [
+              "assetId",
+              "intent",
+              "targetObjectIds",
+              "preserve",
+              "unknown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "assetId": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "targetObjectIds": {
+                "type": "array",
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+                }
+              },
+              "preserve": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "unknown": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "proposalId"
+      ],
+      "additionalProperties": false
+    },
+    "freeze": {
+      "type": "object",
+      "properties": {
+        "proposalId": {
+          "$ref": "#/$defs/id"
+        },
+        "reviewedPlanRef": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "proposalId",
+        "reviewedPlanRef"
+      ],
+      "additionalProperties": false
+    },
+    "start": {
+      "type": "object",
+      "properties": {
+        "packetId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "packetId"
+      ],
+      "additionalProperties": false
+    },
+    "executionControl": {
+      "type": "object",
+      "properties": {
+        "ownerRef": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "proposal",
+                "job",
+                "preview",
+                "visual-plan"
+              ]
+            },
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "attemptId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "ownerRef",
+        "attemptId"
+      ],
+      "additionalProperties": false
+    },
+    "previewStart": {
+      "type": "object",
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/id"
+        },
+        "snapshotId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "candidateId"
+          ]
+        },
+        {
+          "required": [
+            "snapshotId"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "previewStop": {
+      "type": "object",
+      "properties": {
+        "previewId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "previewId"
+      ],
+      "additionalProperties": false
+    },
+    "candidateDecision": {
+      "type": "object",
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/id"
+        },
+        "sourceCommit": {
+          "$ref": "#/$defs/id"
+        },
+        "experienceDecisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feedbackId": {
+                "$ref": "#/$defs/id"
+              },
+              "status": {
+                "enum": [
+                  "accepted",
+                  "needs_followup",
+                  "resolved"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "feedbackId",
+              "status",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "candidateId",
+        "sourceCommit"
+      ],
+      "additionalProperties": false
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "receipt"
+        },
+        "type": {
+          "type": "string"
+        },
+        "storeId": {
+          "$ref": "#/$defs/id"
+        },
+        "projectId": {
+          "$ref": "#/$defs/id"
+        },
+        "commandId": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "rejected"
+          ]
+        },
+        "resource": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/resource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 400,
+              "maximum": 599
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "type",
+        "storeId",
+        "commandId",
+        "resource",
+        "result",
+        "status"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "accepted"
+            },
+            "resource": {
+              "$ref": "#/$defs/resource"
+            },
+            "result": {
+              "type": "object"
+            }
+          },
+          "not": {
+            "required": [
+              "error"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "rejected"
+            },
+            "resource": {
+              "type": "null"
+            },
+            "result": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "error"
+          ]
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "event"
+        },
+        "type": {
+          "type": "string"
+        },
+        "storeId": {
+          "$ref": "#/$defs/id"
+        },
+        "projectId": {
+          "$ref": "#/$defs/id"
+        },
+        "eventId": {
+          "$ref": "#/$defs/id"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "type",
+        "storeId",
+        "projectId",
+        "eventId",
+        "sequence",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "executionReport": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "execution_report"
+        },
+        "type": {
+          "enum": [
+            "started",
+            "activity",
+            "usage",
+            "completed",
+            "stopped",
+            "failed"
+          ]
+        },
+        "storeId": {
+          "$ref": "#/$defs/id"
+        },
+        "projectId": {
+          "$ref": "#/$defs/id"
+        },
+        "runnerId": {
+          "$ref": "#/$defs/id"
+        },
+        "reportId": {
+          "$ref": "#/$defs/id"
+        },
+        "attemptId": {
+          "$ref": "#/$defs/id"
+        },
+        "taskKind": {
+          "enum": [
+            "plan",
+            "produce",
+            "verify",
+            "preview",
+            "visual-plan"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "type",
+        "storeId",
+        "projectId",
+        "runnerId",
+        "reportId",
+        "attemptId",
+        "taskKind",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "started"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "nativeIdentity": {
+                    "type": "object",
+                    "properties": {
+                      "threadId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "turnId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "processId": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "processGroupId": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      },
+                      "processStartTime": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "threadId",
+                      "turnId",
+                      "processId",
+                      "processGroupId",
+                      "processStartTime"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "startedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "requestedProfile": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "modelKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "modelProvider": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "effort": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "modelKey",
+                          "modelProvider",
+                          "effort"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reportedProfile": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "modelKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "modelProvider": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "effort": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "modelKey",
+                          "modelProvider",
+                          "effort"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "threadStartReported": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "model": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "provider": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasoningEffort": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "model",
+                          "provider",
+                          "reasoningEffort"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "turnStartAcknowledged": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "turnId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "turnId",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "actualProfile": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "modelKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "modelProvider": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "effort": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "modelKey",
+                          "modelProvider",
+                          "effort"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "nativeIdentity",
+                  "startedAt",
+                  "requestedProfile",
+                  "reportedProfile",
+                  "threadStartReported",
+                  "turnStartAcknowledged",
+                  "actualProfile"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "activity"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "activityKind": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 240
+                  }
+                },
+                "required": [
+                  "activityKind",
+                  "observedAt",
+                  "summary"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "usage"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "totalTokens": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "observedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "coverage": {
+                    "enum": [
+                      "unknown",
+                      "native_thread",
+                      "incomplete"
+                    ]
+                  }
+                },
+                "required": [
+                  "totalTokens",
+                  "observedAt",
+                  "coverage"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "result": {
+                    "type": "object"
+                  },
+                  "artifactRef": {
+                    "type": "object",
+                    "properties": {
+                      "artifactId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "projectId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "jobId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "attemptId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sourceCommit": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "inputCommit": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "packetId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "artifactId",
+                      "projectId",
+                      "jobId",
+                      "attemptId",
+                      "sourceCommit",
+                      "inputCommit",
+                      "packetId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "sourceCommit": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "stopped": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "result"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "stopped"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "stopped": {
+                    "type": "boolean"
+                  },
+                  "stopReason": {
+                    "enum": [
+                      "cancelled",
+                      "time_limit",
+                      "soft_budget",
+                      "native_error",
+                      "requested",
+                      "unknown"
+                    ]
+                  },
+                  "diagnosticRef": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "nativeFailure": {
+                    "$ref": "#/$defs/nativeFailure"
+                  }
+                },
+                "required": [
+                  "stopped",
+                  "stopReason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "payload": {
+                      "required": [
+                        "nativeFailure"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "taskKind": {
+                      "enum": [
+                        "plan",
+                        "produce",
+                        "visual-plan"
+                      ]
+                    },
+                    "payload": {
+                      "properties": {
+                        "stopReason": {
+                          "const": "native_error"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "stopped": {
+                    "type": "boolean"
+                  },
+                  "stopReason": {
+                    "enum": [
+                      "cancelled",
+                      "time_limit",
+                      "soft_budget",
+                      "native_error",
+                      "requested",
+                      "unknown"
+                    ]
+                  },
+                  "diagnosticRef": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "launchPrevented": {
+                    "const": true
+                  },
+                  "nativeFailure": {
+                    "$ref": "#/$defs/nativeFailure"
+                  }
+                },
+                "required": [
+                  "stopped",
+                  "stopReason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "payload"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "payload": {
+                      "required": [
+                        "launchPrevented"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "payload"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "taskKind": {
+                      "enum": [
+                        "plan",
+                        "produce",
+                        "visual-plan"
+                      ]
+                    },
+                    "payload": {
+                      "properties": {
+                        "stopped": {
+                          "const": true
+                        },
+                        "stopReason": {
+                          "const": "native_error"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "payload": {
+                      "required": [
+                        "nativeFailure"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "taskKind": {
+                      "enum": [
+                        "plan",
+                        "produce",
+                        "visual-plan"
+                      ]
+                    },
+                    "payload": {
+                      "properties": {
+                        "stopReason": {
+                          "const": "native_error"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "completed"
+              },
+              "taskKind": {
+                "const": "plan"
+              }
+            },
+            "required": [
+              "type",
+              "taskKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "properties": {
+                  "result": {
+                    "oneOf": [
+                      {
+                        "$ref": "planner-result.v1.schema.json"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "response": {
+                            "oneOf": [
+                              {
+                                "$ref": "planner-result.v1.schema.json"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "response"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "completed"
+              },
+              "taskKind": {
+                "const": "verify"
+              }
+            },
+            "required": [
+              "type",
+              "taskKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "properties": {
+                  "result": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "PASS",
+                          "FAIL"
+                        ]
+                      },
+                      "sourceCommit": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sourceUnchanged": {
+                        "type": "boolean"
+                      },
+                      "checks": {
+                        "type": "array",
+                        "maxItems": 200,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "status": {
+                              "enum": [
+                                "PASS",
+                                "FAIL",
+                                "SKIPPED"
+                              ]
+                            },
+                            "summary": {
+                              "type": "string",
+                              "maxLength": 400
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "evidenceRef": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "sourceCommit",
+                      "sourceUnchanged",
+                      "checks",
+                      "evidenceRef"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reportAck": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "report_ack"
+        },
+        "reportId": {
+          "$ref": "#/$defs/id"
+        },
+        "disposition": {
+          "enum": [
+            "recorded",
+            "evidence_only",
+            "rejected"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "reportId",
+        "disposition",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "studio.message.v1"
+        },
+        "kind": {
+          "const": "error"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "correlationId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "code",
+        "message",
+        "retryable",
+        "correlationId"
+      ],
+      "additionalProperties": false
+    },
+    "executionRequestArtifactRef": {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "jobId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceCommit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputCommit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "packetId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "artifactId",
+        "projectId",
+        "jobId",
+        "attemptId",
+        "sourceCommit",
+        "inputCommit",
+        "packetId"
+      ],
+      "additionalProperties": false
+    },
+    "attachAssets": {
+      "type": "object",
+      "properties": {
+        "proposalId": {
+          "$ref": "#/$defs/id"
+        },
+        "bundleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "proposalId",
+        "bundleId"
+      ],
+      "additionalProperties": false
+    },
+    "recoverProduction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "attemptId",
+        "artifactRef"
+      ],
+      "properties": {
+        "jobId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artifactRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifactId",
+            "projectId",
+            "jobId",
+            "attemptId",
+            "sourceCommit",
+            "inputCommit",
+            "packetId"
+          ],
+          "properties": {
+            "artifactId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "projectId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "jobId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "sourceCommit": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "inputCommit": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "packetId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        }
+      }
+    },
+    "nativeFailure": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "enum": [
+            "unknown",
+            "context_limit",
+            "rate_limit",
+            "authentication",
+            "timeout",
+            "stream_interrupted",
+            "network_error",
+            "provider_rejected",
+            "model_unavailable",
+            "cancelled",
+            "output_error"
+          ]
+        },
+        "nativeStatus": {
+          "enum": [
+            null,
+            "completed",
+            "failed",
+            "timeout",
+            "cancelled",
+            "uncertain",
+            "server_exited"
+          ]
+        },
+        "elapsedSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "connectionInterrupted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reason",
+        "nativeStatus",
+        "elapsedSeconds",
+        "connectionInterrupted"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

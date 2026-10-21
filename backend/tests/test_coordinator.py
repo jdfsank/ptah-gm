@@ -6,6 +6,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend.coordinator import Coordinator, WorkflowError
 
@@ -54,6 +55,10 @@ def fake_verify(path, operation, rules):
 
 class CoordinatorTests(unittest.TestCase):
     def setUp(self):
+        readiness = mock.patch("runners.editor_mcp.ensure_editor_mcp_ready", return_value={
+            "status": "PASS", "testDouble": True, "editorStopped": True, "sourceUnchanged": True})
+        readiness.start()
+        self.addCleanup(readiness.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         template = self.root / "backend/templates/collect_loop"
@@ -80,6 +85,32 @@ class CoordinatorTests(unittest.TestCase):
             expected_revision=p["revision"],
             answers=answers,
         )
+
+    def test_readiness_failure_prevents_local_producer_dispatch(self):
+        from runners.editor_mcp import EditorMCPError
+        for uncertain in (False, True):
+            packet = self.freeze(self.ready())
+            with mock.patch("runners.editor_mcp.ensure_editor_mcp_ready", side_effect=EditorMCPError(
+                    "editor not ready", report={"editorStopped": not uncertain})), \
+                 mock.patch.object(self.c, "driver_factory") as factory:
+                job = self.run_packet(packet)
+            factory.assert_not_called()
+            self.assertEqual(job["status"], "UNCERTAIN" if uncertain else "FAILED")
+
+    def test_readiness_editor_lease_is_checked_when_reconciling_local_job(self):
+        from runners.editor_mcp import EditorMCPError
+        report = {"editorStarted": True, "editorStopped": False, "processGroupId": 987654}
+        with mock.patch("runners.editor_mcp.ensure_editor_mcp_ready", side_effect=EditorMCPError(
+                "editor not stopped", report=report)):
+            job = self.run_packet(self.freeze(self.ready()))
+        self.assertEqual(job["status"], "UNCERTAIN")
+        with mock.patch("backend.coordinator.os.killpg"):
+            with self.assertRaises(WorkflowError) as error:
+                self.c.reconcile_job(operator_id=self.op, job_id=job["id"])
+            self.assertEqual(error.exception.code, "LEASE_ACTIVE")
+        with mock.patch("backend.coordinator.os.killpg", side_effect=ProcessLookupError):
+            reconciled = self.c.reconcile_job(operator_id=self.op, job_id=job["id"])
+        self.assertEqual(reconciled["status"], "CANCELLED")
 
     def freeze(self, p):
         return self.c.freeze_proposal(

@@ -15,14 +15,21 @@ import math
 import mimetypes
 import re
 import secrets
+import time
 from dataclasses import asdict, is_dataclass
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STUDIO_ROOT = REPO_ROOT / "frontend" / "studio"
 LEGACY_ROOT = REPO_ROOT / "frontend" / "dist"
+STUDIO_CONTRACTS_ROOT = REPO_ROOT / "contracts" / "studio"
+STUDIO_CONTRACT_FILES = frozenset({
+    "change-request.v1.schema.json", "execution.v1.schema.json",
+    "message.v1.schema.json", "planner-result.v1.schema.json", "objects.v1.schema.json",
+    "project-view.v1.schema.json",
+})
 MAX_JSON_BYTES = 2 * 1024 * 1024
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_ASSET_JSON_BYTES = ((MAX_IMAGE_BYTES + 2) // 3) * 4 + 16_384
@@ -224,6 +231,9 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _error(self, status: int, message: str):
+        if self.path.startswith(("/api/v1/", "/internal/v1/")):
+            return self._send_json(status, {"schemaVersion": "studio.message.v1", "kind": "error", "storeId": self.server.context.coordinator.store_id,
+                "error": {"code": "HTTP_ERROR", "message": message}})
         self._send_json(status, {"error": message})
 
     def _read_json(self, *, max_bytes=MAX_JSON_BYTES) -> dict:
@@ -303,27 +313,58 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
     def _path(self):
         parsed = urlsplit(self.path)
         # Studio restores project/stage from the page URL; API paths stay exact.
-        if parsed.fragment or (parsed.query and parsed.path != "/studio/"):
+        if parsed.fragment or (parsed.query and parsed.path != "/studio/" and not re.fullmatch(r"/api/v1/projects/[^/]+/events", parsed.path)):
             raise RequestError(
                 400, "Query parameters are not accepted on this endpoint."
             )
         return parsed.path
 
     def do_GET(self):
+        if self.path.startswith("/internal/v1/"):
+            return self._internal_get()
         if not self._same_origin(mutation=False):
             return self._error(403, "Only the configured loopback origin is allowed.")
         try:
             path = self._path()
+            if path.startswith("/api/v1/"):
+                return self._v1_get(path)
             scoped_project = None
             project_route = re.fullmatch(r"/api/projects/([^/]+)(/.*)", path)
             if project_route:
                 scoped_project = unquote(project_route.group(1))
                 _required_string(scoped_project, "projectId", pattern=ID_RE)
                 path = project_route.group(2)
+            if scoped_project and path == "/concept-references":
+                return self._send_json(200, {"requests": self.server.context.coordinator.concept_generations(scoped_project)})
+            if scoped_project and path in {"/visual-plans", "/concept-reference-batches"}:
+                c = self.server.context.coordinator
+                return self._send_json(200, {"plans": c.visual_plans(scoped_project)} if path == "/visual-plans" else {"batches": c.reference_batches(scoped_project)})
+            visual_context = re.fullmatch(r"/proposals/([A-Za-z0-9_-]+)/visual-context", path) if scoped_project else None
+            if visual_context:
+                return self._send_json(200, self.server.context.coordinator.visual_planning_context(scoped_project, visual_context.group(1)))
+            capture_match = re.fullmatch(r"/candidates/([A-Za-z0-9_-]+)/visuals", path) if scoped_project else None
+            if capture_match:
+                return self._send_json(200, {"captures": self.server.context.coordinator.candidate_visuals(scoped_project, capture_match.group(1))})
             if path == "/workspace" and scoped_project:
                 return self._send_json(200, self.server.context.coordinator.project_workspace(scoped_project))
             if path == "/workbench" and scoped_project:
                 return self._send_json(200, self.server.context.coordinator.workbench(scoped_project))
+            object_source = re.fullmatch(r"/objects/([^/]+)/(source|preview)", path) if scoped_project else None
+            if object_source:
+                object_id = unquote(object_source.group(1))
+                _required_string(object_id, "objectId", pattern=ID_RE)
+                image = object_source.group(2) == "preview"
+                result = self.server.context.coordinator.workbench_object_source(scoped_project, object_id, image=image)
+                if not image:
+                    return self._send_json(200, result)
+                data, mime_type = result
+                self.send_response(200)
+                self.send_header("Content-Type", mime_type)
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if scoped_project and not re.match(r"/(?:assets|proposals|packets|jobs)(?:/|$)", path):
                 raise RequestError(404, "Unknown project-scoped route.")
             if scoped_project and path.startswith("/") and path not in {"/settings", "/workspace"}:
@@ -402,6 +443,13 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                 return self._static(
                     self.server.legacy_root, path.removeprefix("/legacy/")
                 )
+            match = re.fullmatch(r"/api/jobs/([^/]+)/source-changes", path)
+            if match:
+                job_id = unquote(match.group(1))
+                _required_string(job_id, "jobId", pattern=ID_RE)
+                if not scoped_project:
+                    raise RequestError(404, "Project-scoped route required.")
+                return self._send_json(200, self.server.context.coordinator.workbench_source_changes(scoped_project, job_id))
             match = re.fullmatch(r"/api/jobs/([^/]+)", path)
             if match:
                 job_id = unquote(match.group(1))
@@ -441,6 +489,12 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             return self._error(403, "Only the configured loopback origin is allowed.")
         try:
             path = self._path()
+            contract_match = re.fullmatch(r"/api/v1/contracts/([^/]+)", path)
+            if contract_match:
+                filename = unquote(contract_match.group(1))
+                if filename not in STUDIO_CONTRACT_FILES:
+                    return self._error(404, "Not found.")
+                return self._static(STUDIO_CONTRACTS_ROOT, filename)
             if path == "/studio/":
                 return self._static(self.server.studio_root, "index.html")
             if path.startswith("/studio/"):
@@ -458,6 +512,8 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             self._error(exc.status, str(exc))
 
     def do_POST(self):
+        if self.path.startswith("/internal/v1/"):
+            return self._internal_post()
         if not self._authorized_mutation():
             return self._error(
                 403,
@@ -465,12 +521,44 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             )
         try:
             path = self._path()
+            if path.startswith("/api/v1/"):
+                return self._v1_post(path)
             scoped_project = None
             project_route = re.fullmatch(r"/api/projects/([^/]+)(/.*)", path)
             if project_route:
                 scoped_project = unquote(project_route.group(1))
                 _required_string(scoped_project, "projectId", pattern=ID_RE)
                 path = project_route.group(2)
+                getter = getattr(self.server.context.coordinator, "_get", None)
+                project = getter("project", scoped_project) if callable(getter) else {}
+                if path in {"/visual-plans", "/concept-reference-batches"}:
+                    body = self._read_json(max_bytes=512000)
+                    c = self.server.context.coordinator
+                    result = (c.create_visual_plan if path == "/visual-plans" else c.create_reference_batch)(operator_id=self.server.context.operator_id, project_id=scoped_project, request=body)
+                    return self._send_json(202, {"plan" if path == "/visual-plans" else "batch": result})
+                batch_control = re.fullmatch(r"/concept-reference-batches/([A-Za-z0-9_-]{16,100})/(pause|resume|cancel)", path)
+                if batch_control:
+                    _exact_fields(self._read_json(), set(), set())
+                    result = self.server.context.coordinator.control_reference_batch(operator_id=self.server.context.operator_id, project_id=scoped_project, batch_id=batch_control.group(1), action=batch_control.group(2))
+                    return self._send_json(200, {"batch": result})
+                if path == "/concept-references":
+                    body = self._read_json()
+                    result = self.server.context.coordinator.generate_concept_reference(operator_id=self.server.context.operator_id, project_id=scoped_project, request=body)
+                    return self._send_json(202, {"request": result})
+                capture_match = re.fullmatch(r"/candidates/([A-Za-z0-9_-]+)/visuals", path)
+                if capture_match:
+                    body = self._read_json(max_bytes=MAX_ASSET_JSON_BYTES)
+                    validate_upload(name=body.get('name'), mime_type=body.get('mimeType'), data_base64=body.get('dataBase64'), purpose='reference')
+                    result = self.server.context.coordinator.add_candidate_visual(operator_id=self.server.context.operator_id,
+                        project_id=scoped_project, candidate_id=capture_match.group(1), request=body)
+                    return self._send_json(201, {"capture": result})
+                reference_match = re.fullmatch(r"/concept-references/([A-Za-z0-9_-]{16,100})/reconcile", path)
+                if reference_match:
+                    _exact_fields(self._read_json(), set(), set())
+                    result = self.server.context.coordinator.reconcile_concept_reference(operator_id=self.server.context.operator_id, project_id=scoped_project, request_id=reference_match.group(1))
+                    return self._send_json(200, {"request": result})
+                if project.get("protocolVersion") == 1 and path != "/assets":
+                    raise RequestError(409, "This project requires persistent v1 command identities.")
             if scoped_project and path != "/settings" and not re.match(r"/(?:assets|proposals|packets|jobs|concepts)(?:/|$)", path):
                 raise RequestError(404, "Unknown project-scoped route.")
             if scoped_project and path.startswith("/") and path != "/settings":
@@ -522,7 +610,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                 body = self._read_json()
                 _exact_fields(
                     body,
-                    {"text", "projectId", "assetIds", "expectedPublicationRevision", "workflow", "changeRequest"},
+                    {"text", "projectId", "assetIds", "expectedPublicationRevision", "workflow", "changeRequest", "visualReferences"},
                     {"text"},
                 )
                 text = body["text"]
@@ -530,7 +618,7 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                 has_structured_change = (body.get("projectId") is not None and
                     isinstance(structured_change, dict) and
                     bool(structured_change.get("fields") or structured_change.get("feedback")))
-                if not isinstance(text, str) or len(text) > 5000 or (not text.strip() and not has_structured_change):
+                if not isinstance(text, str) or len(text) > 5000 or (not text.strip() and not has_structured_change and not body.get("visualReferences")):
                     raise RequestError(
                         400, "Provide concept text or explicit object fields/feedback for an existing project."
                     )
@@ -572,9 +660,10 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
                     )
                 result = self.server.context.coordinator.create_concept(
                     operator_id=self.server.context.operator_id,
-                    text=text.strip(),
+                    text=text,
                     project_id=project_id,
                     asset_ids=asset_ids,
+                    **({"visual_references": body["visualReferences"]} if "visualReferences" in body else {}),
                     expected_publication_revision=expected_pub,
                     **({"workflow": workflow} if workflow is not None else {}),
                     **({"change_request": change_request} if change_request is not None else {}),
@@ -774,6 +863,10 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
             self._coordinator_error(exc)
 
     def _coordinator_error(self, exc: Exception):
+        if self.path.startswith(("/api/v1/", "/internal/v1/")):
+            status = getattr(exc, "status", 400 if isinstance(exc, (ValueError, TypeError)) else 503)
+            return self._send_json(status, {"schemaVersion": "studio.message.v1", "kind": "error", "storeId": self.server.context.coordinator.store_id,
+                "error": {"code": getattr(exc, "code", "PROTOCOL_ERROR" if status == 400 else "SERVICE_ERROR"), "message": str(exc)[:500]}})
         status_value = getattr(exc, "status", None)
         if isinstance(status_value, int) and 400 <= status_value <= 599:
             serializer = getattr(exc, "as_dict", None)
@@ -811,6 +904,151 @@ class StudioRequestHandler(SimpleHTTPRequestHandler):
         if status == 503 and len(message) > 500:
             message = "The local workflow service is unavailable. Its state was not confirmed."
         self._send_json(status, {"error": message})
+
+    def _v1_get(self, path):
+        c = self.server.context.coordinator
+        image_match = re.fullmatch(r"/api/v1/projects/([^/]+)/image-bundles/(imagegen-[a-f0-9]{32})/images/([0-9]{1,2})", path)
+        if image_match:
+            pid, bundle_id, index = image_match.groups()
+            _required_string(pid, "projectId", pattern=ID_RE)
+            data = c.image_bundle_image(pid, bundle_id, int(index))
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(data)
+            return
+        contract_match = re.fullmatch(r"/api/v1/contracts/([^/]+)", path)
+        if contract_match:
+            filename = unquote(contract_match.group(1))
+            if filename not in STUDIO_CONTRACT_FILES:
+                raise RequestError(404, "Unknown contract schema.")
+            return self._static(STUDIO_CONTRACTS_ROOT, filename)
+        if path == "/api/v1/handshake":
+            return self._send_json(200, {"schemaVersion": "studio.message.v1", "kind": "handshake", "protocolVersion": 1,
+                "storeId": c.store_id, "serviceInstanceId": c.service_instance_id, "writeToken": self.server.context.token,
+                "readable": True, "writable": True, "capabilities": ["commands", "legacy-iteration-commands", "project-view", "events", "preferences", "runner-control"]})
+        if path == "/api/v1/projects":
+            return self._send_json(200, {**c.workspace_summary(), "schemaVersion": "studio.message.v1", "kind": "projects"})
+        match = re.fullmatch(r"/api/v1/commands/([^/]+)", path)
+        if match:
+            return self._send_json(200, c.command_lookup(None, unquote(match[1]), self.server.context.operator_id))
+        match = re.fullmatch(r"/api/v1/projects/([^/]+)/(view|session-preferences|session-catalog|events|plans/[^/]+|commands/[^/]+)", path)
+        if not match:
+            raise RequestError(404, "Unknown v1 route.")
+        pid, tail = unquote(match[1]), match[2]
+        _required_string(pid, "projectId", pattern=ID_RE)
+        c._get("project", pid)
+        if tail == "view":
+            return self._send_json(200, c.project_view(pid))
+        if tail == "session-catalog":
+            return self._send_json(200, c.session_catalog(pid))
+        if tail == "session-preferences":
+            return self._send_json(200, {"schemaVersion": "studio.message.v1", "kind": "preferences", "storeId": c.store_id, "projectId": pid, "preferences": c.session_preferences(pid)})
+        if tail.startswith("commands/"):
+            return self._send_json(200, c.command_lookup(pid, unquote(tail.split("/")[1]), self.server.context.operator_id))
+        if tail.startswith("plans/"):
+            from .studio_protocol import public
+            plan = c.require_project_resource(pid, "reviewed_plan", unquote(tail.split("/")[1]))
+            reviewed = public(plan["payload"])
+            reviewed.update({key: plan["payload"][key] for key in ("specInventory", "templateInventory", "sourceRefs") if key in plan["payload"]})
+            return self._send_json(200, {"schemaVersion": "studio.message.v1", "kind": "reviewed_plan", "storeId": c.store_id, "projectId": pid, "reviewedPlanRef": plan["id"], "plan": reviewed})
+        if not hmac.compare_digest(self.headers.get("X-Workbench-Token", ""), self.server.context.token):
+            raise RequestError(403, "Reconnect before subscribing to project events.")
+        query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+        if set(query)-{"after"} or len(query.get("after", []))>1:
+            raise RequestError(400, "Invalid event cursor query.")
+        raw = query.get("after", [self.headers.get("Last-Event-ID", "0")])[0]
+        if not re.fullmatch(r"\d{1,18}", raw):
+            raise RequestError(400, "Event cursor must be a nonnegative integer.")
+        after = int(raw)
+        events = c.events_after(pid, after)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        # Bounded connections reconnect from a persisted cursor; no event gaps.
+        deadline, keepalive = time.monotonic()+45, time.monotonic()+15
+        try:
+            while time.monotonic() < deadline and not c._closed:
+                for event in events:
+                    data = json.dumps(event, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+                    self.wfile.write(f"id: {event['sequence']}\nevent: project.changed\ndata: {data}\n\n".encode())
+                    after = event["sequence"]
+                if events or time.monotonic() >= keepalive:
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+                    keepalive = time.monotonic()+15
+                time.sleep(0.2)
+                events = c.events_after(pid, after)
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            pass
+
+    def _v1_post(self, path):
+        c = self.server.context.coordinator
+        body = self._read_json()
+        if path in {"/api/v1/projects", "/api/v1/commands"}:
+            if body.get("type") != "project.create":
+                raise RequestError(400, "Only project.create uses store scope.")
+            return self._send_json(200, c.submit_command(body, operator_id=self.server.context.operator_id))
+        match = re.fullmatch(r"/api/v1/projects/([^/]+)(/.*)", path)
+        if not match:
+            raise RequestError(404, "Unknown v1 command route.")
+        pid, tail = unquote(match[1]), match[2]
+        _required_string(pid, "projectId", pattern=ID_RE)
+        expected_type = {"/settings": "project.settings.update", "/concepts": "concept.submit", "/iterations": "iteration.submit", "/jobs": "production.start", "/session-preferences": "session.preferences.update"}.get(tail)
+        typed = re.fullmatch(r"/(proposals|executions|candidates|previews)/([^/]+)/(revise|freeze|cancel|reconcile|accept|reject|stop|previews)", tail)
+        if typed:
+            family, resource, action = typed.groups()
+            expected_type = {"proposals": "proposal", "executions": "execution", "candidates": "candidate", "previews": "preview"}[family]+"."+action
+            if action == "previews": expected_type = "preview.start"
+            key = {"proposals": "proposalId", "executions": "attemptId", "candidates": "candidateId", "previews": "previewId"}[family]
+            if (body.get("payload") or {}).get(key) != unquote(resource):
+                raise RequestError(400, "Command resource does not match route.")
+        if tail != "/commands" and (expected_type is None or body.get("type") != expected_type):
+            raise RequestError(400, "Command type does not match route.")
+        return self._send_json(200, c.submit_command(body, operator_id=self.server.context.operator_id, project_id=pid))
+
+    def _runner_authorized(self):
+        return hmac.compare_digest(self.headers.get("X-Runner-Token", ""), self.server.context.coordinator.runner_token)
+
+    def _internal_get(self):
+        if not self._runner_authorized():
+            return self._error(403, "Runner authorization required.")
+        try:
+            c, path = self.server.context.coordinator, self._path()
+            runner_id = self.headers.get("X-Runner-Id", "")
+            if path == "/internal/v1/handshake":
+                return self._send_json(200, {"storeId": c.store_id, "serviceInstanceId": c.service_instance_id})
+            match = re.fullmatch(r"/internal/v1/attempts/([^/]+)/input", path)
+            if match:
+                return self._send_json(200, c.runner_input(runner_id, unquote(match[1])))
+            match = re.fullmatch(r"/internal/v1/reports/([^/]+)", path)
+            if match:
+                return self._send_json(200, c.report_lookup(runner_id, unquote(match[1])))
+            raise RequestError(404, "Unknown runner route.")
+        except Exception as exc:
+            self._coordinator_error(exc)
+
+    def _internal_post(self):
+        if not self._runner_authorized():
+            return self._error(403, "Runner authorization required.")
+        try:
+            c, path, body = self.server.context.coordinator, self._path(), self._read_json()
+            if self.headers.get("X-Runner-Id") != body.get("runnerId"):
+                raise RequestError(403, "Runner identity does not match authorization header.")
+            handlers = {"register": c.register_runner, "catalog": c.update_runner_catalog, "claim": c.claim_runner,
+                        "heartbeat": c.heartbeat_runner, "reports": c.report_runner, "reconcile": c.reconcile_runner}
+            operation = path.removeprefix("/internal/v1/")
+            if operation not in handlers:
+                raise RequestError(404, "Unknown runner route.")
+            return self._send_json(200, handlers[operation](body))
+        except Exception as exc:
+            self._coordinator_error(exc)
 
 
 def make_server(

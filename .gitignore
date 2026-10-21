@@ -19,3 +19,22 @@
 /.workbench/
 /.selfcheck/
 /evidence/workflow/*/schema/
+
+# Local runtime output and generated verification evidence.
+/output/
+/tmp/
+/evidence/workflow/
+*.log
+**/.pytest_cache/
+**/.mypy_cache/
+**/.coverage
+**/htmlcov/
+
+# Local credentials and machine-specific configuration.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import copy
 import fcntl
 import io
 import json
@@ -111,9 +112,13 @@ class _ApprovalStore:
 
 
 from .generic_workflow import GenericWorkflow
+from .studio_protocol import StudioProtocol
+from .concept_references import ConceptReferences
+from .candidate_visuals import CandidateVisuals
+from .visual_plans import VisualPlans
 
 
-class Coordinator(GenericWorkflow):
+class Coordinator(StudioProtocol, GenericWorkflow, ConceptReferences, CandidateVisuals, VisualPlans):
     def __init__(
         self, root, state_root=None, test_data=False, driver_factory=None, verifier=None,
         planner_driver_factory=None, generic_driver_factory=None, generic_verifier=None,
@@ -157,6 +162,8 @@ class Coordinator(GenericWorkflow):
                 409, "SERVICE_ACTIVE", "同一工作区已有后端运行。"
             ) from exc
         self.lock = threading.RLock()
+        self._transaction_depth = 0
+        self._after_commit = []
         self.db_path = self.state_root / "state.sqlite3"
         self.db = sqlite3.connect(self.db_path, check_same_thread=False)
         self.db.execute("PRAGMA journal_mode=WAL")
@@ -166,6 +173,7 @@ class Coordinator(GenericWorkflow):
             CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
         """)
         self.db.commit()
+        self._init_studio_protocol()
         self.db_path.chmod(0o600)
         mode = self.db.execute(
             "SELECT value FROM meta WHERE key='test_data'"
@@ -198,6 +206,12 @@ class Coordinator(GenericWorkflow):
             )
             for job in self._all("job"):
                 if job["status"] in ACTIVE - {"READY_FOR_REVIEW"}:
+                    if job.get("executionBackend") == "runners":
+                        attempt = self._get("attempt", job["attemptId"])
+                        if attempt["status"] in {"QUEUED", "PREPARING"}:
+                            continue
+                        attempt["status"] = "UNKNOWN"
+                        self._put("attempt", attempt)
                     job.update(
                         status="UNCERTAIN",
                         message="服务重启：此前执行的停止状态尚未确认；保留项目独占，禁止重投。",
@@ -207,29 +221,65 @@ class Coordinator(GenericWorkflow):
                 if proposal.get("workflow") == "objects-v1" and proposal["status"] in {
                     "PLANNING", "PLANNING_CANCELLING"
                 }:
+                    if proposal.get("protocolVersion") == 1:
+                        attempt = self._get("attempt", proposal["attemptId"])
+                        if attempt["status"] == "QUEUED":
+                            continue
+                        attempt["status"] = "UNKNOWN"
+                        self._put("attempt", attempt)
                     proposal.update(status="PLANNING_UNCERTAIN", summary="服务重启：策划停止状态尚未确认，不自动重新派发。")
                     self._put("proposal", proposal)
+            for attempt in self._all("attempt"):
+                if attempt["taskKind"] in {"preview", "visual-plan"} and attempt["status"] in {"LEASED", "RUNNING", "CANCEL_REQUESTED"}:
+                    attempt["status"] = "UNKNOWN"
+                    self._put("attempt", attempt)
+                    self._owner_state(attempt, uncertain=True)
         self._threads = {}
         self._cancels = {}
         self._previews = []
         self._closed = False
+        self._init_concept_references()
+        for pending in self._all("attempt"):
+            if pending.get("status") == "PREPARING":
+                self.prepare_runner_input(pending["id"])
+        for snapshot in self._all("snapshot"):
+            if snapshot.get("artifactRef") and snapshot.get("materializationStatus") != "READY":
+                self.materialize_snapshot(snapshot["id"])
 
     @contextlib.contextmanager
     def transaction(self):
         with self.lock:
-            self.db.execute("BEGIN IMMEDIATE")
+            outer = self._transaction_depth == 0
+            savepoint = f"nested_{self._transaction_depth}"
+            self.db.execute("BEGIN IMMEDIATE" if outer else f"SAVEPOINT {savepoint}")
+            self._transaction_depth += 1
+            callbacks_at_entry = len(self._after_commit)
             try:
                 yield
-                self.db.commit()
+                self.db.execute("COMMIT" if outer else f"RELEASE {savepoint}")
             except BaseException:
-                self.db.rollback()
+                if outer:
+                    self.db.rollback()
+                else:
+                    self.db.execute(f"ROLLBACK TO {savepoint}")
+                    self.db.execute(f"RELEASE {savepoint}")
+                del self._after_commit[callbacks_at_entry:]
                 raise
+            finally:
+                self._transaction_depth -= 1
+            if outer:
+                callbacks, self._after_commit = self._after_commit, []
+                for callback in callbacks:
+                    callback()
 
     def _put(self, kind, value):
+        previous = self.db.execute("SELECT payload FROM entities WHERE kind=? AND id=?", (kind, value["id"])).fetchone()
         self.db.execute(
             "INSERT OR REPLACE INTO entities VALUES(?,?,?)",
             (kind, value["id"], canonical(value)),
         )
+        if previous is None or previous[0] != canonical(value):
+            self._record_public_change(kind, value)
 
     def _get(self, kind, entity_id):
         row = self.db.execute(
@@ -266,18 +316,19 @@ class Coordinator(GenericWorkflow):
     def _available(self, project_id):
         if self._get("project", project_id).get("archived"):
             raise WorkflowError(409, "PROJECT_ARCHIVED", "已归档项目不能继续提交策划或制作。")
-        for proposal in self._all("proposal"):
-            if proposal["projectId"] == project_id and proposal["status"] in {
-                "PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"
-            }:
-                raise WorkflowError(409, "PROJECT_BUSY", "项目的策划仍在执行或状态待核实。")
-        for job in self._all("job"):
-            if job["projectId"] == project_id and job["status"] in ACTIVE:
-                raise WorkflowError(
-                    409,
-                    "PROJECT_BUSY",
-                    "项目有正在执行、待审阅或状态未知的作业；请先处理该作业。",
-                )
+        for kind, statuses, message in (
+            ("proposal", {"PLANNING", "PLANNING_CANCELLING", "PLANNING_UNCERTAIN"},
+             "项目的策划仍在执行或状态待核实。"),
+            ("job", ACTIVE, "项目有正在执行、待审阅或状态未知的作业；请先处理该作业。"),
+        ):
+            placeholders = ",".join("?" for _ in statuses)
+            occupied = self.db.execute(
+                "SELECT 1 FROM entities WHERE kind=? AND json_extract(payload,'$.projectId')=? "
+                f"AND json_extract(payload,'$.status') IN ({placeholders}) LIMIT 1",
+                (kind, project_id, *sorted(statuses)),
+            ).fetchone()
+            if occupied:
+                raise WorkflowError(409, "PROJECT_BUSY", message)
 
     def capabilities(self):
         codex = shutil.which("codex") or next(
@@ -343,10 +394,19 @@ class Coordinator(GenericWorkflow):
     def workspace_summary(self):
         """Small project-manager payload; project contents load on demand."""
         with self.lock:
-            projects = [{key: project[key] for key in (
-                "id", "title", "workflow", "templateId", "publicationRevision",
-                "snapshotId", "createdAt", "updatedAt", "archived"
-            ) if key in project} for project in self._all("project")]
+            projects = []
+            for project in self._all("project"):
+                summary = {key: project[key] for key in (
+                    "id", "title", "workflow", "templateId", "publicationRevision",
+                    "snapshotId", "createdAt", "updatedAt", "archived", "protocolVersion", "executionBackend"
+                ) if key in project}
+                latest = [(self._all_project(kind, project["id"]) or [None])[0]
+                    for kind in ("proposal", "packet", "job", "attempt")]
+                proposal, packet, job, attempt = latest
+                phase, step, attention, _ = self._view_state(project, proposal, packet, job,
+                    project.get("snapshotId"), attempt, self.repair_context(project["id"]))
+                summary["workflowState"] = {"phase": phase, "step": step, "attention": attention}
+                projects.append(summary)
             return {
                 "apiVersion": "objects-v1", "workspaceId": "test" if self.test_data else "local",
                 "storeId": self.store_id,
@@ -378,6 +438,76 @@ class Coordinator(GenericWorkflow):
             }
             value.update(self.iteration_status(project_id))
             return value
+
+    def repair_context(self, project_id):
+        """Retained failed or rejected source is a repair base, never a publication."""
+        project = self._get("project", project_id)
+        jobs = self._all_project("job", project_id)
+        job = next((item for item in jobs if item.get("status") == "REJECTED" or
+            item.get("status") == "FAILED" and (item.get("verification") or {}).get("status") == "FAIL"), None)
+        if project.get("archived") or project.get("workflow") != "objects-v1" or not job:
+            return None
+        if job["status"] == "FAILED":
+            return self._verification_repair_context(project, job)
+        candidate = job.get("candidate") or {}
+        if not job.get("packetId") or not candidate.get("document") or not job.get("decisionEventId"):
+            return None
+        packet = self.require_project_resource(project_id, "packet", job["packetId"])
+        event = _ApprovalStore(self.db).get(job.get("decisionEventId")) if job.get("decisionEventId") else None
+        if (packet.get("publicationRevision") != project["publicationRevision"] or
+                candidate.get("verification", {}).get("status") != "PASS" or
+                not candidate.get("candidateCommit") or not candidate.get("document") or
+                not event or event.get("action") != "changes_requested" or
+                event.get("phase") != "run_acceptance" or event.get("projectId") != project_id or
+                event.get("jobId") != job["id"] or event.get("candidateId") != candidate.get("id")):
+            return None
+        return self._enrich_workbench_snapshot({"projectId": project_id, "workflow": "objects-v1", "kind": "REPAIR", "playable": False,
+            "publicationRevision": project["publicationRevision"], "jobId": job["id"], "candidateId": candidate["id"],
+            "sourceCommit": candidate["candidateCommit"], "title": "候选返修工作台",
+            "assets": copy.deepcopy(packet.get("assets", [])),
+            "visualReferences": copy.deepcopy(packet.get("visualReferences", [])),
+            "summary": "此候选已拒绝发布。基于保留的代码和对象计划提交问题与调整，重新策划、制作、验证后再次验收。",
+            "document": candidate["document"], "catalog": candidate.get("catalog", {})})
+
+    def _verification_repair_context(self, project, job):
+        """Only a completed exact verification FAIL may expose retained repair source."""
+        from .object_protocol import catalog_from_document
+        ref, verification = job.get("artifactRef") or {}, job.get("verification") or {}
+        if not job.get("packetId") or not job.get("verificationAttemptId"):
+            return None
+        packet = self.require_project_resource(project["id"], "packet", job["packetId"])
+        attempt = self.require_project_resource(project["id"], "attempt", job["verificationAttemptId"])
+        expected = {"projectId": project["id"], "jobId": job["id"], "packetId": packet["id"],
+            "artifactId": ref.get("artifactId"), "sourceCommit": ref.get("sourceCommit"),
+            "verificationAttemptId": attempt["id"], "productionAttemptId": job.get("productionAttemptId"),
+            "inputCommit": job.get("inputCommit")}
+        if (packet.get("publicationRevision") != project["publicationRevision"] or not packet.get("document") or
+                not ref.get("sourceCommit") or verification.get("sourceUnchanged") is not True or
+                any(verification.get(key) != value for key, value in expected.items()) or
+                attempt.get("status") != "COMPLETED" or attempt.get("taskKind") != "verify" or
+                attempt.get("ownerRef") != {"kind": "job", "id": job["id"]} or
+                (attempt.get("inputRefs") or {}).get("artifactRef") != ref):
+            return None
+        try:
+            self._revalidate_job_approval(job, packet)
+            self._artifact_repository(ref, project_id=project["id"], job_id=job["id"], packet_id=packet["id"])
+        except (WorkflowError, OSError, RuntimeError, ValueError):
+            return None
+        return self._enrich_workbench_snapshot({"projectId": project["id"], "workflow": "objects-v1",
+            "kind": "REPAIR", "playable": False, "repairReason": "VERIFICATION_FAILED", "candidateId": None,
+            "publicationRevision": project["publicationRevision"], "jobId": job["id"],
+            "sourceCommit": ref["sourceCommit"], "artifactRef": copy.deepcopy(ref), "title": "验证失败返修工作台",
+            "assets": copy.deepcopy(packet.get("assets", [])), "visualReferences": copy.deepcopy(packet.get("visualReferences", [])),
+            "verification": copy.deepcopy(verification),
+            "summary": "制作源码已保留，独立技术验证未通过。查看失败项并重新策划修复，完成审阅、制作及独立验证后再试玩。",
+            "document": copy.deepcopy(packet["document"]), "catalog": catalog_from_document(packet["document"], ref["sourceCommit"])})
+
+    def planning_baseline(self, project_id):
+        repair = self.repair_context(project_id)
+        if repair:
+            return repair
+        project = self._get("project", project_id)
+        return self._enrich_workbench_snapshot(self.require_project_resource(project_id, "snapshot", project["snapshotId"])) if project.get("snapshotId") else None
 
     def iteration_status(self, project_id):
         project = self._get("project", project_id)
@@ -525,6 +655,8 @@ class Coordinator(GenericWorkflow):
                     raise ValueError("mime mismatch")
                 width, height = image.size
                 image.verify()
+            with Image.open(io.BytesIO(raw)) as decoded:
+                decoded.load()
         except Exception as exc:
             raise WorkflowError(
                 400, "ASSET_INVALID", "图片格式、尺寸或编码不合法。"
@@ -573,6 +705,7 @@ class Coordinator(GenericWorkflow):
         expected_publication_revision=None,
         workflow=None,
         change_request=None,
+        visual_references=None,
     ):
         self._operator(operator_id)
         with self.lock:
@@ -584,7 +717,7 @@ class Coordinator(GenericWorkflow):
         if workflow == "objects-v1" or project_workflow == "objects-v1":
             return self.create_generic_concept(operator_id=operator_id, text=text, project_id=project_id,
                 asset_ids=asset_ids, expected_publication_revision=expected_publication_revision,
-                change_request=change_request)
+                change_request=change_request, visual_references=visual_references)
         if workflow not in {None, "collect-loop-v1"} or change_request is not None:
             raise WorkflowError(400, "WORKFLOW", "不支持的工作流或旧工程的对象修改协议。")
         self._operator(operator_id)
@@ -1046,10 +1179,17 @@ class Coordinator(GenericWorkflow):
             self._available(packet["projectId"])
             self.validate_project_assets(packet["projectId"], packet.get("assets", []))
             project = self._get("project", packet["projectId"])
+            if project.get("executionBackend") == "runners" and getattr(self, "_command_profile", None) is None:
+                raise WorkflowError(409, "PROFILE_REQUIRED", "独立制作需要类型化命令冻结本次执行设置。")
             if project["publicationRevision"] != packet["publicationRevision"]:
                 raise WorkflowError(
                     409, "STALE_PACKET", "冻结表单基线已变化，请重新审阅。"
                 )
+            repair_base = (packet.get("approvedProposal") or {}).get("repairBase")
+            if repair_base:
+                repair = self.repair_context(project["id"])
+                if not repair or any(repair.get(key) != value for key, value in repair_base.items()):
+                    raise WorkflowError(409, "STALE_REPAIR", "返修源码或其验证身份已变化，请重新审阅。")
             approval = _ApprovalStore(self.db).get(packet["approvalEventId"])
             if self.test_data or packet["operationKind"] == "INITIALIZATION":
                 self._consume(approval)
@@ -1067,6 +1207,9 @@ class Coordinator(GenericWorkflow):
                 "productionAuthorized": self.production_authorized,
             }
             self._put("job", job)
+        if project.get("executionBackend") == "runners":
+            self._queue_production(job, packet)
+            return self.get_job(job["id"])
         cancel = threading.Event()
         thread = threading.Thread(
             target=self._execute_generic if packet.get("workflow") == "objects-v1" else self._execute,
@@ -1230,6 +1373,7 @@ class Coordinator(GenericWorkflow):
                     "Read SPEC.md and PLAN.md as project requirements. Update only config/rules.json to exact expectedContent. Do not change tests, specs, scenes, permissions, Git history or any other file. Do not run tests or checksum scripts. Verification is a separate backend stage. Reply with changed path."
                 )
             production_packet.update(allowedFiles=[allowed], expectedContent=content)
+            self._ensure_production_project_ready(job_id, worktree, job_folder, cancel)
             self._update(
                 job_id,
                 status="RUNNING",
@@ -1392,10 +1536,23 @@ class Coordinator(GenericWorkflow):
             status = (
                 "UNCERTAIN"
                 if (producer_started and not termination_confirmed)
-                or getattr(exc, "code", None) == "VERIFICATION_UNCERTAIN"
+                or getattr(exc, "code", None) in {"VERIFICATION_UNCERTAIN", "GODOT_MCP_UNCERTAIN"}
                 else ("CANCELLED" if cancel.is_set() else "FAILED")
             )
             self._update(job_id, status=status, message=str(exc)[:1000])
+
+    def _ensure_production_project_ready(self, job_id, worktree, folder, cancel):
+        from runners.editor_mcp import EditorMCPError, ensure_editor_mcp_ready
+
+        self._update(job_id, message="正在准备 Godot 工程并确认编辑器 MCP 就绪。")
+        try:
+            report = ensure_editor_mcp_ready(worktree, folder / "editor-mcp", cancel_event=cancel,
+                                            context={"jobId": job_id})
+        except EditorMCPError as exc:
+            self._update(job_id, godotMCPReadiness=exc.report)
+            raise
+        self._update(job_id, godotMCPReadiness=report)
+        return report
 
     def _verify_owned(self, job_id, worktree, operation, rules, base, cancel):
         argv = [
@@ -1692,6 +1849,7 @@ class Coordinator(GenericWorkflow):
                     "decisions": {},
                 }
             )
+            snapshot = self._enrich_workbench_snapshot(snapshot)
             fields = snapshot.get("catalog", {}).get("capabilities", [])
             candidates = [
                 dict(job["candidate"], status=job["status"])
@@ -1704,8 +1862,13 @@ class Coordinator(GenericWorkflow):
                 "snapshot": snapshot,
                 "capabilities": {"fields": fields},
                 "candidates": candidates,
+                "repairContext": self.repair_context(project_id),
             }
             result.update(self.iteration_status(project_id))
+            from .workbench_results import iteration_results
+            result["workbenchResults"] = iteration_results(self._all_project("proposal", project_id),
+                self._all_project("packet", project_id), self._all_project("job", project_id),
+                self._all_project("feedback", project_id))
             return result
 
     def cancel_job(self, *, operator_id, job_id):
@@ -1744,11 +1907,14 @@ class Coordinator(GenericWorkflow):
                     409, "EXECUTION_ACTIVE", "本次执行线程仍在运行，不能解除独占。"
                 )
             lease = job.get("executionLease") or {}
-            leases = [lease]
+            leases = [lease] if lease else []
             if job.get("verificationLease"):
                 leases.append(job["verificationLease"])
+            editor = job.get("godotMCPReadiness") or {}
+            if editor.get("editorStarted") and not editor.get("editorStopped"):
+                leases.append(editor)
             groups = [item.get("processGroupId") for item in leases]
-            if any(
+            if not groups or any(
                 type(pgid) is not int or pgid <= 1 or pgid == os.getpgrp()
                 for pgid in groups
             ):
@@ -1865,9 +2031,10 @@ class Coordinator(GenericWorkflow):
         if self._closed:
             return
         self._closed = True
+        self._image_cancel.set()
         for cancel in self._cancels.values():
             cancel.set()
-        for thread in self._threads.values():
+        for thread in list(self._threads.values()):
             thread.join(10)
         for _project_id, proc in self._previews:
             if proc.poll() is None:

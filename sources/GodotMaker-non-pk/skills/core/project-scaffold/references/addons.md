@@ -52,13 +52,16 @@ After copying each addon:
 
 ## Post-Download Configuration
 
+Append these mapped plugin paths to the existing `editor_plugins.enabled`
+array. Keep `res://addons/godot_mcp/plugin.cfg` and any other existing entries.
+
 ### gecs (ECS Framework)
 
 If `"plugin": true` in the mapping:
 - Add to `[editor_plugins]` in project.godot:
   ```
   [editor_plugins]
-  enabled=PackedStringArray("res://addons/gecs/plugin.cfg")
+  enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/gecs/plugin.cfg")
   ```
 
 ### gdUnit4 (Test Framework)
@@ -66,7 +69,7 @@ If `"plugin": true` in the mapping:
 If `"plugin": true` in the mapping:
 - Add to `[editor_plugins]` in project.godot:
   ```
-  enabled=PackedStringArray("res://addons/gecs/plugin.cfg", "res://addons/gdUnit4/plugin.cfg")
+  enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/gecs/plugin.cfg", "res://addons/gdUnit4/plugin.cfg")
   ```
 
 ### godot-e2e (E2E Testing)
@@ -74,7 +77,7 @@ If `"plugin": true` in the mapping:
 If `"plugin": true` in the mapping:
 - Add to `[editor_plugins]` in project.godot alongside gecs and gdUnit4:
   ```
-  enabled=PackedStringArray("res://addons/gecs/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/godot_e2e/plugin.cfg")
+  enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/gecs/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/godot_e2e/plugin.cfg")
   ```
 
 Ensure `AutomationServer` is registered once in `[autoload]`:
@@ -83,15 +86,33 @@ Ensure `AutomationServer` is registered once in `[autoload]`:
 AutomationServer="*res://addons/godot_e2e/automation_server.gd"
 ```
 
-## godot-mcp (Runtime Debug Server)
+## Bundled Godot MCP Editor Addon (Default)
 
-Not a Godot addon — an npm package registered with Claude Code.
+Every new project created by this repository's `gm-scaffold` or
+`project-scaffold` path installs the project-local editor addon from the
+canonical `addons/godot_mcp/` bundle. The scaffold skill invokes
+`tools/godot_project_ready.py --install` after writing the project files; the script path is
+resolved from the canonical source skill location, not from the shell's current
+working directory. Do not add this local bundle to `addon_versions.json`: that
+configuration is for version-pinned downloads from upstream repositories.
+
+The installer enables `res://addons/godot_mcp/plugin.cfg` and preserves other
+enabled plugins. The standard command then starts a disposable ordinary editor,
+checks MCP initialization/tools and exact project identity, confirms unchanged
+source and stops the editor. Require a fresh PASS report before production;
+use a new evidence directory outside the project via `--evidence-dir`. Do not manually copy another source tree into `addons/`.
+
+## Optional `@coding-solo/godot-mcp` Runtime Server
+
+This npm package is a separate runtime debugging server registered with Claude
+Code. It is optional and does not install or replace the project-local Godot
+MCP editor addon above.
 
 ```bash
 claude mcp add godot -e GODOT_PATH="<path_to_godot_executable>" -- npx @coding-solo/godot-mcp
 ```
 
-This is handled by publish.sh/ps1 during project setup.
+Run this only when the user also wants this optional client runtime server.
 
 ## Verification
 

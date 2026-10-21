@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ptah.studio/contracts/studio/objects.v1.schema.json",
+  "title": "Studio object document v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "const": "studio.objects.v1" },
+    "dimension": { "const": "2d" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 8000 },
+    "objects": {
+      "type": "array", "minItems": 1, "maxItems": 500,
+      "items": { "$ref": "#/$defs/object" }
+    },
+    "requirements": {
+      "type": "array", "minItems": 1, "maxItems": 500,
+      "items": { "$ref": "#/$defs/requirement" }
+    }
+  },
+  "required": ["schemaVersion", "dimension", "title", "summary", "objects", "requirements"],
+  "additionalProperties": false,
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+    "sourcePath": {
+      "type": "string", "maxLength": 240,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*(?:^|/)\\.[^/]+(?:/|$))(?:scripts/.+\\.gd|scenes/.+\\.tscn|resources/.+\\.tres|assets/.+\\.(?:png|jpe?g|webp)|design/.+\\.json|docs/.+\\.(?:md|txt|json)|(?:project\\.godot|GDD\\.md|DESIGN\\.md|PLAN\\.md|SCENES\\.md|ASSETS\\.md|STRUCTURE\\.md|SPEC\\.md|README(?:\\.zh-CN)?\\.md))$"
+    },
+    "pair": {
+      "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "items": false, "minItems": 2, "maxItems": 2
+    },
+    "positivePair": {
+      "type": "array", "prefixItems": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "number", "exclusiveMinimum": 0 }],
+      "items": false, "minItems": 2, "maxItems": 2
+    },
+    "normalizedPair": {
+      "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }],
+      "items": false, "minItems": 2, "maxItems": 2
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "type": { "enum": ["number", "integer", "boolean", "text", "choice", "color", "vector2"] },
+        "value": {},
+        "editable": { "type": "boolean" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "options": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "type": ["string", "number"] } }
+      },
+      "required": ["id", "label", "type", "value", "editable"],
+      "additionalProperties": false
+    },
+    "preview": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["semantic", "image", "motion", "action", "response", "interaction", "rule", "spawn", "transition"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "stages": {
+          "type": "array", "maxItems": 100,
+          "items": {
+            "type": "object", "properties": {
+              "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "duration": { "type": "number", "minimum": 0 },
+              "durationFieldId": { "$ref": "#/$defs/id", "description": "Must reference a number or integer field on the same object; duration remains the fallback value." }
+            },
+            "required": ["label", "duration"], "additionalProperties": false
+          }
+        },
+        "speed": { "type": "number", "minimum": 0 },
+        "speedFieldId": { "$ref": "#/$defs/id", "description": "Must reference a number or integer field on the same object; speed remains the fallback value." },
+        "imagePath": { "$ref": "#/$defs/sourcePath" },
+        "resourcePath": { "type": "string", "maxLength": 240, "pattern": "^resources/.+\\.tres$", "description": "Must be an exact sourceBindings path to a source-backed AtlasTexture or SpriteFrames resource." },
+        "clipName": { "type": "string", "minLength": 1, "maxLength": 160, "description": "Optional SpriteFrames clip name, resolved against the exact source resource." }
+      },
+      "required": ["type", "label", "stages"],
+      "additionalProperties": false,
+      "allOf": [{
+        "if": { "properties": { "type": { "const": "image" } }, "required": ["type"] },
+        "then": { "anyOf": [{ "required": ["imagePath"] }, { "required": ["resourcePath"] }] }
+      }, {
+        "if": { "required": ["clipName"] },
+        "then": { "required": ["resourcePath"] }
+      }]
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "kind": { "enum": ["fact", "intent", "inference", "proposal", "runtime"] },
+        "sourcePaths": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/sourcePath" } }
+      },
+      "required": ["kind", "sourcePaths"], "additionalProperties": false
+    },
+    "facets": {
+      "type": "object",
+      "properties": {
+        "narrative": { "type": "string", "maxLength": 2000 },
+        "art": { "type": "string", "maxLength": 2000 }
+      },
+      "additionalProperties": false
+    },
+    "workbench": {
+      "type": "object",
+      "properties": {
+        "role": { "enum": ["definition", "instance", "entry", "spawn", "behavior", "state", "resource", "transition", "preset", "system", "scene"] },
+        "scope": { "enum": ["project", "scene", "shared", "instance", "runtime"] },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "preview": { "$ref": "#/$defs/preview" },
+        "definitionId": { "$ref": "#/$defs/id" },
+        "sceneId": { "$ref": "#/$defs/id" },
+        "destinationSceneId": { "$ref": "#/$defs/id" },
+        "targetSceneId": { "$ref": "#/$defs/id" },
+        "entryId": { "$ref": "#/$defs/id" },
+        "exitId": { "$ref": "#/$defs/id" },
+        "presetId": { "$ref": "#/$defs/id" },
+        "sourceCommit": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "lock": { "enum": ["fixed", "nudge", "free"] },
+        "position": { "$ref": "#/$defs/pair" },
+        "size": { "$ref": "#/$defs/positivePair" },
+        "positionFieldId": { "$ref": "#/$defs/id" },
+        "sizeFieldId": { "$ref": "#/$defs/id" },
+        "bounds": { "$ref": "#/$defs/positivePair" },
+        "anchor": { "$ref": "#/$defs/normalizedPair" },
+        "driver": { "$ref": "#/$defs/sourcePath" },
+        "lifecycle": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "trigger": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "positionPolicy": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "cleanup": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "condition": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "guard": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "fromState": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "toState": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "mode": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "facets": { "$ref": "#/$defs/facets" },
+        "usage": { "type": "array", "maxItems": 500, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "overrides": {
+          "type": "object",
+          "properties": {
+            "role": { "enum": ["definition", "instance", "entry", "spawn", "behavior", "state", "resource", "transition", "preset", "system", "scene"] },
+            "scope": { "enum": ["project", "scene", "shared", "instance", "runtime"] },
+            "lock": { "enum": ["fixed", "nudge", "free"] },
+            "position": { "$ref": "#/$defs/pair" }, "size": { "$ref": "#/$defs/positivePair" },
+            "bounds": { "$ref": "#/$defs/positivePair" }, "anchor": { "$ref": "#/$defs/normalizedPair" },
+            "lifecycle": { "type": "string", "maxLength": 1000 },
+            "trigger": { "type": "string", "maxLength": 1000 },
+            "positionPolicy": { "type": "string", "maxLength": 1000 },
+            "cleanup": { "type": "string", "maxLength": 1000 },
+            "condition": { "type": "string", "maxLength": 1000 },
+            "guard": { "type": "string", "maxLength": 1000 },
+            "mode": { "type": "string", "maxLength": 1000 },
+            "facets": { "$ref": "#/$defs/facets" },
+            "usage": { "type": "array", "maxItems": 500, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["role", "scope", "provenance", "preview"],
+      "additionalProperties": false,
+      "allOf": [
+        { "if": { "properties": { "role": { "const": "instance" } }, "required": ["role"] }, "then": { "required": ["definitionId", "sceneId", "lock", "position"] } },
+        { "if": { "properties": { "role": { "const": "entry" } }, "required": ["role"] }, "then": { "required": ["sceneId", "position"] } },
+        { "if": { "properties": { "role": { "const": "transition" } }, "required": ["role"] }, "then": { "required": ["sceneId"], "anyOf": [{ "required": ["destinationSceneId"] }, { "required": ["targetSceneId"] }] } }
+      ]
+    },
+    "object": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["project", "scene", "entity", "mechanic", "rule", "interface", "asset", "content"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceBindings": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/sourcePath" } },
+        "description": { "type": "string", "maxLength": 4000 },
+        "parentId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "relations": {
+          "type": "array", "maxItems": 500,
+          "items": {
+            "type": "object", "properties": {
+              "type": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "targetId": { "$ref": "#/$defs/id" }
+            },
+            "required": ["type", "targetId"], "additionalProperties": false
+          }
+        },
+        "fields": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/field" } },
+        "workbench": { "$ref": "#/$defs/workbench" }
+      },
+      "required": ["id", "kind", "name", "sourceBindings"],
+      "additionalProperties": false
+    },
+    "requirement": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "objectIds": { "type": "array", "maxItems": 500, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "verification": { "enum": ["manual", "automated", "human", "runtime"] }
+      },
+      "required": ["id", "text"], "additionalProperties": false
+    }
+  }
+}

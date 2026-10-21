@@ -9,12 +9,23 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend.codex_driver import CodexDriver
 
 
 class DriverTests(unittest.TestCase):
+    def test_catalog_observation_can_cancel_and_confirms_native_cleanup(self):
+        from backend.codex_driver import CodexDriverError
+        stop = threading.Event()
+        stop.set()
+        lifecycle = {}
+        with patch("backend.codex_driver.shutil.which", return_value=str(self.server)):
+            with self.assertRaisesRegex(CodexDriverError, "cancelled"):
+                CodexDriver.model_catalog(self.cwd, lifecycle=lifecycle, cancel_event=stop)
+        self.assertIs(lifecycle.get("nativeProcessStopped"), True)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
@@ -41,9 +52,26 @@ for line in sys.stdin:
  method=m.get("method")
  if m.get("id") is not None:
   if method == "initialize": send({"jsonrpc":"2.0","id":m["id"],"result":{}})
-  elif method == "thread/start": send({"jsonrpc":"2.0","id":m["id"],"result":{"thread":{"id":"thread-test"}}})
+  elif method == "model/list": send({"jsonrpc":"2.0","id":m["id"],"result":{"catalogRevision":7,"models":[{"model":"model-test","provider":"provider-test","supportedReasoningEfforts":["low","medium"],"inputModalities":["text","image"]}]}})
+  elif method == "thread/start": send({"jsonrpc":"2.0","id":m["id"],"result":{"thread":{"id":"thread-test"},"model":m["params"].get("model"),"modelProvider":"wrong-provider" if mode == "mismatch_provider" else m["params"].get("modelProvider")}})
   elif method == "turn/start":
    send({"jsonrpc":"2.0","id":m["id"],"result":{"turn":{"id":"turn-test"}}})
+   if mode == "usage_notifications":
+    for count in (10, 10, 12): send({"jsonrpc":"2.0","method":"thread/tokenUsage/updated","params":{"usage":{"totalTokens":count}}})
+    send({"jsonrpc":"2.0","method":"item/started","params":{"item":{"type":"commandExecution"}}})
+   if mode == "native_usage_shape":
+    for tid,count in (("other-thread",999),("thread-test",10),("thread-test",10),("thread-test",12)):
+     send({"method":"thread/tokenUsage/updated","params":{"threadId":tid,"turnId":"turn-test","tokenUsage":{"total":{"totalTokens":count,"reasoningOutputTokens":2},"last":{"totalTokens":3}}}})
+   if mode.startswith("static_"):
+    for index in range(2 if mode == "static_duplicate" else 1):
+     params={"threadId":"other-thread" if mode == "static_wrong_thread" else "thread-test","turnId":"other-turn" if mode == "static_wrong_turn" else "turn-test","callId":"static-call-1","tool":"studio_read_file","arguments":{"path":"GDD.md"}}
+     if mode == "static_wrong_namespace": params["namespace"]="unexpected"
+     if mode == "static_bad_arguments": params["arguments"]="not-an-object"
+     send({"id":501+index,"method":"item/tool/call","params":params})
+     reply=json.loads(sys.stdin.readline())
+     with open(log,"a") as f: f.write(json.dumps(reply)+"\\n")
+   if mode == "unmanaged_builtin":
+    send({"method":"item/started","params":{"item":{"type":"commandExecution"}}})
    if mode in ("approval", "unknown_request"):
     request_method = "item/fileChange/requestApproval" if mode == "approval" else "server/unknownRequest"
     send({"jsonrpc":"2.0","id":500,"method":request_method,"params":{"itemId":"item-1"}})
@@ -70,8 +98,8 @@ for line in sys.stdin:
    if mode == "final_json":
     send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"commentary","text":"Working on a plan"}}})
     send({"jsonrpc":"2.0","method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":json.dumps({"status":"READY"})}}})
-   terminal = {"id":"turn-test","status":"failed","error":{"message":"provider rejected request","code":"request_rejected","detail":"preserve this native turn error"}} if mode == "native_failed" else {"id":"turn-test","status":"completed"}
-   send({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-test","turn":terminal}})
+   terminal = {"id":"turn-test","status":"failed","error":{"message":"provider rejected request","code":"request_rejected","detail":"preserve this native turn error"}} if mode == "native_failed" else {"id":"other-turn" if mode == "wrong_terminal_id" else "turn-test","status":None if mode == "missing_terminal_status" else "completed"}
+   send({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"other-thread" if mode == "wrong_terminal_thread" else "thread-test","turn":terminal}})
   elif method == "turn/interrupt": send({"jsonrpc":"2.0","id":m["id"],"result":{}})
 """.replace("__MODE__", repr(mode))
             .replace("__LOG__", repr(str(self.log)))
@@ -84,13 +112,21 @@ for line in sys.stdin:
         disabled = kwargs.pop("disabled_mcp_servers", None)
         profile = kwargs.pop("execution_profile", None)
         reasoning_effort = kwargs.pop("reasoning_effort", None)
+        model = kwargs.pop("model", None)
+        model_provider = kwargs.pop("model_provider", None)
+        expected_catalog_revision = kwargs.pop("expected_catalog_revision", None)
         with patch("backend.codex_driver.shutil.which", return_value=str(self.server)):
             return CodexDriver(
                 self.cwd,
-                timeout=kwargs.pop("timeout", 2),
+                timeout=kwargs.pop("timeout", 5),
                 disabled_mcp_servers=disabled,
                 execution_profile=profile,
                 reasoning_effort=reasoning_effort,
+                model=model,
+                model_provider=model_provider,
+                expected_catalog_revision=expected_catalog_revision,
+                managed_native_context=kwargs.pop("managed_native_context", None),
+                static_tool_broker=kwargs.pop("static_tool_broker", None),
             ).run(packet or {"test_data": True}, **kwargs)
 
     def test_frozen_packet_is_sent_and_turn_completion_is_not_verification(self):
@@ -106,6 +142,26 @@ for line in sys.stdin:
         self.assertFalse(result["diagnostics"]["verificationCertified"])
         self.assertTrue(result["diagnostics"]["childTerminationConfirmed"])
 
+    def test_model_catalog_uses_managed_context_and_reports_process_cleanup(self):
+        from unittest.mock import Mock
+
+        command = Mock(return_value=[str(self.server), "app-server", "--stdio"])
+        context = SimpleNamespace(root=self.cwd, provider="provider-test",
+                                  executable=lambda: str(self.server), command=command,
+                                  environment=lambda: dict(os.environ))
+        lifecycle = {}
+        observer = []
+        catalog = CodexDriver.model_catalog(self.cwd, managed_native_context=context,
+                                            lifecycle=lifecycle,
+                                            on_initialized=lambda rpc: observer.append(callable(rpc)))
+        self.assertEqual(command.call_args.args, (str(self.server),))
+        self.assertEqual(catalog["models"][0]["modelKey"], "model-test")
+        self.assertIs(lifecycle["nativeAppServerInitialized"], True)
+        self.assertIs(lifecycle["nativeProcessStopped"], True)
+        self.assertEqual(observer, [True])
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertEqual([call.get("method") for call in calls], ["initialize", "initialized", "model/list"])
+
     def test_final_message_boundary_excludes_commentary_for_planner_json(self):
         self._write_server("final_json")
         result = self._run(execution_profile="managed_read_only")
@@ -115,6 +171,103 @@ for line in sys.stdin:
         self.assertEqual(start["params"]["sandbox"], "read-only")
         self.assertEqual(start["params"]["approvalPolicy"], "on-request")
         self.assertFalse(start["params"]["config"]["features"]["multi_agent"])
+
+    def test_managed_selection_checks_fresh_catalog_and_disables_provider_fallback(self):
+        result = self._run(execution_profile="managed_read_only", model="model-test", model_provider="provider-test",
+                           expected_catalog_revision=7, reasoning_effort="low")
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        catalog = next(call for call in calls if call.get("method") == "model/list")
+        thread = next(call for call in calls if call.get("method") == "thread/start")
+        turn = next(call for call in calls if call.get("method") == "turn/start")
+        self.assertEqual(catalog["params"], {})
+        self.assertIs(thread["params"]["allowProviderModelFallback"], False)
+        self.assertEqual(thread["params"]["modelProvider"], "provider-test")
+        self.assertEqual(turn["params"]["model"], "model-test")
+        self.assertEqual(turn["params"]["effort"], "low")
+        self.assertIsNone(result["diagnostics"]["turnActual"])
+        self.assertEqual(result["diagnostics"]["usageCoverage"], "partial_or_unknown")
+
+    def test_managed_selection_rejects_effort_missing_from_catalog_before_thread_start(self):
+        result = self._run(execution_profile="managed_read_only", model="model-test", model_provider="provider-test", reasoning_effort="high")
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertFalse(any(call.get("method") == "thread/start" for call in calls))
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("unsupported by the fresh native catalog", result["diagnostics"]["error"])
+
+    def test_managed_selection_rejects_reported_provider_mismatch_before_turn(self):
+        self._write_server("mismatch_provider")
+        result = self._run(execution_profile="managed_read_only", model="model-test", model_provider="provider-test", reasoning_effort="low")
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertFalse(any(call.get("method") == "turn/start" for call in calls))
+        self.assertIn("provider", result["diagnostics"]["error"])
+
+    def test_terminal_notification_must_match_active_turn_and_thread(self):
+        for mode in ("wrong_terminal_id", "wrong_terminal_thread", "missing_terminal_status"):
+            with self.subTest(mode=mode):
+                self._write_server(mode)
+                result = self._run()
+                self.assertEqual(result["status"], "uncertain")
+
+    def test_native_activity_and_usage_callbacks_are_cumulative_and_deduplicated(self):
+        self._write_server("usage_notifications")
+        activities, usage = [], []
+        result = self._run(on_activity=activities.append, on_usage=usage.append)
+        self.assertEqual([item["totalTokens"] for item in usage], [10, 12])
+        self.assertEqual(result["diagnostics"]["usageTotals"]["totalTokens"], 12)
+        self.assertTrue(any(item["method"] == "item.started" for item in activities))
+
+    def test_native_schema_usage_totals_are_bound_to_active_thread_and_not_added(self):
+        self._write_server("native_usage_shape")
+        usage = []
+        result = self._run(on_usage=usage.append)
+        self.assertEqual([item["totalTokens"] for item in usage], [10, 12])
+        self.assertEqual(result["diagnostics"]["usageTotals"], {"totalTokens": 12, "reasoningTokens": 2})
+
+    def _managed_context_and_broker(self):
+        calls = []
+        context = SimpleNamespace(root=self.cwd, executable=lambda: str(self.server),
+            command=lambda executable: [executable, "app-server", "--stdio"],
+            environment=lambda: dict(os.environ), config_overrides={},
+            secrets_on_disk=lambda: False, redact=lambda value: value)
+        broker = SimpleNamespace(specifications=lambda: [{"type": "function", "name": "studio_read_file",
+            "description": "fixture static read", "inputSchema": {"type": "object"}}],
+            call=lambda tool, args: calls.append((tool, args)) or {"success": True,
+                "contentItems": [{"type": "inputText", "text": "fixture source"}]})
+        return context, broker, calls
+
+    def test_separated_tool_callback_has_exact_identity_and_success_reply(self):
+        self._write_server("static_valid")
+        context, broker, calls = self._managed_context_and_broker()
+        result = self._run(execution_profile="managed_read_only", managed_native_context=context,
+                           static_tool_broker=broker, disabled_mcp_servers=["godot-mcp"])
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(calls, [("studio_read_file", {"path": "GDD.md"})])
+        self.assertEqual(result["commandEvidence"]["staticToolCalls"], [{"tool": "studio_read_file", "success": True}])
+        rpc = [json.loads(line) for line in self.log.read_text().splitlines()]
+        start = next(item for item in rpc if item.get("method") == "thread/start")["params"]
+        self.assertEqual(start["approvalPolicy"], "never")
+        self.assertIs(start["ephemeral"], True)
+        self.assertEqual(start["dynamicTools"], broker.specifications())
+        self.assertNotIn("mcp_servers", start["config"])
+
+    def test_separated_tool_rejects_wrong_identity_and_duplicate_call_before_execution(self):
+        for mode in ("static_wrong_thread", "static_wrong_turn", "static_wrong_namespace", "static_bad_arguments", "static_duplicate"):
+            with self.subTest(mode=mode):
+                self._write_server(mode)
+                context, broker, calls = self._managed_context_and_broker()
+                result = self._run(execution_profile="managed_read_only", managed_native_context=context, static_tool_broker=broker)
+                self.assertEqual(result["status"], "uncertain")
+                self.assertEqual(len(calls), 1 if mode == "static_duplicate" else 0)
+                self.assertEqual(len(result["commandEvidence"]["staticToolCalls"]), len(calls))
+                self.assertEqual(result["diagnostics"]["protocolErrors"][0]["error"], "invalid static tool identity")
+
+    def test_separated_native_builtin_attempt_fails_closed(self):
+        self._write_server("unmanaged_builtin")
+        context, broker, calls = self._managed_context_and_broker()
+        result = self._run(execution_profile="managed_read_only", managed_native_context=context, static_tool_broker=broker)
+        self.assertEqual(result["status"], "uncertain")
+        self.assertEqual(calls, [])
+        self.assertIn("unmanaged native tool attempted", str(result["diagnostics"]["protocolErrors"]))
 
     def test_recoverable_native_network_error_is_preserved_without_stopping_turn(self):
         self._write_server("recoverable_network")

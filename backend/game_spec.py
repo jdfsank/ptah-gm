@@ -23,7 +23,47 @@ def _task_ids(task: dict) -> tuple[list[str], list[str]]:
     return list(objects) if isinstance(objects, list) else [], list(requirements) if isinstance(requirements, list) else []
 
 
-def render_spec_documents(document: dict, tasks: list, change_request: dict | None = None, revision: int = 1) -> dict[str, str]:
+def _workbench_description(obj: dict) -> str | None:
+    metadata = obj.get("workbench")
+    if not isinstance(metadata, dict):
+        return None
+    details = [f"role `{metadata['role']}` / scope `{metadata['scope']}`"]
+    for key in ("definitionId", "sceneId", "destinationSceneId", "targetSceneId", "entryId", "exitId", "presetId", "positionFieldId", "sizeFieldId"):
+        if metadata.get(key):
+            details.append(f"{key} `{metadata[key]}`")
+    for key in ("driver", "lifecycle", "trigger", "positionPolicy", "cleanup", "condition", "guard", "mode"):
+        if metadata.get(key):
+            details.append(f"{key}: {_line(metadata[key])}")
+    for key in ("position", "size", "bounds", "anchor", "lock"):
+        if metadata.get(key) is not None:
+            details.append(f"{key} `{json.dumps(metadata[key], ensure_ascii=False)}`")
+    if metadata.get("usage"):
+        details.append("used by " + ", ".join(f"`{item}`" for item in metadata["usage"]))
+    provenance = metadata.get("provenance") or {}
+    if provenance:
+        details.append(f"provenance `{provenance.get('kind', 'unknown')}` from "
+            + (", ".join(f"`{path}`" for path in provenance.get("sourcePaths", [])) or "no mapped source"))
+    preview = metadata.get("preview") or {}
+    if preview:
+        stages = preview.get("stages", [])
+        timeline = "; ".join(f"{_line(stage.get('label'))} {stage.get('duration')}s" for stage in stages)
+        details.append(f"preview `{preview.get('type', 'semantic')}`: {_line(preview.get('label'))}"
+            + (f"; stages: {timeline}" if timeline else ""))
+    facets = metadata.get("facets") or {}
+    details.extend(f"{key} facet: {_line(value)}" for key, value in facets.items())
+    return "; ".join(details)
+
+
+def _operation_description(operation: dict) -> str:
+    operation_id = _line(operation.get("operationId"), "unspecified operation")
+    kind = _line(operation.get("kind"), "structural")
+    target = operation.get("objectId")
+    detail = json.dumps({key: value for key, value in operation.items() if key not in {"operationId", "kind"}},
+                        ensure_ascii=False, sort_keys=True)
+    return f"Workbench operation `{operation_id}` ({kind}) on `{target or 'new target'}`: `{detail}`. This remains user intent until a candidate change proves the result."
+
+
+def render_spec_documents(document: dict, tasks: list, change_request: dict | None = None, revision: int = 1, asset_bundle: dict | None = None) -> dict[str, str]:
     """Render the object plan as normative GDD/PLAN and supporting GM documents.
 
     Stable mechanic names are derived from object IDs and each row retains the
@@ -70,9 +110,13 @@ def render_spec_documents(document: dict, tasks: list, change_request: dict | No
     if not playable_rows:
         playable_rows.append("| project | The reviewed minimum playable unit is usable. | Pending human acceptance. |")
 
+    asset_authority = ("Reviewed ImageGen CLI bundle " + asset_bundle["bundleId"] + " at Git " + asset_bundle["sourceCommit"]
+                       + "; import only its exact PNG paths before code production. Prompts and files are reviewable; visual/gameplay acceptance is pending."
+                       if asset_bundle else "User-provided/source-approved only; missing PNG bindings require a separately generated and reviewed ImageGen CLI bundle.")
     object_lines = []
     scene_lines = []
     asset_lines = []
+    workbench_lines = []
     for obj in doc["objects"]:
         object_lines.append(_bullet(
             f"`{obj['id']}` ({obj['kind']}): {_line(obj['name'])}. {_line(obj.get('description', ''), 'No additional description.')} Sources: {', '.join(obj['sourceBindings']) or 'not bound yet'}."
@@ -80,7 +124,10 @@ def render_spec_documents(document: dict, tasks: list, change_request: dict | No
         if obj["kind"] == "scene":
             scene_lines.append(_bullet(f"`{obj['id']}`: {_line(obj['name'])}; source {', '.join(obj['sourceBindings']) or 'pending'}; parent `{obj['parentId'] or 'none'}`."))
         if obj["kind"] == "asset":
-            asset_lines.append(_bullet(f"`{obj['id']}`: {_line(obj['name'])}; user-provided/source-approved only; no automatic art generation."))
+            asset_lines.append(_bullet(f"`{obj['id']}`: {_line(obj['name'])}; {asset_authority}"))
+        workbench = _workbench_description(obj)
+        if workbench:
+            workbench_lines.append(_bullet(f"`{obj['id']}`: {workbench}."))
         for field in obj["fields"]:
             object_lines.append(_bullet(
                 f"`{obj['id']}.{field['id']}` ({field['type']}): {_line(field['label'])}; current value `{json.dumps(field['value'], ensure_ascii=False)}`; editable `{str(field['editable']).lower()}`."
@@ -103,7 +150,10 @@ def render_spec_documents(document: dict, tasks: list, change_request: dict | No
                 changed.append(_bullet(f"Explicit field request `{field.get('objectId')}.{field.get('fieldId')}` = `{json.dumps(field.get('value'), ensure_ascii=False)}`."))
         for feedback in change_request.get("feedback", []):
             if isinstance(feedback, dict):
-                changed.append(_bullet(f"Feedback for `{feedback.get('objectId')}` ({feedback.get('category')}): {_line(feedback.get('message'))}."))
+                changed.append(_bullet(f"Feedback `{feedback.get('feedbackId', 'legacy')}` for `{feedback.get('objectId') or 'project'}` ({feedback.get('category')}): {_line(feedback.get('message'))}."))
+        for operation in change_request.get("operations", []):
+            if isinstance(operation, dict):
+                changed.append(_bullet(_operation_description(operation)))
     change_text = "\n".join(changed) if changed else "- No structured field changes or feedback were attached to this planning turn."
     version = f"v0.1.{revision - 1}"
     title = _line(doc["title"])
@@ -140,7 +190,7 @@ Initial object-protocol delivery. No mechanics are inherited unless they appear 
 {chr(10).join(main_build)}
 - The backend owns `design/game.json` and `studio/runtime.gd`; producer sessions must not edit either file.
 - Keep code and scene changes within the frozen, adapter-approved project file scope.
-- Preserve user references as references. This specification does not authorize automatic asset generation.
+- Preserve user references as references. {asset_authority}
 
 ## Task Status
 | Task | Work | Status | Notes |
@@ -165,6 +215,11 @@ Technical smoke, import success, and scene launch are separate from gameplay ver
 
 ## Object Model
 {chr(10).join(object_lines)}
+
+## Workbench Semantic Links
+Explicit positionFieldId/sizeFieldId bindings use that object's current vector2 field value ahead of static geometry. An instance without its own sizeFieldId or overrides.size inherits its definitionId's explicit sizeFieldId binding. Motion instances without their own speed/speedFieldId inherit the definition's motion speed; an empty instance stage list inherits the definition's stages, whose field references still belong to that definition. Explicit instance overrides take priority, including speed 0. These links describe intended data and browser previews; they do not prove engine behavior. Implement the declared field semantics in the game and preserve the independent runtime checks.
+
+{chr(10).join(workbench_lines) if workbench_lines else '- No workbench roles, positions, previews or provenance were declared.'}
 
 ## Requirements
 {requirements_list}

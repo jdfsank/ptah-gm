@@ -2,11 +2,35 @@
 
 本文面向在 macOS 上安装、启动和维护本机游戏制作工作台的部署者。工作台包含旧 collect-loop 工作流和新 `objects-v1` 通用对象工作流。开始维护前，请用 Git 核对实际检出版本及差异；不要把此前 `r4-local-1` 检查点当成本次通用工作流版本。用户操作见[工作台用户说明书](USER-MANUAL.zh-CN.md)。
 
-本手册说明当前已实现的本机能力。备份、升级、恢复等没有专用程序支持的操作会明确标为人工运维步骤。
+本文覆盖现行 Studio v1 与保留的旧工作流。新版协议、独立组件和备份工具的初次实施见[2026-10-12 实施记录](STUDIO-IMPLEMENTATION-20261012.zh-CN.md)，最新证据见[边界修复与补充验收](STUDIO-BOUNDARY-FIX-ACCEPTANCE-20261012.zh-CN.md)。在受测 macOS、stateless custom provider、Godot 4.6.3 范围内，四项角色探针、真实 Runner 注册和 fixture 控制的业务闭环通过；后端 283/283（零跳过），前端既有 19/19 未重跑。用户玩法/视觉验收仍为 `NOT_TESTED`，没有用户接受的生产候选；请求 effort=`max` 不是实际 effort 观测，实际 effort 与完整计费未知，未穷举全部模型/provider/平台。项目内 MCP 默认安装与实际控制见[Godot MCP 说明](GODOT-MCP.zh-CN.md)。
 
-文档日期：2026-10-10。[返回说明书入口](README.zh-CN.md)。
+文档日期：2026-10-13。[返回说明书入口](README.zh-CN.md)。
 
 本轮项目与阶段改造沿用现有 SQLite、Godot、Codex 和安装依赖，不引入新数据库服务、消息总线或容器。部署评估与交付记录见[可行性复核](STUDIO-PROJECT-STAGES-REVIEW.zh-CN.md)。
+
+## 2026-10-12 独立组件入口
+
+默认后端监听 `127.0.0.1:8765`，独立前端监听 `127.0.0.1:8764`。前端静态服务只代理同源 `/api/`，不代理内部 Runner 通道；直接访问后端的 `/studio/` 仍可使用。两个 Runner 使用独立进程、独立私有日志和内部 token，数据库仅由后端读取和裁决。
+
+在仓库根目录运行：
+
+```sh
+.venv/bin/python -m tools.studio_services start
+.venv/bin/python -m tools.studio_services status
+.venv/bin/python -m tools.studio_services stop
+```
+
+也可使用 `start-studio-services.command`。默认采用 `.workbench/`。隔离测试须显式使用新的状态目录及 `--test-data`，例如：
+
+```sh
+.venv/bin/python -m tools.studio_services start --state-root /tmp/studio-disposable --test-data --api-port 8775 --frontend-port 8774
+```
+
+分组件维护用 `--component backend|frontend|agent|project`。后端需先启动，AgentRunner 注册时只读取真实模型目录，不启动模型回合。Godot 路径可通过 `--godot` 指定，当前默认 `/Applications/Godot.app/Contents/MacOS/Godot`。前端和后端端口通过 `--frontend-port` 与 `--api-port` 指定；不要将同一状态目录同时交给两个后端。
+
+`status` 报告受管进程身份，不能单独证明模型回合或 Godot 主循环有响应。操作日志位于 `<state>/logs/`；Runner 日志位于 `<state>/runners/agent|project/journal.sqlite3`，启动意图和未确认报告保留在其中。不要直接修改这些日志或将内部 token 放入浏览器。分别查看 `/api/v1/handshake`、项目公开视图和执行监视来核对 API、状态流、Runner 与原生活动。
+
+受测 native/provider bridge、路由宿主及静态工具已分权，实际拒绝探针和真实 Producer 封存链通过相应门禁；UID 在 recovery-mode 隔离导入后由受信宿主准备，再绑定 input/source commit 与引擎版本。原版 Godot 导入/主场景/GUI、独立验证和同源候选 GUI 的证据限定于受测配置。Agent 与 Project Runner 的真实 HTTP 注册均通过；四项角色能力由每次启动时绑定 Runner ID/kind 的新鲜本机检查派生，不硬编码 PASS。证据基于受信本地 Runner token 信任模型，不是远程 attestation；检查缺失、失败或过期时相应能力不会注册，页面继续禁用依赖该能力的动作。Native 网络拒绝依据是执行同一系统策略的 Python worker 探针，不是 native RPC 直接网络探针。不得手改注册证据绕过门禁。
 
 ## 阅读导航
 
@@ -24,9 +48,9 @@
 
 ## 1. 产品与部署模型
 
-工作台由本机 Python HTTP 服务和静态 Studio 前端组成，前端通过同源 `/api` 与服务通信。默认访问 `http://127.0.0.1:8765/studio/`。后端持有项目路径、Git 仓库、隔离 worktree、原生 Codex session 启动方式、审批状态、验证命令和快照切换；浏览器不能传入 cwd、shell 命令、程序路径或权限配置。
+工作台由静态前端、Python 后端、AgentRunner 和 ProjectRunner 四个独立组件组成。独立前端默认地址 `http://127.0.0.1:8764/studio/`，通过同源代理连接后端 API；后端自带静态入口 `8765/studio/` 保留。后端持有项目和批准裁决、回执、租约与快照引用；两个 Runner 通过内部 JSON 通道领取和报告。浏览器不能传入 cwd、shell 命令、程序路径或权限配置。
 
-新项目通过 `objects-v1` 处理：只读策划 session 输出结构化问题、对象文档、制作任务和验收条件；用户确认完整计划后，后端冻结提案并启动另一条制作 session；独立验证完成后返回候选，用户体验并接受后才更新工作台快照。迭代请求把自然语言、实际字段变更和对象反馈分开保存。已有 collect-loop 项目继续由旧工作流处理，旧审批不会自动升级。
+新项目通过 Studio v1 命令和 `objects-v1` 对象文档处理：AgentRunner 和 ProjectRunner 在各自启动时依据新鲜本机检查注册可用能力，再执行策划、制作、验证与试玩；用户确认完整计划后冻结批准，接受精确候选后更新快照。以页面能力状态判断当前服务是否具备相应动作。迭代请求把自然语言、实际字段变更和对象反馈分开保存。已有项目继续由旧工作流处理，旧审批不会自动升级。
 
 通用实现目标是 Godot 4、2D、GDScript。后端写入的对象文档和 `StudioRuntime` 桥接文件、GM 规格文件及验证器保持受保护。制作写入白名单为 `project.godot`、`scripts/**/*.gd`、`scenes/**/*.tscn`、`resources/**/*.tres` 及 `assets/` 下 PNG/JPEG/WebP；不接受插件、编辑器扩展、制作方测试或其它可执行入口。
 
@@ -43,6 +67,8 @@
 ### 2.2 必需组件
 
 需要 Python 3.11 或更高版本、Git、Codex CLI/app-server，以及 Godot 4。当前运行服务的同一 macOS 用户必须已配置可用的模型提供方与认证。服务不会自行登录或生成凭据。 Codex 的官方账号认证与自定义 provider 配置是不同路径：`codex login status` 反映 Codex CLI 官方登录状态，官方账号未登录不等于自定义 provider 必定不可用。官方认证说明见[Codex Authentication](https://developers.openai.com/codex/auth/)。本次无法在线核验该页面的最新内容，请以官方页面为准。
+
+新版 `objects-v1` 的 ProjectRunner 在启动 Godot 验证或试玩前，还要求已存在的 Apple Command Line Tools：`/Library/Developer/CommandLineTools/usr/bin/clang` 和 `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`；并要求固定系统 CA 文件 `/etc/ssl/cert.pem` 可安全读取、由 root 所有且包含有效证书。受信宿主会在每个私有 runtime 中生成规范 PEM 并编译专用 dylib。这些是本机系统依赖，不由 Python requirements 安装，也不会由工作台安装。缺少工具链、CA 缺失或无效、编译失败时，新版 Godot 子进程启动前失败关闭。该实现当前的受测部署范围为 macOS 与 Godot `4.6.3.stable.official.7d41c59c4`。
 
 当前工作流通过本机 CLI 启动 app-server，使用运行服务的同一用户环境和配置。`sessionDispatch=READY` 只表示找到了 CLI，不会验证 provider 凭据、登录或真实模型调用是否成功。
 
@@ -130,14 +156,14 @@ uv pip check --python .venv/bin/python
 /Applications/Godot.app/Contents/MacOS/Godot --version
 ```
 
-预期版本为 `4.6.3.stable.official.7d41c59c4`。其他 Godot 4 版本尚未在此版本部署记录中确认。 验证器解析顺序为 `GODOT_BIN`、PATH 中的 `godot`、最后回退到 `/Applications/Godot.app/Contents/MacOS/Godot`。 如果需要为当前服务进程临时指定另一个 Godot 路径，可在同一终端设置 `GODOT_BIN` 后启动服务。
+预期版本为 `4.6.3.stable.official.7d41c59c4`。其他 Godot 4 版本尚未在此版本部署记录中确认。旧 collect-loop 验证器解析顺序为显式路径、`GODOT_BIN`、PATH 中的 `godot`、最后回退到 `/Applications/Godot.app/Contents/MacOS/Godot`。新版 ProjectRunner 使用服务配置的 `--godot` 路径，未指定时由运行环境选择可执行文件。`GODOT_BIN`/`GODOT_PATH` 只选择引擎可执行文件，不改变新版 runtime 固定使用的 CA 来源和编译绑定。
 
 ```sh
 studio_godot_bin="/Applications/Godot.app/Contents/MacOS/Godot"
 export GODOT_BIN="$studio_godot_bin"
 ```
 
-本机安装记录提到 `GODOT_PATH`，但当前 `backend/verification.py` 使用的是 `GODOT_BIN`，不读取 `GODOT_PATH`。 Godot 能够被验证器解析，不代表预览路径也可在其他安装布局使用。当前预览和能力探测代码固定检查 macOS 应用路径。
+本机安装记录提到 `GODOT_PATH`，但旧的 `backend/verification.py` 使用的是 `GODOT_BIN`，不读取 `GODOT_PATH`。旧 collect-loop 验证器与新版 ProjectRunner 是不同执行路径，具体隔离差异见[安全边界](#controlled-execution)。无论新版从何处选择 Godot 可执行文件，项目设置或环境变量都不能替换私有 CA 文件、interposer 源码或编译绑定路径。
 
 如果希望在终端直接使用 `godot`，可在用户自己的 `.local/bin` 建立链接。以下命令只适用于链接目标还不存在的首次设置；本机已有链接，无需重复执行：
 
@@ -169,7 +195,7 @@ codex login status
 
 官方 OpenAI/Codex 账号认证可依照[官方认证说明](https://developers.openai.com/codex/auth/)处理。本次该网页返回 403，因此本手册不转述可能变化的交互细节。自定义模型提供方应按提供方说明，在当前运行服务用户的环境中配置认证；这不等同于官方账号登录，也不要把凭据复制到表单或仓库。
 
-驱动器以 `codex app-server --stdio` 启动本机 session，并使用运行服务用户的环境和配置。服务不会自行登录或生成凭据。`codex login status` 只报告官方 Codex 登录状态，不证明自定义提供方是否可用。`sessionDispatch=READY` 只证明找到 CLI，不验证认证或模型调用。实际 session 无法连接提供方时，先检查所选 provider 的配置和认证。
+驱动器以 `codex app-server --stdio` 启动本机 session。旧入口使用运行服务用户的环境和配置；新版 AgentRunner 的受信适配器保留认证，native 只获得私有环境与一次性 bridge nonce。目前新版仅支持无原生 credential file 的自定义 provider，不支持的认证方式失败关闭。服务不会自行登录或生成凭据。`codex login status` 只报告官方 Codex 登录状态，不证明自定义提供方是否可用。`sessionDispatch=READY` 只证明找到 CLI，不验证认证或模型调用。实际 session 无法连接提供方时，检查所选 provider 的配置和认证。
 
 ### 3.6 确认启动脚本
 
@@ -285,11 +311,17 @@ lsof -nP -iTCP:8765 -sTCP:LISTEN
 
 后端将状态根目录权限设置为 `0700`，SQLite 主数据库文件设置为 `0600`。 上传图片文件设置为 `0600`。这些模式限制同一台电脑上的其他普通用户读取工作数据。 状态目录内的数据还受当前 macOS 用户、磁盘备份、设备加密和管理员权限影响。请将该目录纳入组织的本机数据保护政策。 不要把 `.workbench/` 上传到公共文件托管、工单或日志收集系统。图片和项目内容可能包含用户提供的私有信息。
 
+<a id="controlled-execution"></a>
+
 ### 7.3 受控执行
 
-生产工作流通过服务器预设的 Codex 执行配置启动 session。Studio 不提供等待授权回调的用户界面；权限请求会被拒绝，未知请求失败关闭。策划 session 使用只读工作目录，不应写入输入或项目；制作 session 只可修改对象计划授权的工程范围。冻结计划、对象文档、GM 规格、`StudioRuntime` 桥接和验证证据均由后端保护。
+新版 `objects-v1` 由独立 AgentRunner 和 ProjectRunner 执行。受信 ProviderBridge 持有受支持的 provider 认证；native、路由宿主和静态工程工具按各自进程策略分权。静态工具没有 shell、网络或工程执行能力。Agent 的 native `readOnly` 仅描述 native 运行时权限；制作文件通过独立静态工具 `studio_list_files`、`studio_read_file`、`studio_write_file` 访问，其中写工具只允许冻结的 `allowedFiles` 私有工程范围。工具名、参数及成功布尔值受协议校验并纳入有界证据；工具被拒绝仍是有效拒绝，交付门还会独立审计最终源。四项 capability 的启动注册结果由新鲜、绑定身份的本机固定检查派生；该信任模型依赖受信本地 Runner token，不构成远程 attestation。当前实测范围和限制见[边界修复与补充验收](STUDIO-BOUNDARY-FIX-ACCEPTANCE-20261012.zh-CN.md)。
 
-通用 Godot 验证器会在干净的临时工程副本上导入并启动后端自带的主场景冒烟程序；临时副本不带入 `.godot` 缓存或 `.godotmaker` 审批记录。验证过程需要运行项目中的 GDScript。**当前没有已实证的 OS 级沙箱**，因此这属于本机合作型执行，不能抵御恶意或刻意对抗的工程代码。Git 写入范围和服务端记录用于检查文件变更，不等于操作系统隔离。
+新版 ProjectRunner 的 Godot 验证和试玩通过 `runners.godot_runtime.sandboxed_godot_argv` 启动受测子进程。macOS deny-default sandbox 将工程源限制为只读，只允许 `.godot` 缓存及本次私有 runtime 写入；UID 准备阶段只对受信调用者明确列出的缺失 `.gd.uid` sidecar 开放写入。网络访问拒绝；子进程只能启动受信 `/usr/bin/env` 和本次 Godot 可执行文件，项目脚本不能另起 shell 或任意程序。策略还拒绝 file-link，且 Godot 对私有 CA 支持目录、CA 文件、interposer dylib 和复制的 Godot.app 没有写权限。
+
+受信宿主只从固定 `/etc/ssl/cert.pem` 读取系统 CA，检查文件类型/所有者并解析证书，再规范化为 PEM，写入每次执行的私有目录。编辑器导入使用私有 `EditorSettings` 的 `network/tls/editor_tls_certificates`；game-mode 则通过固定的 Security.framework trust-anchor interposer 读取同一份 CA。宿主用固定的 Command Line Tools `clang` 与 macOS SDK 编译 `runners/godot_ca_interposer.m`，把规范 CA 路径编译绑定在 dylib 中，通过受信启动环境加载。CA 路径不接受工程设置或项目提供的环境变量。缺 CLT、CA 文件不安全/不可解析或编译失败都会在 Godot 启动前失败关闭；ProjectRunner 的相应预览启动路径记录 `failed`、`stopped=true`，不会退回不受限启动。新版边界当前仅适用于本机 macOS 与受测 Godot 4.6.3 / stateless custom provider；依赖官方 credential-file 的认证路径失败关闭。
+
+该边界只描述新版 Runner 路径，不覆盖旧 collect-loop。旧流程中的 [`backend/verification.py`](../backend/verification.py) 仍通过普通 `subprocess.run` 在运行服务的当前 macOS 用户权限下运行 Godot，没有上述 deny-default sandbox、固定 CA interposer 或 file-link 拒绝规则；项目代码仍是合作型本机执行。Git 写入范围和服务端记录属于应用层检查，不能把旧流程描述为 OS 隔离。旧项目和既有批准仍按原工作流保留，不自动迁移到新版。
 
 “本机工作台”描述服务、项目管理和验证的运行地点，不代表模型推理完全离线。Codex 使用当前用户配置的模型提供方；若使用远端提供方，概念、计划、代码上下文及图片会按该提供方策略传输。
 
@@ -311,188 +343,42 @@ lsof -nP -iTCP:8765 -sTCP:LISTEN
 
 实际目录中可能还存在 SQLite sidecar、运行日志或以后版本新增的内容。备份时按整个状态根目录处理，不要只挑选表格中的部分文件。 `service.lock` 使用操作系统文件锁。文件名存在不表示服务还活着，判断服务是否在运行要看端口监听和当前进程。
 
-项目 Git 仓库和 worktree 由数据库记录、Git元数据和服务路径共同关联。移动或重命名状态根目录可能使 worktree 的管理链接失效。 **恢复工作区时优先还原到原来的绝对路径。** 若确实要迁移路径，当前实现没有自动修复 Git worktree 链接的命令，应作为单独迁移工作审查处理。
+项目 Git 仓库和 worktree 由数据库记录、Git元数据和服务路径共同关联。移动或重命名状态根目录可能使 worktree 的管理链接失效。 **恢复工作区必须使用第 10 节的新空间工具；旧 worktree 的绝对路径关系另行核查。** 若确实要迁移路径，当前实现没有自动修复 Git worktree 链接的命令，应作为单独迁移工作审查处理。
 
 ## 9. 正常关停与进程状态
 
-### 9.1 正常关停
-
-在运行服务的终端按 `Control-C`。服务收到 KeyboardInterrupt 后关闭 HTTP 监听器并调用协调器清理逻辑。 协调器会发出取消请求、等待作业线程最多十秒，并停止由服务管理的预览进程。 这个十秒等待是一次线程 join 上限，不应理解为所有 session 或后代进程必定在十秒内结束。 若已有执行线程仍然存活，协调器会保留数据库连接和服务锁，不主动释放同一状态目录的独占权。 停止后，使用端口检查确认 8765 已无监听者：
+统一入口的正常停止顺序为 AgentRunner、ProjectRunner、前端、后端：
 
 ```sh
-lsof -nP -iTCP:8765 -sTCP:LISTEN
+.venv/bin/python -m tools.studio_services stop --state-root /absolute/path/to/state
 ```
 
-若没有输出，只能说明该端口没有监听者。它不能证明没有所有残留的 Codex 或 Godot 子进程。
+脚本按已记录的 PID 和原始启动时间核对身份，发出中断请求并等待；超时报告 `stop_unconfirmed`，不会强杀无关进程或假定执行停止。Runner 在停止确认前保留工作副本和未 ACK 的事实。停掉后端不会替独立 Runner 确认停止，也不会自动重开原回合。
 
-### 9.2 作业未知时
+手工启动的旧后端可在其终端按 `Control-C`。旧执行线程可能继续保留数据库锁；不得通过删除锁或数据库文件解除占用。仅凭端口无监听不能证明所有原生或 Godot 后代进程都已停止。
 
-服务退出后作业线程或受管进程可能处于待确认状态。若端口释放但重新启动报告 `SERVICE_ACTIVE`，不要删除 `service.lock` 或 SQLite 文件。 先确认是否还有另一个服务进程使用相同的 `--state-root`，再检查对应工作流记录中的租约信息。
-
-在现有 Studio 页面重新启动后，使用“向服务对账”。对账只检查原受管进程租约是否消失，不会替用户重投制作，也不应杀掉无关进程。 如果进程状态无法观测、租约信息缺失或系统重启后 PID 关系无法确认，保留项目为受阻状态并升级人工运维判断。 不要把 `UNCERTAIN` 当成一般失败后按“重试”即可处理的错误。
-
-首个 Demo 制作作业明确失败且尚无已接受版本时，用户可在项目工作台通过“沿用原输入重新策划”取回该失败作业冻结表单中的概念文字与本项目参考图，编辑后自行提交新策划。此恢复只把原输入复制到可编辑表单，不会复用已消费的批准、重新派发旧表单或自动启动 session。部署者无需修改数据库或替用户确认；迭代制作失败则继续由用户从现有对象工作台发起下一轮调整。
+租约过期或后端重启后，已领取的 attempt 进入 `UNKNOWN/UNCERTAIN`，占用继续保留；排队但未启动的任务仍保留为排队。使用工作台的原执行核账入口，Runner 补送原日志。核账不会重发 native start，不会修改已接受版本。无法确认原身份时保留受阻状态，先核对执行器日志和受管进程。
 
 ## 10. 完整备份与恢复
 
-本项目没有内建备份、恢复、数据库迁移或备份一致性检查命令。以下命令是建议的人工运维流程，不是本次执行过的备份。
-
-### 10.1 备份前
-
-先通知正在使用工作台的用户暂停操作，并在服务终端执行正常关停。 使用端口检查确认 HTTP server 停止，再核对没有服务进程继续写入该状态根目录。 不要在服务运行时仅复制 `state.sqlite3`。SQLite 可能正在通过 WAL 文件记录已提交事务。 状态目录可能包含图片、源项目、Git对象、worktree、候选证据和审批状态。只备份数据库无法完整恢复工作台。
-
-备份目标应是受控、加密且空间足够的本机磁盘或组织批准的备份位置。不要将私有用户数据上传到未经批准的服务。
-
-### 10.2 创建完整归档
-
-下面示例适用于默认 `.workbench/`。请在仓库根目录执行，并先把备份目标改成实际存在且受保护的位置。
+使用专用离线工具；先停止后端和两个 Runner。统一部署将 Runner 日志放在 `<state>/runners/`，备份会核对这些服务锁，保存 SQLite WAL 中已提交的记录及整个工件库，并以 Git 对象核对被引用的交付。没有独立 SHA/MD5 校验步骤。
 
 ```sh
-studio_state_root="$PWD/.workbench"
-studio_state_parent="$PWD"
-studio_backup_dir="/Volumes/EncryptedBackup/ptah-studio"
-studio_stamp="$(date +%Y%m%d-%H%M%S)"
-studio_backup="$studio_backup_dir/workbench-$studio_stamp.tar.gz"
+.venv/bin/python -m tools.studio_store backup /absolute/path/to/state /absolute/path/to/new-backup
+.venv/bin/python -m tools.studio_store restore /absolute/path/to/new-backup /absolute/path/to/new-restored-state
 ```
 
-先确认变量和路径指向预期目录：
+目标必须是不存在的新目录。备份目标不能位于活动状态目录内。若手工启动 Runner 并把日志放在外部路径，先停掉它们并另行协调保存日志；专用工具不会自动发现状态根之外的日志。备份完成后保留 `backup.json`、软件 Git 版本、原绝对路径和维护记录。
 
-```sh
-printf 'State: %s\nBackup: %s\n' "$studio_state_root" "$studio_backup"
-```
+恢复保留项目、批准、交付和历史证据，但建立新的 `storeId`，归档旧回执/报告/事件表，活动 attempt 标为待核查。Runner 旧日志被隔离，服务 PID 注册和内部 token 不被复用。首次启动恢复库时会生成新的内部 token；浏览器旧草稿/未知命令不得自动提交到新空间。普通服务重启仍沿用原 `storeId`。
 
-确保备份目录已存在：
-
-```sh
-mkdir -p "$studio_backup_dir"
-```
-
-将整个默认状态目录归档：
-
-```sh
-tar -czpf "$studio_backup" -C "$studio_state_parent" .workbench
-```
-
-归档后记录软件 Git 版本、备份日期、原状态绝对路径和执行人，保存到备份位置的运维记录中。 不要在生产状态目录上运行探针或测试来“验证”备份。此手册未提供专用还原演练工具。
-
-### 10.3 自定义状态根目录
-
-若服务使用自定义 `--state-root`，先写入实际绝对路径，再从该路径派生父目录和末级目录名。以下归档示例只读源状态目录并创建 tar 文件：
-
-```sh
-studio_state_root="/absolute/path/to/PtahPrivateState"
-studio_state_parent="$(dirname "$studio_state_root")"
-studio_state_name="$(basename "$studio_state_root")"
-studio_backup="/absolute/path/to/protected-backup/state-root.tar.gz"
-tar -czpf "$studio_backup" -C "$studio_state_parent" "$studio_state_name"
-```
-
-执行前确认 `studio_state_root` 是实际私有状态目录、`studio_backup` 指向受保护的备份介质，且服务已经完全停止。归档内容会以 `studio_state_name` 作为顶层目录保存。
-
-恢复时使用相同源归档，并把父目录设置为应还原到的原父路径：
-
-```sh
-studio_state_parent="/original/absolute/path/parent"
-studio_backup="/absolute/path/to/protected-backup/state-root.tar.gz"
-tar -xzpf "$studio_backup" -C "$studio_state_parent"
-```
-
-若状态目录在不同绝对路径恢复，数据库记录和 Git worktree 管理链接可能不再一致；当前程序没有路径重写或迁移命令。
-
-### 10.4 恢复到原路径
-
-先停止当前服务，并将现有状态目录移到隔离备份位置；不要直接覆盖一个仍在使用的状态库。准备仓库根目录（即 `.workbench/` 的父目录），再从可信备份归档解包。以下示例恢复默认 `.workbench/`：
-
-```sh
-studio_restore_parent="/absolute/path/to/repository"
-studio_backup="/Volumes/EncryptedBackup/ptah-studio/workbench-YYYYMMDD-HHMMSS.tar.gz"
-```
-
-检查变量已经指向正确备份和仓库根目录（即 `.workbench/` 的父目录）后执行：
-
-```sh
-tar -xzpf "$studio_backup" -C "$studio_restore_parent"
-```
-
-随后确认恢复出的 `.workbench/` 在原来的绝对路径，并由同一 macOS 用户启动相同软件版本。 后端会强制重新设置状态目录为 `0700`、数据库为 `0600`。如果备份恢复的文件所有者不是运行服务的用户，先通过常规受管备份流程纠正所有者；本手册不建议扩大系统权限。 首次启动后只检查工作区是否可读和项目状态是否一致。不要直接接受候选或修改发布状态来掩盖恢复问题。
-
-### 10.5 恢复限制
-
-状态数据库保存审批和发布元数据，Git 仓库保存项目版本，worktree 元数据保存隔离工作区关联；三者必须来自同一时间点的完整备份。 无法保证单独恢复数据库、项目仓库或某一个 job 目录能够组成一致工作区。 尚无自动化的备份校验或灾难恢复演练记录。部署者需自行制定备份保留、加密、异地保护和恢复演练政策。 如果无法确定原租约进程是否结束，恢复后仍可能出现 `UNCERTAIN`。恢复流程不会自动授权重跑或接受任何候选。
+旧 worktree 可能保留绝对路径链接，恢复工具不会替旧工作流改写这些关系；历史项目迁移后必须独立核对。不要把旧备份解包覆盖正在使用的目录，也不要为了恢复旧路径而复用旧命令空间。
 
 ## 11. 升级、迁移与回滚
 
-### 11.1 升级前准备
+升级前停止受管组件并用第 10 节保存完整备份；使用 `git status` 和差异清单记录代码。保留用户项目、历史计划与批准；新项目使用 `protocolVersion:1` 和 `executionBackend:runners`，旧项目按原协议运行，不自动改写历史批准。工作台前端依据项目协议选择写接口，服务器拒绝新版项目走旧的工作流写入口。
 
-当前交付没有独立数据库 schema 版本迁移命令，也没有对不同应用版本间状态数据库向前或向后兼容的保证。 升级前记录当前 Git 检查点和工作区状态：
-
-```sh
-git status --short
-```
-
-停止服务，按第 10 节完整备份状态根目录，并单独保留正在部署的软件 Git 版本。 不要在有运行中、待审阅或 `UNCERTAIN` 作业时升级。先让用户处理已知候选，并按第 9 节确认进程状态。 将新软件检出到可回退的 Git 检查点，再用原来的状态根路径启动。不要同时改变代码版本、状态目录路径和 Python 环境。
-
-### 11.2 数据库兼容的现实限制
-
-当前协调器启动时使用 `CREATE TABLE IF NOT EXISTS` 初始化表，不代表已有字段、JSON payload 或业务状态跨版本兼容。 代码没有对既有数据库执行编号迁移，也没有受支持的降级程序。新版本如果写入旧版本不认识的状态，直接回退可导致读取或业务错误。 不要把升级试运行连接到唯一生产数据库后，再假设切回旧代码即可恢复。先有完整备份，再决定升级窗口。
-
-### 11.3 回滚
-
-如果新代码在写入生产状态前启动失败，可停止服务并检出原软件版本后再启动。 如果新版本已经写入状态数据库，最可靠的回滚路径是停止服务、恢复升级前的完整状态备份、检出对应的软件版本，再启动。 恢复旧数据会丢弃升级后产生的工作流记录。先保存故障日志和需要保留的候选信息，再执行恢复。 在没有单独审核迁移方案时，不要手工编辑 SQLite 表、直接拼接数据库、删除 job 记录或改写审批位。
-
-### 11.4 迁移到新 Mac
-
-迁移前在旧 Mac 停止服务，并按第 10 节备份完整状态根目录。软件仓库应为已提交的经审阅版本；Git bundle 不包含未提交文件：
-
-```sh
-studio_repo_root="/absolute/path/to/original/repository"
-studio_software_bundle="/path/to/transfer/ptah-software.bundle"
-git -C "$studio_repo_root" status --short
-git -C "$studio_repo_root" bundle create "$studio_software_bundle" --all
-```
-
-将软件 bundle 和第 10 节创建的完整状态归档安全地传到新 Mac。在新 Mac 把仓库克隆到**与旧 Mac完全相同的绝对路径**：
-
-```sh
-studio_repo_root="/absolute/path/to/original/repository"
-studio_software_bundle="/path/to/transfer/ptah-software.bundle"
-git clone "$studio_software_bundle" "$studio_repo_root"
-cd "$studio_repo_root"
-git status --short
-```
-
-不要把示例路径原样当作真实路径。目标仓库父目录须由当前用户预先创建。重建 Python 环境；标准 venv 可用 pip：
-
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements.txt
-```
-
-若采用 uv：
-
-```sh
-uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python -r backend/requirements.txt
-```
-
-确认 Godot 已安装于固定 macOS 路径，并把状态归档解包到**仓库根目录**。该归档示例内的顶层目录为 `.workbench`：
-
-```sh
-studio_state_root="$studio_repo_root/.workbench"
-studio_backup="/path/to/transfer/workbench-backup.tar.gz"
-/Applications/Godot.app/Contents/MacOS/Godot --version
-tar -xzpf "$studio_backup" -C "$studio_repo_root"
-```
-
-这里的解包父目录必须是 `studio_repo_root`，不能用仓库的上级目录，否则 `.workbench` 会落在仓库外，服务会启动空状态库。自定义 `--state-root` 应按第 10.3 节用原父目录和目录名恢复到原绝对路径。
-
-启动服务并只读检查工作区：
-
-```sh
-.venv/bin/python -m backend.server --port 8765 --state-root "$studio_state_root"
-```
-
-浏览器打开 `/studio/`，用 `/api/workspace` 确认预期工作区和项目摘要，再进入对应项目核对发布和作业状态。worktree 元数据可能引用仓库绝对路径，迁移到不同路径没有自动修复命令。Linux/Windows、远程或多人部署也没有当前支持流程。
+回滚代码需要同时核对数据库兼容性。若恢复到较旧数据，用第 10 节创建新状态目录和新命令空间，再核对旧 Runner 的未确认报告。恢复后指定新的 `--state-root`；不要复制测试项目、合成接受或测试批准到生产目录。迁移到另一台 Mac 后重新验证 Codex 目录、Godot 路径和各角色进程权限；这些能力不能由数据库副本继承为通过。
 
 ## 12. 日志与故障排查
 
@@ -581,7 +467,7 @@ curl -i http://127.0.0.1:8765/api/workspace
 
 ## 13. 维护者验证流程
 
-本节是版本更新后的检查清单。命令仅供维护窗口使用，本次编写手册时没有重复运行测试。 先核实源代码来自已审阅的 Git 提交，并确认没有非预期工作区改动：
+本节是版本更新后的检查清单。命令仅供维护窗口使用；本轮实际回归见[实施记录](STUDIO-IMPLEMENTATION-20261012.zh-CN.md)。先核实代码版本并确认工作区改动：
 
 ```sh
 git status --short
@@ -593,12 +479,15 @@ git status --short
 .venv/bin/python -m unittest discover -s backend/tests -p 'test*.py'
 ```
 
+共享 Schema parity 测试另需 jsonschema；缺少时会明确跳过。验收记录必须区分实际通过与跳过。本轮用了具备该依赖的 Python 3.11 解释器完成这些检查。
+
 前端 DOM/浏览器测试依赖前端开发依赖。执行前先阅读仓库内前端说明，并确保所用状态和浏览器都是测试用途。未来真实 session 探针仍必须使用单独 `--state-root` 与 `--test-data`；不要把测试数据库、测试候选或合成接受记录合并到生产工作区。任何制作或验证测试都应确认不会写入用户真实项目，且测试决策保留 `testData=true` 与 `productionAuthorized=false`。部署冒烟检查应仅验证静态页面和只读 `/api/workspace` 响应。不要以启动真实制作 session 作为简单健康检查。更新后重新核对生产启动命令、默认状态路径、监听地址、Godot 和 Codex 能力状态。任何新增远程部署、多用户认证、数据库迁移、权限策略、OS 沙箱或 3D/插件/音频等适配器都超出当前本机部署边界，需要单独设计与安全审查。fixture 专项玩法探针通过不等于用户试玩当前候选；通用候选的玩法证据仍需用户独立体验。
 
 ## 14. 部署完成检查表
 
 - [ ] 仓库检出版本已核对为经批准的检查点。
 - [ ] Python 3.11+、Git、Godot 4 和 Codex app-server 已在本机确认。
+- [ ] 新版 ProjectRunner 使用前，固定路径的 Apple Command Line Tools clang/SDK 与 root-owned `/etc/ssl/cert.pem` 已存在；工作台不会自动安装或寻找替代 CA。
 - [ ] 当前运行服务的 macOS 用户已配置可用的模型提供方与认证；已知 sessionDispatch READY 仅表示发现 CLI，不代表认证验证通过。
 - [ ] `.venv/` 使用本仓库 `backend/requirements.txt` 安装依赖。
 - [ ] Godot 实际 CLI 可用，且核对 `GODOT_BIN` 与固定 macOS 预览路径差异。
@@ -614,9 +503,9 @@ git status --short
 
 通用路径已按稳定对象 ID、字段、关系、源绑定和需求建立流程，但当前范围只涵盖 Godot 4 的 2D GDScript 工程。插件、编辑器扩展、任意二进制资源、音频制作、远程协作、多人账号、导出签名和商店发布都不在当前写入或部署能力内。参考图片可以送入策划/制作流程，但上传本身不等于生成、许可核对或导入美术。
 
-验证器的技术报告只说明它实际运行的范围检查、干净导入和后端拥有的主场景冒烟。它不能由主场景启动推断所有玩法正确；候选中每条没有自动观察的游戏要求都仍需要人工体验。r3 已提供真实 Godot 引擎集成证据和两种游戏的端到端制作记录，但仅在隔离测试数据中完成。报告中的 `technicalStatus=PASS` 不等于玩法验收；不得把 mock、session 完成或合成测试接受描述为用户验收或生产批准。
+技术报告只说明它实际运行的范围检查、干净导入和后端拥有的主场景冒烟；主场景启动不能证明所有玩法正确，未被自动观察的要求仍需用户体验。r3 与 Bridge Runner / Light Grid 记录属于隔离测试数据，不能代替当前候选的体验、生产批准或新版角色权限证明。详细的当前边界证据与整体验收状态见[Studio 边界修复与补充验收](STUDIO-BOUNDARY-FIX-ACCEPTANCE-20261012.zh-CN.md)；该报告不会覆盖[初次全功能验收](STUDIO-ACCEPTANCE-20261012.zh-CN.md)保存的失败历史。
 
-项目代码在本机同用户权限上下文中执行，没有 OS 级沙箱。Git 文件范围、临时副本和服务端审批记录是应用层控制，不会阻挡恶意代码读取或改动当前用户可访问的资源。上线给非可信输入或多人共享前，必须另行设计和验证进程、文件和网络隔离。旧 collect-loop 工程仍走原有流程；不存在自动迁移旧审批的功能。Bridge Runner 的获胜后重置缺陷已在指定 fixture 版本修复并通过专项复测；该证据不能推导为其它游戏或当前生产候选的玩法通过。人工验收仍未执行。
+新版 `objects-v1` Godot 子进程现有受测 deny-default 文件/网络/进程边界，CA 运行时依赖固定系统证书和 CLT。四项角色探针与 Runner 注册仅在受测 macOS、stateless custom provider、Godot 4.6.3 配置中通过；启动注册按本机新鲜证据派生能力，非远程 attestation。实际操作者体验/视觉验收仍为 `NOT_TESTED`，没有用户接受的正式生产候选。请求的 effort=`max` 不是实际回合强度观测，完整计费未知，也不能推断其他模型、平台或 provider 配置。旧 collect-loop 工程继续走原有 `backend/verification.py` 路径：它在当前服务用户权限中运行 Godot，未获得新版 sandbox，旧项目和批准也不会自动迁移。
 
 ## 16. 实现参考
 
@@ -626,9 +515,17 @@ git status --short
 - [协调器项目、作业与隔离 worktree](../backend/coordinator.py)
 - [协调器预览与关停](../backend/coordinator.py)
 - [Codex app-server 驱动](../backend/codex_driver.py)
-- [旧 collect-loop 验证器](../backend/verification.py)
+- [旧 collect-loop 验证器（普通用户权限执行）](../backend/verification.py)
 - [通用对象工作流与验证器](../backend/generic_workflow.py) · [通用验证器](../backend/general_verification.py)
+- [新版 Godot 私有 runtime 与 sandbox](../runners/godot_runtime.py) · [固定 CA interposer 源码](../runners/godot_ca_interposer.m)
+- [Studio 边界修复与补充验收](STUDIO-BOUNDARY-FIX-ACCEPTANCE-20261012.zh-CN.md)
 - [GM non-pk 来源与审批适配器](../backend/general_gm_integration.py) · [GM non-pk 源码说明](../sources/GodotMaker-non-pk/README.zh-CN.md)
 - [GameStudio 参考版本 0722921](https://github.com/openai/plugins/tree/0722921d5542fc593105c27bd52630babd8b8c2a/plugins/game-studio)
 - [Git 校验迁移与本机安装记录](../LOCAL-SETUP-GIT.zh-CN.md)
 - [仓库执行约束](../AGENTS.md)
+
+## 2026-10-20 Godot 工程制作前置检查
+
+所有制作入口执行同一标准路径：创建或载入批准工程 → 内置插件完整且启用 → 隔离普通编辑器启动 → MCP 初始化/工具与工程身份核对 → 确认编辑器停止 → 启动制作。首次制作、返修与参数迭代均重新检查；规划阶段不启动编辑器。运行要求包含可执行的 Godot 4 和 macOS `sandbox-exec`。配置 `GODOT_BIN` 或 `GODOT_PATH`，就绪报告保存在 Runner journal 同级 `editor-mcp/<attemptId>/readiness.json`，本地保留流程保存在作业目录 `editor-mcp/readiness.json`。
+
+检查失败或编辑器停止未确认时不得绕过检查派发制作；后者保持项目占用，由受信操作员核实报告中的原进程组。不得连接未知端点、杀死其他编辑器或使用旧 PASS 代替本轮检查。脚手架操作、隔离策略与命令见 [Godot MCP 标准路径](GODOT-MCP.zh-CN.md)。此检查不代表游戏可玩或用户已接受。

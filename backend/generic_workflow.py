@@ -25,6 +25,7 @@ from .object_protocol import (
     parse_planner_response,
     planner_instructions,
     validate_change_request,
+    validate_change_request_v1,
 )
 
 WORKFLOW = "objects-v1"
@@ -57,7 +58,7 @@ def _require_stopped(lease):
     _failure("LEASE_ACTIVE", "原策划进程组仍存在；不会自动重新派发。")
 
 
-def timeout_clarification(result):
+def timeout_clarification(result, expected_feedback=None):
     """Recover questions only, never a production plan, from a stopped timeout."""
     diagnostics = (result or {}).get("diagnostics") or {}
     if (not result or result.get("status") != "timeout"
@@ -66,7 +67,8 @@ def timeout_clarification(result):
             or (result.get("commandEvidence") or {}).get("executionEvidence")):
         return None
     try:
-        response = parse_planner_response(result.get("response", ""))
+        response = parse_planner_response(result.get("response", ""),
+            expected_feedback=expected_feedback if expected_feedback else None)
     except (ObjectProtocolError, TypeError, ValueError):
         return None
     if response["status"] != "NEEDS_CLARIFICATION":
@@ -257,12 +259,12 @@ class GenericWorkflow:
 
     def create_generic_concept(self, *, operator_id, text, project_id=None,
                                asset_ids=None, expected_publication_revision=None,
-                               change_request=None):
+                               change_request=None, visual_references=None):
         _, _, _, identifier, now = _core()
         self._operator(operator_id)
         has_structured_change = (project_id is not None and isinstance(change_request, dict) and
-            bool(change_request.get("fields") or change_request.get("feedback")))
-        if not isinstance(text, str) or len(text) > 8000 or (not text.strip() and not has_structured_change):
+            bool(change_request.get("fields") or change_request.get("feedback") or change_request.get("operations")))
+        if not isinstance(text, str) or len(text) > 8000 or (not text.strip() and not has_structured_change and not visual_references):
             _failure("CONCEPT", "请提供有界的游戏概念或修改意图。", 400)
         ids = asset_ids or []
         if not isinstance(ids, list) or len(ids) > 6 or len(set(ids)) != len(ids):
@@ -280,6 +282,8 @@ class GenericWorkflow:
                 project = self._get("project", project_id)
                 if project.get("workflow") != WORKFLOW:
                     _failure("WORKFLOW_MISMATCH", "旧项目不能沿用旧批准自动转换为通用对象工程。")
+                if project.get("executionBackend") == "runners" and getattr(self, "_command_profile", None) is None:
+                    _failure("PROFILE_REQUIRED", "独立策划需要类型化命令冻结本次设置。")
                 self._available(project_id)
                 if expected_publication_revision != project["publicationRevision"]:
                     _failure("STALE_DRAFT", "草稿基线已变化，请先检查版本重关联。")
@@ -290,16 +294,27 @@ class GenericWorkflow:
                            "workflow": WORKFLOW, "templateId": "general-2d-v1",
                            "publicationRevision": 0, "snapshotId": None, "createdAt": now()}
                 self._put("project", project)
-            snapshot = self._get("snapshot", project["snapshotId"]) if project["snapshotId"] else None
+            snapshot = self.planning_baseline(project["id"])
+            if snapshot and asset_ids is None and visual_references is None:
+                assets = [self.require_project_asset(project["id"], asset["id"]) for asset in snapshot.get("assets", [])]
+                visual_references = copy.deepcopy(snapshot.get("visualReferences", []))
+            repair = snapshot if snapshot and snapshot.get("kind") == "REPAIR" else None
+            if repair and not change_request:
+                _failure("REPAIR_BASE_REQUIRED", "请从候选返修工作台提交，绑定精确候选和修改意图。")
+            if not snapshot and change_request:
+                _failure("CHANGE_BASE", "当前没有可修改的发布版本或已拒绝候选。")
             current_document = snapshot.get("document") if snapshot else None
             if snapshot:
                 request = change_request or {"baseRevision": project["publicationRevision"],
                     "sourceCommit": snapshot["sourceCommit"], "targetObjectIds": [], "fields": [], "feedback": []}
                 try:
-                    request = validate_change_request(request, current_document,
+                    validator = validate_change_request_v1 if project.get("protocolVersion") == 1 else validate_change_request
+                    request = validator(request, current_document,
                         project["publicationRevision"], snapshot["sourceCommit"])
                 except ObjectProtocolError as exc:
                     _failure("CHANGE_REQUEST", str(exc), 400)
+                if repair:
+                    self._retain_repair_source(repair)
             else:
                 request = None
             for old in self._all("proposal"):
@@ -307,21 +322,50 @@ class GenericWorkflow:
                     old.update(status="SUPERSEDED", updatedAt=now())
                     self._put("proposal", old)
             proposal = {"id": identifier("proposal"), "projectId": project["id"],
-                "workflow": WORKFLOW, "revision": 1, "status": "PLANNING", "text": text.strip(),
+                "workflow": WORKFLOW, "revision": 1, "status": "PLANNING", "text": text,
                 "summary": "正在围绕你的概念和目标对象整理问题与制作计划。",
                 "publicationRevision": project["publicationRevision"],
                 "baseCommit": snapshot["sourceCommit"] if snapshot else None,
+                "repairBase": {key: repair[key] for key in ("jobId", "candidateId", "sourceCommit")} if repair else None,
                 "initializationRequired": False, "templateId": "general-2d-v1",
                 "questions": [], "decisions": {}, "document": None, "tasks": [],
                 "currentDocument": current_document, "changeRequest": request, "assets": assets,
-                "discussion": [{"role": "user", "text": text.strip(), "at": now()}],
+                "visualReferences": self.resolve_visual_references(project["id"], assets, visual_references, current_document),
+                "discussion": [{"role": "user", "text": text, "at": now()}],
                 "testData": self.test_data, "productionAuthorized": self.production_authorized,
                 "createdAt": now(), "updatedAt": now()}
             self._put("proposal", proposal)
         self._launch_planning(proposal)
         return proposal
 
+    def _retain_repair_source(self, repair):
+        """Retain candidate Git objects without checking out or publishing them."""
+        _, _, git, _, _ = _core()
+        job = self.require_project_resource(repair["projectId"], "job", repair["jobId"])
+        ref = (job.get("candidate") or {}).get("artifactRef") or job.get("artifactRef")
+        if not ref:
+            git(self.state_root / "projects" / repair["projectId"], "rev-parse", "--verify", repair["sourceCommit"] + "^{commit}")
+            return
+        source = self._artifact_repository(ref, project_id=repair["projectId"], job_id=job["id"])
+        target = self.state_root / "projects" / repair["projectId"]
+        if target.is_symlink():
+            _failure("REPAIR_SOURCE", "返修工程目录不能为链接。")
+        if not target.exists():
+            target.mkdir(parents=True)
+            git(target, "init", "-b", "main")
+        git(target, "fetch", str(source), repair["sourceCommit"] + ":refs/heads/studio-repair/" + job["id"])
+
     def _launch_planning(self, proposal):
+        project = self._get("project", proposal["projectId"])
+        if project.get("executionBackend") == "runners":
+            profile = getattr(self, "_command_profile", None)
+            if profile is None:
+                _failure("PROFILE_REQUIRED", "独立策划需要类型化命令冻结本次设置。")
+            self._queue_planning(proposal, profile)
+            return
+        if self._transaction_depth:
+            self._after_commit.append(lambda: self._launch_planning(proposal))
+            return
         key = "planning:" + proposal["id"]
         cancel = threading.Event()
         thread = threading.Thread(target=self._plan_generic, args=(copy.deepcopy(proposal), cancel), daemon=True)
@@ -343,10 +387,15 @@ class GenericWorkflow:
                       CodexDriver(folder, timeout=420, execution_profile="managed_read_only",
                           reasoning_effort="medium", disabled_mcp_servers=["godot-mcp"]))
             packet = {"operationKind": "PLANNING", "allowedFiles": [],
-                "instruction": planner_instructions() + "\nReturn the JSON object as the final response. Do not write files. "
+            "instruction": planner_instructions(expected_feedback=bool((proposal.get("changeRequest") or {}).get("feedback")), initial_build=not proposal.get("baseCommit")) + "\nReturn the JSON object as the final response. Do not write files. "
                     "When clarification is needed, return only the unresolved questions and a concise concept summary, "
                     "with document=null and tasks=[]; defer the full object plan until those answers are received. "
-                    "Preserve existing object/field IDs. Every explicit field change must appear exactly in the resulting document. "
+                "Preserve existing object/field IDs. Every explicit field change must appear exactly in the resulting document. "
+                "Apply every workbench operation in changeRequest.operations exactly; do not treat this list as advisory prose. "
+                "Materialize every new-scene and new-instance with its declared stable ID, name, scene/definition, requested position, bounds, size, anchor and lock. "
+                "A new-instance lock omitted by the request means free. Include each added scene or instance ID in at least one READY task. "
+                "For a new-scene, honor its selected blank/minimal template and preserve any connections instruction verbatim in that scene's description; do not add unrequested transitions. "
+                "Only an explicit set-lock operation authorizes changing an existing instance lock; honor its before/lock exactly and preserve every other protected property. "
                     "Ask only questions that the user has not already answered. Retain targeted feedback, risks and omitted scope. "
                     "Only Godot 4 GDScript 2D projects with procedural visuals or supplied references are supported. "
                     "Do not use or activate Ptah skills; the supplied GM non-pk contract and GameStudio design principles are the references. "
@@ -354,8 +403,9 @@ class GenericWorkflow:
                     "Game source reads the frozen fields through StudioRuntime.object_value(). "
                     "For existing projects preserve working behavior outside the requested change. "
                     "Separate simulation, rendering, input actions and interface responsibilities, as in GM non-pk and GameStudio.",
-                "concept": proposal["text"], "discussion": proposal["discussion"],
-                "currentDocument": proposal["currentDocument"], "changeRequest": proposal["changeRequest"],
+                "concept": proposal["text"], "visualReferences": proposal.get("visualReferences", []), "referenceAssets": proposal.get("assets", []), "discussion": proposal["discussion"],
+                "currentDocument": proposal["currentDocument"], "previousDocument": proposal.get("document"), "changeRequest": proposal["changeRequest"],
+                "feedback": copy.deepcopy((proposal.get("changeRequest") or {}).get("feedback", [])),
                 "testData": self.test_data, "productionAuthorized": self.production_authorized}
             if self._field_only_intent(proposal):
                 packet["instruction"] += (" This is a field-only iteration: preserve the whole currentDocument exactly "
@@ -379,16 +429,20 @@ class GenericWorkflow:
                     summary="策划已停止；没有批准或制作游戏。")
                 return
             recovered = result.get("status") != "completed"
-            response = timeout_clarification(result) if recovered else None
+            expected_feedback = (proposal.get("changeRequest") or {}).get("feedback", [])
+            response = timeout_clarification(result, expected_feedback=expected_feedback) if recovered else None
             if recovered and response is None:
                 _failure("PLANNER_FAILED", planning_failure(result)["message"])
             # A read-only planner is not permitted to mutate its input workspace.
             self._check_planning_readonly(folder, proposal)
             if response is None:
-                response = parse_planner_response(result.get("response", ""))
+                response = parse_planner_response(result.get("response", ""),
+                    expected_feedback=expected_feedback if expected_feedback else None,
+                    current_document=proposal.get("currentDocument"), previous_document=proposal.get("document"),
+                    initial_build=not proposal.get("baseCommit"))
             document = response.get("document")
             if response["status"] == "READY":
-                self._check_requested_fields(document, proposal.get("changeRequest"))
+                self._check_requested_fields(document, proposal.get("changeRequest"), proposal.get("currentDocument"), response["tasks"])
                 references = self._prepare_generic_spec(proposal, document, response["tasks"])
             else:
                 references = {}
@@ -429,7 +483,8 @@ class GenericWorkflow:
     def _field_only_intent(proposal):
         request = proposal.get("changeRequest") or {}
         return bool(proposal.get("currentDocument") and not proposal.get("text", "").strip()
-                    and not proposal.get("assets") and request.get("fields") and not request.get("feedback"))
+                    and not proposal.get("assets") and request.get("fields") and not request.get("feedback")
+                    and not request.get("operations"))
 
     @staticmethod
     def _data_only_update(proposal):
@@ -439,7 +494,7 @@ class GenericWorkflow:
         return expected != proposal["currentDocument"] and expected == proposal["document"]
 
     @staticmethod
-    def _check_requested_fields(document, request):
+    def _check_requested_fields(document, request, current_document=None, tasks=None):
         if not request:
             return
         objects = {obj["id"]: obj for obj in document["objects"]}
@@ -448,6 +503,154 @@ class GenericWorkflow:
             field = next((f for f in (obj or {}).get("fields", []) if f["id"] == change["fieldId"]), None)
             if field is None or type(field["value"]) is not type(change["value"]) or field["value"] != change["value"]:
                 _failure("PLAN_CHANGE_MISMATCH", "策划没有准确保留明确的对象属性修改。")
+        if current_document is None:
+            return
+
+        previous = {obj["id"]: obj for obj in current_document.get("objects", [])}
+        operations = request.get("operations", [])
+        new = objects
+        by_operation_target = {
+            (operation.get("objectId"), operation["kind"]): operation
+            for operation in operations if operation.get("objectId")
+        }
+
+        def metadata(obj):
+            return (obj or {}).get("workbench") or {}
+
+        def mismatch(message):
+            _failure("PLAN_CHANGE_MISMATCH", message)
+
+        def preserve_instance(identity, before, after, *, allow_position=False, requested_lock=None):
+            if after is None or metadata(after).get("role") != "instance":
+                mismatch(f"策划没有保留已申报实例 {identity}。")
+            old_meta, new_meta = metadata(before), metadata(after)
+            keys = ("definitionId", "sceneId", "size", "anchor")
+            if any(old_meta.get(key) != new_meta.get(key) for key in keys):
+                mismatch(f"策划改变了实例 {identity} 的锁定、定义、场景、尺寸或锚点。")
+            if new_meta.get("lock") != (requested_lock if requested_lock is not None else old_meta.get("lock")):
+                mismatch(f"策划改变了实例 {identity} 未明确授权的锁定状态。")
+            if not allow_position and old_meta.get("position") != new_meta.get("position"):
+                mismatch(f"策划改变了未申报移动的实例 {identity} 的位置。")
+
+        # Fixed instances are protected even if a planner returns a structurally
+        # plausible READY document or a request attempts to move/delete them.
+        for identity, before in previous.items():
+            before_meta = metadata(before)
+            if before_meta.get("role") != "instance":
+                continue
+            lock = before_meta.get("lock")
+            lock_operation = by_operation_target.get((identity, "set-lock"))
+            effective_lock = lock_operation["lock"] if lock_operation else lock
+            after = new.get(identity)
+            if lock == "fixed" and not lock_operation:
+                preserve_instance(identity, before, after)
+            elif (identity, "delete-instance") in by_operation_target:
+                if after is not None:
+                    mismatch(f"策划没有准确落实已申报的实例移除 {identity}。")
+            elif (identity, "move") in by_operation_target:
+                operation = by_operation_target[(identity, "move")]
+                if effective_lock not in {"free", "nudge"}:
+                    mismatch(f"实例 {identity} 不允许移动。")
+                preserve_instance(identity, before, after, allow_position=True, requested_lock=effective_lock)
+                requested = operation.get("requested")
+                if metadata(after).get("position") != requested:
+                    mismatch(f"策划没有准确落实实例 {identity} 的微调位置。")
+                if effective_lock == "nudge":
+                    step = 1.0
+                    start = before_meta.get("position")
+                    if not isinstance(start, list) or len(start) != 2 or not all(isinstance(value, (int, float)) for value in start):
+                        mismatch(f"nudge 实例 {identity} 缺少有效的原始位置。")
+                    if any(abs((requested[index] - start[index]) / step - round((requested[index] - start[index]) / step)) > 1e-7 for index in range(2)):
+                        mismatch(f"nudge 实例 {identity} 的移动不符合方向按钮步长。")
+            else:
+                # Even a free instance must only move, be removed, or change its
+                # lock through an explicit submitted operation.
+                preserve_instance(identity, before, after, requested_lock=effective_lock)
+
+        for operation in operations:
+            kind = operation["kind"]
+            identity = operation.get("objectId")
+            before = previous.get(identity) if identity else None
+            after = new.get(identity) if identity else None
+            if kind == "move":
+                if before is None or after is None:
+                    mismatch(f"策划没有保留并移动已申报实例 {identity}。")
+                before_meta, after_meta = metadata(before), metadata(after)
+                lock_operation = by_operation_target.get((identity, "set-lock"))
+                effective_lock = lock_operation["lock"] if lock_operation else before_meta.get("lock")
+                if before_meta.get("role") != "instance" or effective_lock not in {"free", "nudge"}:
+                    mismatch(f"实例 {identity} 不允许移动。")
+                preserve_instance(identity, before, after, allow_position=True, requested_lock=effective_lock)
+                if after_meta.get("position") != operation["requested"]:
+                    mismatch(f"策划没有准确落实实例 {identity} 的申报位置。")
+            elif kind == "set-lock":
+                if before is None or metadata(before).get("role") != "instance" or metadata(before).get("lock") != operation["before"]:
+                    mismatch(f"实例 {identity} 的锁定申报基线不匹配。")
+                preserve_instance(identity, before, after,
+                    allow_position=(identity, "move") in by_operation_target, requested_lock=operation["lock"])
+            elif kind == "delete-instance":
+                if before is None or metadata(before).get("role") != "instance" or metadata(before).get("lock") == "fixed":
+                    mismatch(f"实例 {identity} 不允许移除。")
+                if after is not None:
+                    mismatch(f"策划没有准确落实已申报的实例移除 {identity}。")
+            elif kind == "new-scene":
+                identity = operation["sceneId"]
+                after = new.get(identity)
+                if identity in previous or after is None or after.get("kind") != "scene" or after.get("name") != operation["name"]:
+                    mismatch(f"策划没有按稳定 ID 和名称准确创建场景 {identity}。")
+                if "bounds" in operation and metadata(after).get("bounds") != operation["bounds"]:
+                    mismatch(f"策划没有准确保留新场景 {identity} 的申报边界。")
+                if operation.get("connections") and operation["connections"] not in (after.get("description") or ""):
+                    mismatch(f"策划没有在新场景 {identity} 的说明中保留连接意图。")
+            elif kind == "new-instance":
+                identity = operation["instanceId"]
+                after = new.get(identity)
+                if identity in previous or after is None or metadata(after).get("role") != "instance" or after.get("name") != operation["name"]:
+                    mismatch(f"策划没有按稳定 ID 和名称准确创建实例 {identity}。")
+                after_meta = metadata(after)
+                definition = previous.get(operation["definitionId"])
+                if definition is None or metadata(definition).get("role") != "definition":
+                    mismatch(f"新实例 {identity} 的共享定义不存在。")
+                expected_scene = operation["sceneId"]
+                if after_meta.get("definitionId") != operation["definitionId"] or after_meta.get("sceneId") != expected_scene:
+                    mismatch(f"策划改变了新实例 {identity} 的申报定义或场景。")
+                if "requestedPosition" in operation and after_meta.get("position") != operation["requestedPosition"]:
+                    mismatch(f"策划没有准确落实新实例 {identity} 的申报位置。")
+                for key in ("size", "anchor", "lock"):
+                    if key in operation and after_meta.get(key) != operation[key]:
+                        mismatch(f"策划没有准确保留新实例 {identity} 的申报 {key}。")
+                if "description" in operation and after.get("description") != operation["description"]:
+                    mismatch(f"策划没有准确保留新实例 {identity} 的意图说明。")
+            elif kind == "transition":
+                if identity:
+                    candidates = [new.get(identity)]
+                else:
+                    candidates = [obj for obj in new.values()
+                                  if metadata(obj).get("role") == "transition" and previous.get(obj["id"]) != obj]
+                candidates = [obj for obj in candidates if obj is not None and metadata(obj).get("role") == "transition"]
+                if len(candidates) != 1:
+                    mismatch(f"场景过渡操作 {operation['operationId']} 没有唯一、可审阅的候选目标。")
+                transition_meta = metadata(candidates[0])
+                for key in ("entryId", "condition", "mode", "presetId"):
+                    if key in operation and transition_meta.get(key) != operation[key]:
+                        mismatch(f"策划没有准确落实场景过渡 {operation['operationId']} 的 {key}。")
+                destination = operation.get("sceneId")
+                if destination and transition_meta.get("destinationSceneId", transition_meta.get("targetSceneId")) != destination:
+                    mismatch(f"策划没有准确落实场景过渡 {operation['operationId']} 的目标场景。")
+
+        if tasks is not None:
+            task_object_ids = {object_id for task in tasks for object_id in task.get("objectIds", [])}
+            for operation in operations:
+                if operation["kind"] == "new-scene":
+                    identity = operation["sceneId"]
+                elif operation["kind"] == "new-instance":
+                    identity = operation["instanceId"]
+                elif operation["kind"] in {"move", "set-lock"}:
+                    identity = operation["objectId"]
+                else:
+                    continue
+                if identity not in task_object_ids:
+                    mismatch(f"READY 任务没有覆盖结构提案目标 {identity}。")
 
     @staticmethod
     def _object_changes(previous, current):
@@ -463,15 +666,23 @@ class GenericWorkflow:
 
         _, _, git, _, _ = _core()
         folder = self.state_root / "planning" / proposal["id"] / f"spec-{proposal['revision']}"
-        folder.mkdir(parents=True, exist_ok=False)
-        files = render_spec_documents(document, tasks, proposal.get("changeRequest"), revision=proposal["revision"])
-        for name, content in files.items():
-            (folder / name).write_text(content)
-        git(folder, "init", "-b", "main")
-        git(folder, "config", "user.name", "Studio Plan")
-        git(folder, "config", "user.email", "studio@localhost")
-        git(folder, "add", "--", *sorted(files))
-        git(folder, "commit", "-m", "Capture proposed GM non-pk specification")
+        files = render_spec_documents(document, tasks, proposal.get("changeRequest"), revision=proposal["revision"], asset_bundle=proposal.get("assetBundle"))
+        if folder.exists():
+            if folder.is_symlink() or any((folder / name).is_symlink() or not (folder / name).is_file()
+                or (folder / name).read_text() != content for name, content in files.items()):
+                _failure("SPEC_DRIFT", "原修订规格文件与严格策划结果不同。")
+        else:
+            folder.mkdir(parents=True, exist_ok=False)
+            for name, content in files.items():
+                (folder / name).write_text(content)
+        if not (folder / ".git").is_dir():
+            git(folder, "init", "-b", "main")
+            git(folder, "config", "user.name", "Studio Plan")
+            git(folder, "config", "user.email", "studio@localhost")
+            git(folder, "add", "--", *sorted(files))
+            git(folder, "commit", "-m", "Capture proposed GM non-pk specification")
+        if git(folder, "status", "--porcelain"):
+            _failure("SPEC_DIRTY", "规格输入含未封存的更改。")
         template = self.root / "backend/templates/general_2d"
         inventory = self._template_inventory(template)
         source_refs = {}
@@ -479,6 +690,12 @@ class GenericWorkflow:
             repo = self.state_root / "projects" / proposal["projectId"]
             source_refs = {name: "git:blob:" + git(repo, "rev-parse", proposal["baseCommit"] + ":" + name)
                            for name in ("design/game.json", "studio/runtime.gd", "project.godot")}
+        if proposal["baseCommit"]:
+            names = set(git(repo, "ls-tree", "-r", "--name-only", proposal["baseCommit"]).splitlines())
+            for obj in document["objects"]:
+                for name in obj.get("sourceBindings", []):
+                    if name.startswith("assets/") and name in names:
+                        source_refs[name] = "git:blob:" + git(repo, "rev-parse", proposal["baseCommit"] + ":" + name)
         return {"gmSpecRef": spec_ref(folder), "specInventory": capture_inventory(folder, sorted(files)),
                 "sourceRefs": source_refs, "templateInventory": inventory}
 
@@ -596,7 +813,14 @@ class GenericWorkflow:
     def freeze_generic_proposal(self, *, operator_id, proposal_id, expected_revision,
                                 expected_publication_revision, reviewed_proposal):
         from .general_gm_integration import spec_ref
+        from .studio_protocol import public
         from tools.git_baseline import capture_inventory
+
+        def matches_review(stored):
+            # Project views redact service-only inventories. Compare the exact
+            # public plan, then validate private bindings from the stored record.
+            # Keep the original full-record form for older clients and retries.
+            return reviewed_proposal == stored or reviewed_proposal == public(stored)
 
         _, canonical, git, identifier, now = _core()
         self._operator(operator_id)
@@ -606,12 +830,16 @@ class GenericWorkflow:
             p = self._get("proposal", proposal_id)
             if p["status"] == "FROZEN" and p.get("packetId"):
                 packet = self._get("packet", p["packetId"])
-                if (packet["approvedProposal"] == reviewed_proposal and packet["proposalRevision"] == expected_revision
+                if (matches_review(packet["approvedProposal"]) and packet["proposalRevision"] == expected_revision
                     and packet["publicationRevision"] == expected_publication_revision):
                     return packet
-            if p != reviewed_proposal or p["revision"] != expected_revision or p["status"] != "READY":
+            if not matches_review(p) or p["revision"] != expected_revision or p["status"] != "READY":
                 _failure("REVIEW_MISMATCH", "需要确认当前完整对象计划和精确修订。")
             project = self._get("project", p["projectId"])
+            if p.get("repairBase"):
+                repair = self.repair_context(p["projectId"])
+                if not repair or any(repair.get(key) != value for key, value in p["repairBase"].items()):
+                    _failure("STALE_REPAIR", "返修候选已变化，请刷新并重新关联修改。")
             self._available(project["id"])
             self.validate_project_assets(project["id"], p.get("assets", []))
             if project["publicationRevision"] != expected_publication_revision or p["publicationRevision"] != expected_publication_revision:
@@ -637,7 +865,14 @@ class GenericWorkflow:
                 "operationKind": "IMPLEMENTATION", "templateId": "general-2d-v1",
                 "baseCommit": p["baseCommit"], "document": copy.deepcopy(p["document"]),
                 "tasks": copy.deepcopy(p["tasks"]), "changeRequest": copy.deepcopy(p["changeRequest"]),
-                "objectChanges": copy.deepcopy(p["objectChanges"]), "assets": p["assets"],
+                "objectChanges": copy.deepcopy(p["objectChanges"]), "assets": copy.deepcopy(p["assets"]),
+                "visualReferences": copy.deepcopy(p.get("visualReferences", [])), "userText": p["text"],
+                "userDiscussion": [{key: copy.deepcopy(turn[key]) for key in ("role", "text", "answers", "at") if key in turn}
+                                   for turn in p.get("discussion", []) if turn.get("role") == "user"],
+                "discussion": [{key: copy.deepcopy(turn[key]) for key in
+                                (("role", "text", "answers", "at") if turn.get("role") == "user" else ("role", "questions", "at"))
+                                if key in turn} for turn in p.get("discussion", [])
+                               if turn.get("role") == "user" or (turn.get("role") == "planner" and turn.get("questions"))],
                 "gmSpecRef": p["gmSpecRef"], "specInventory": p["specInventory"],
                 "templateInventory": p["templateInventory"], "sourceRefs": p["sourceRefs"],
                 "scope": p["scope"], "requirements": p["requirements"], "acceptance": p["acceptance"],
@@ -741,6 +976,7 @@ class GenericWorkflow:
                 production["instruction"] += (" This is an approved field-only update; the backend has already changed the frozen "
                     "design/game.json values. If existing source correctly reads these fields at runtime, no source edits are "
                     "required. Report that explicitly. Do not make cosmetic edits solely to create a diff.")
+            self._ensure_production_project_ready(job_id, worktree, folder, cancel)
             self._update(job_id, status="RUNNING", baseCommit=base, originalBaseCommit=original_base,
                 gmSpecificationConfirmation=gm_confirmation, message="新的制作 session 正在落实已批准的对象计划。")
             driver = self.generic_driver_factory(worktree) if self.generic_driver_factory else (
@@ -812,13 +1048,16 @@ class GenericWorkflow:
                     self._put("candidate", candidate)
                 self._put("job", current)
         except Exception as exc:
-            uncertain = (started and not stopped) or getattr(exc, "code", None) == "VERIFICATION_UNCERTAIN"
+            uncertain = (started and not stopped) or getattr(exc, "code", None) in {
+                "VERIFICATION_UNCERTAIN", "GODOT_MCP_UNCERTAIN"}
             self._update(job_id, status="UNCERTAIN" if uncertain else ("CANCELLED" if cancel.is_set() else "FAILED"),
                 failureCode=getattr(exc, "code", None) or ("GM_INTEGRATION" if isinstance(exc, GMIntegrationError) else None),
                 message=str(exc)[:2000])
 
     @staticmethod
     def _check_generic_protected(worktree, base, protected):
+        from tools.godot_mcp_install import verify_godot_mcp
+        verify_godot_mcp(worktree)
         _, _, git, _, _ = _core()
         if git(worktree, "rev-parse", "HEAD") != base:
             _failure("GIT_HISTORY", "制作修改了受控 Git 历史。")
@@ -891,6 +1130,8 @@ class GenericWorkflow:
             "baseCommit": candidate["candidateCommit"], "candidateId": candidate["id"], "jobId": candidate["jobId"],
             "kind": "MVP", "playable": True, "document": candidate["document"], "catalog": candidate["catalog"],
             "verification": candidate["verification"], "decisions": {},
+            "assets": copy.deepcopy(packet.get("assets", [])),
+            "visualReferences": copy.deepcopy(packet.get("visualReferences", [])),
             "summary": "当前对象工程已通过技术检查并被接受为工作台版本。" + ("这是隔离测试结果。" if self.test_data else "用户已记录体验决定。"),
             "testData": self.test_data, "productionAuthorized": self.production_authorized, "createdAt": now()}
         self._put("snapshot", snapshot)

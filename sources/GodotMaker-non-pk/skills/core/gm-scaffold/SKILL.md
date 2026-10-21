@@ -47,7 +47,7 @@ Scaffold is **lifetime-once** — its event gets cleared after each tag's finali
 1. **Do NOT design the game here.**
 2. **Use fixed 2D defaults.** Use the project-scaffold default viewport (`1280x720`) and rendering method.
 3. **Do NOT create Component/System stubs.**
-4. **All addons MUST come from the active runtime's `config/addon_versions.json`** — do not guess versions.
+4. **Version-pinned GodotMaker dependency addons MUST come from the active runtime's `config/addon_versions.json`** — do not guess versions. The bundled Godot MCP editor addon is installed separately from this repository's canonical bundle; it is not an entry in that download map.
 5. **Initial git commit is mandatory and must include import metadata.** Run `<godot_path> --headless --import` before the commit and include generated `.uid` files.
 
 ## Scaffold Steps
@@ -101,11 +101,52 @@ Required result:
 6. `addons/godot_e2e/automation_server.gd`
 7. no `addons/*/project.godot`
 
-Then enable plugin entries in `project.godot` and register
-`AutomationServer`.
+Then append the required plugin entries to the existing `[editor_plugins]`
+list in `project.godot` and register `AutomationServer`; do not replace other
+enabled plugin entries.
 
 `.godotmaker/config.yaml` is created by `tools/publish.py` before this skill
 runs — verify it exists and move on.
+
+### 2c. Install the bundled Godot MCP editor addon
+
+After enabling the version-pinned addons, install and enable the bundled editor
+plugin into the new project. Use the canonical source skill file path
+`sources/GodotMaker-non-pk/skills/core/gm-scaffold/SKILL.md` to locate this
+repository's root: start at that file's containing directory and ascend to the
+ancestor containing both `tools/godot_mcp_install.py` and `addons/godot_mcp/`.
+Invoke that installer's absolute path with the new project's absolute path, for
+example:
+
+```bash
+python3 "<repository-root>/tools/godot_project_ready.py" "<absolute-project-path>" --install \
+  --evidence-dir "<absolute-evidence-root>/mcp-<unique-batch-id>"
+```
+
+The standard path is create project → install/enable the bundled addon → start
+a trusted isolated ordinary editor → verify MCP initialization and exact project
+identity → confirm editor termination. Require `readiness.json` status `PASS`,
+`sourceUnchanged=true` and `editorStopped=true` before completing scaffold or
+dispatching production. Use a new evidence directory outside the project each
+time. A headless recovery import or an enabled flag alone is insufficient.
+The readiness command owns the temporary endpoint; do not attach a worker or
+managed model to it, change global MCP settings, or run parallel source writers.
+The report proves editor readiness, not gameplay or user acceptance.
+
+Do not resolve the installer from the shell's current working directory. The
+installer copies the canonical `addons/godot_mcp` bundle and enables
+`res://addons/godot_mcp/plugin.cfg`, preserving the other enabled plugins. Do
+not substitute the optional `@coding-solo/godot-mcp` runtime server for this
+project-local editor addon. If the canonical source checkout cannot be located
+from the source skill path, report that limitation instead of silently
+skipping the default addon.
+
+Required additional result:
+
+8. `addons/godot_mcp/plugin.cfg` exists and
+   `res://addons/godot_mcp/plugin.cfg` is enabled in `project.godot`; a fresh
+   `godot_project_ready.py` report is PASS with exact project identity, unchanged
+   source and confirmed editor termination.
 
 ### E2E conftest.py template
 

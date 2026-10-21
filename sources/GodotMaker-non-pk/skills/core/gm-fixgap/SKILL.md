@@ -193,6 +193,28 @@ For each non-`verified` task in GAP.md:
 2. Determine if the fix is code (dispatch worker) or config (you can do it)
 3. Group related issues that touch the same files into one worker brief
 
+### Standard Godot project readiness gate
+
+Before dispatching the first producer in every new or resumed batch (including
+repairs and parameter iterations), the trusted orchestrator must run:
+
+```bash
+python3 "<repository-root>/tools/godot_project_ready.py" "<absolute-project-path>" \
+  --evidence-dir "<absolute-evidence-root>/mcp-<unique-batch-id>"
+```
+
+Resolve the repository from this canonical source skill path by ascending to
+`tools/godot_project_ready.py` and `addons/godot_mcp/`, never from the shell cwd.
+Require fresh `readiness.json` status `PASS`, exact project identity,
+`sourceUnchanged=true` and `editorStopped=true`. Missing/disabled/conflicting
+addons, timeout, cancellation or uncertain editor termination prevent dispatch.
+Do not silently install into an already approved production input; installation
+belongs to trusted scaffold preparation. Do not reuse a prior batch report.
+The helper starts an ordinary editor on a disposable source copy, exposes only
+a private loopback endpoint to its trusted caller, and stops it before producers
+write. Managed workers retain their existing execution and capability boundaries.
+This gate does not replace verification, gameplay trials or user acceptance.
+
 ### Step 3 — Dispatch Workers
 
 Worker-dispatch tasks only — Step 1b classified main-agent-direct and escalate-to-user tasks; handle those per their classification, not here.

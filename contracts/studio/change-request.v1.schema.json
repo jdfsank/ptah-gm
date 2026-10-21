@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ptah.studio/contracts/studio/change-request.v1.schema.json",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "studio.change-request.v1"
+    },
+    "baseRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sourceCommit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetObjectIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+      }
+    },
+    "fields": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "objectId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "fieldId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "value": {}
+        },
+        "required": [
+          "objectId",
+          "fieldId",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "feedback": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "feedbackId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "objectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "category": {
+            "enum": [
+              "general",
+              "bug",
+              "visual",
+              "behavior"
+            ]
+          }
+        },
+        "required": [
+          "feedbackId",
+          "objectId",
+          "message",
+          "category"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "message.v1.schema.json#/$defs/workbenchOperation"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "baseRevision",
+    "sourceCommit",
+    "targetObjectIds",
+    "fields",
+    "feedback"
+  ],
+  "additionalProperties": false
+}

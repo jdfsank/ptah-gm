@@ -24,7 +24,9 @@ from backend.general_gm_integration import (
     register,
     spec_confirmed,
     spec_ref,
+    prepare_trusted_confirmation,
 )
+from backend.frontend_approval import ApprovalContext, ApprovalError
 from backend.tests.test_object_protocol import sample_document
 
 
@@ -67,8 +69,8 @@ class GeneralGMIntegrationTests(unittest.TestCase):
     def _approve(self, adapter):
         packet = self._packet(test_data=False)
         packet["gmSpecRef"] = adapter.spec_ref(self.project)
-        adapter.register(self.project, self.store, "operator-1", "project-1", packet)
         event_id = "evt-" + adapter.GM_TOOLS.parent.name
+        packet["approvalEventId"] = event_id
         payload = {
             "schemaVersion": 1, "eventId": event_id, "operatorId": "operator-1",
             "projectId": packet["projectId"], "phase": "specification",
@@ -82,6 +84,16 @@ class GeneralGMIntegrationTests(unittest.TestCase):
         with sqlite3.connect(self.store) as connection:
             connection.execute("INSERT INTO approvals(id,payload,consumed) VALUES (?,?,0)",
                                (event_id, json.dumps(payload)))
+            if adapter is general_gm_integration:
+                connection.execute("UPDATE approvals SET consumed=1 WHERE id=?", (event_id,))
+        if adapter is general_gm_integration:
+            context = ApprovalContext("operator-1", packet["projectId"], "specification",
+                packet["proposalId"], packet["packetId"], packet["jobId"], None,
+                str(packet["proposalRevision"]), packet["gmSpecRef"])
+            prepare_trusted_confirmation(self.project, packet, payload, context,
+                                         decision_ref="decision-" + event_id)
+        else:
+            adapter.register(self.project, self.store, "operator-1", "project-1", packet)
         return event_id
 
     def test_rendered_general_spec_is_accepted_and_gets_native_git_reference(self):
@@ -99,17 +111,14 @@ class GeneralGMIntegrationTests(unittest.TestCase):
         self.assertNotEqual(reference, spec_ref(self.project))
 
     def test_test_registration_is_diagnostic_only_and_cannot_confirm_spec(self):
-        binding = register(self.project, self.store, "operator-1", "project-1", self._packet(test_data=True))
-        self.assertEqual(binding.relative_to(self.project.resolve()), APPROVAL_BINDING_REL)
-        saved = json.loads(binding.read_text(encoding="utf-8"))
-        self.assertTrue(saved["testData"])
-        self.assertFalse(saved["productionAuthorized"])
-        with self.assertRaises(GMIntegrationError):
-            confirm_spec(self.project, "untrusted-event")
+        packet = self._packet(test_data=True)
+        with self.assertRaises(ApprovalError):
+            ApprovalContext("operator-1", "project-1", "specification", "proposal-1",
+                "packet-1", "job-1", None, "2", spec_ref(self.project),
+                test_data=True, production_authorized=False)
         self.assertFalse(spec_confirmed(self.project))
 
     def test_unknown_production_event_is_rejected_by_real_nonpk_consumer(self):
-        register(self.project, self.store, "operator-1", "project-1", self._packet(test_data=False))
         with self.assertRaises(GMIntegrationError):
             confirm_spec(self.project, "does-not-exist")
         self.assertFalse(spec_confirmed(self.project))
@@ -126,10 +135,10 @@ class GeneralGMIntegrationTests(unittest.TestCase):
                     self.assertTrue(adapter.spec_confirmed(self.project))
                 with sqlite3.connect(self.store) as connection:
                     self.assertEqual(connection.execute("SELECT consumed FROM approvals WHERE id=?", (event_id,)).fetchone()[0], 1)
-                    connection.execute("UPDATE approvals SET consumed=0 WHERE id=?", (event_id,))
-                self.assertFalse(adapter.spec_confirmed(self.project))
-                with sqlite3.connect(self.store) as connection:
-                    connection.execute("UPDATE approvals SET consumed=1 WHERE id=?", (event_id,))
+                # Confirmation is now bound to the trusted local service
+                # record, so consuming the backend event does not invalidate
+                # the already committed GM stage event.
+                self.assertTrue(adapter.spec_confirmed(self.project))
                 binding = self.project / APPROVAL_BINDING_REL
                 original = binding.read_text()
                 changed = json.loads(original)

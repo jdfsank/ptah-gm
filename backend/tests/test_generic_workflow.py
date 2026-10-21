@@ -16,7 +16,7 @@ from unittest.mock import patch
 from backend.coordinator import Coordinator, WorkflowError
 from backend.generic_workflow import production_failure, timeout_clarification
 from backend.object_protocol import ObjectProtocolError, parse_planner_response, validate_change_request, validate_document
-from backend.tests.test_object_protocol import sample_document
+from backend.tests.test_object_protocol import sample_document, workbench_document
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +58,16 @@ class Planner:
         if not self.owner.plans:
             raise AssertionError("test planner has no scripted response")
         result = self.owner.plans.pop(0)
+        feedback = packet.get("feedback") or []
+        if feedback and "feedbackDecisions" not in result and result.get("status") == "READY":
+            task = (result.get("tasks") or [{}])[0]
+            requirement = (((result.get("document") or {}).get("requirements") or [{}])[0])
+            result = {**result, "schemaVersion": "studio.planner-result.v1", "feedbackDecisions": [
+                {"feedbackId": item["feedbackId"], "status": "adopted", "reason": "Captured in the planned work.",
+                 "taskIds": [task["id"]] if task.get("id") else [],
+                 "requirementIds": [requirement["id"]] if requirement.get("id") else []}
+                for item in feedback
+            ]}
         return {
             "status": self.owner.planner_status,
             "response": json.dumps(result),
@@ -97,6 +107,10 @@ def passing_verifier(project, document, base_commit=None, **kwargs):
 
 class GenericWorkflowTests(unittest.TestCase):
     def setUp(self):
+        readiness = patch("runners.editor_mcp.ensure_editor_mcp_ready", return_value={
+            "status": "PASS", "testDouble": True, "editorStopped": True, "sourceUnchanged": True})
+        readiness.start()
+        self.addCleanup(readiness.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.state_root = Path(self.temp.name) / "workbench"
         self.plans = []
@@ -159,6 +173,118 @@ class GenericWorkflowTests(unittest.TestCase):
         job = self.coordinator.create_job(operator_id=self.operator, packet_id=packet["id"],
                                           idempotency_key="test:" + packet["id"])
         return self.coordinator.wait(job["id"], 12)
+
+    def test_public_frozen_input_retains_only_user_discussion(self):
+        from backend.studio_protocol import public
+        proposal = self._create()
+        proposal["discussion"].extend([
+            {"role": "user", "text": "  屋檐下改为：这里淋不到雨\n", "answers": [{"questionId": "text", "text": "保持中文"}], "cwd": "private"},
+            {"role": "planner", "text": "internal planner trace"},
+        ])
+        with self.coordinator.transaction():
+            self.coordinator._put("proposal", proposal)
+        packet = public(self._freeze(proposal))
+        self.assertNotIn("approvedProposal", packet)
+        self.assertEqual(packet["userDiscussion"][-1]["text"], proposal["discussion"][-2]["text"])
+        self.assertEqual(packet["userDiscussion"][-1]["answers"], proposal["discussion"][-2]["answers"])
+        self.assertNotIn("cwd", packet["userDiscussion"][-1])
+        self.assertTrue(all(turn["role"] == "user" for turn in packet["userDiscussion"]))
+
+    def test_public_frozen_discussion_retains_questions_and_chinese_choice_meaning(self):
+        from backend.studio_protocol import public
+        proposal = self._create()
+        question = {"id": "change-scope", "type": "choice", "prompt": "本次只改速度吗？",
+                    "options": [{"value": "speed-only", "label": "仅调整速度至300，其余保持"}]}
+        turns = [{"role": "planner", "summary": "private model summary", "questions": [question], "cwd": "private"},
+                 {"role": "user", "text": "  保留这条原文\n", "answers": [{"questionId": "change-scope", "text": "speed-only"}], "cwd": "private"}]
+        proposal["discussion"].extend(turns)
+        with self.coordinator.transaction():
+            self.coordinator._put("proposal", proposal)
+        packet = public(self._freeze(proposal))
+        self.assertEqual(packet["discussion"][-2], {"role": "planner", "questions": [question]})
+        self.assertEqual(packet["discussion"][-1], {key: turns[-1][key] for key in ("role", "text", "answers")})
+        self.assertTrue(all(turn["role"] == "user" for turn in packet["userDiscussion"]))
+        self.assertNotIn("private", json.dumps(packet["discussion"]))
+        proposal["discussion"][-2]["questions"][0]["prompt"] = "later draft"
+        self.assertEqual(packet["discussion"][-2]["questions"][0]["prompt"], "本次只改速度吗？")
+
+    def test_repair_inherits_exact_visual_references_and_explicit_empty_cancels(self):
+        import base64
+        proposal = self._create()
+        asset = self.coordinator.upload_asset(operator_id=self.operator, project_id=proposal["projectId"],
+            name="reference.png", mime_type="image/png", purpose="reference",
+            data_base64=base64.b64encode((REPO_ROOT / "frontend/dist/assets/arch.png").read_bytes()).decode())
+        reference = {"assetId": asset["id"], "intent": "只采纳暖光", "preserve": "保持操作", "unknown": "不确定坐标", "targetObjectIds": ["player"]}
+        proposal.update(assets=[asset], visualReferences=[reference])
+        with self.coordinator.transaction():
+            self.coordinator._put("proposal", proposal)
+        first = self._dispatch(proposal)
+        self._reject_candidate(first)
+        repair = self.coordinator.repair_context(proposal["projectId"])
+        self.assertEqual(repair["visualReferences"], [reference])
+        request = {"baseRevision": 0, "sourceCommit": repair["sourceCommit"], "targetObjectIds": [], "fields": [], "feedback": []}
+        self.plans.append(plan_result(first["candidate"]["document"]))
+        inherited = self.coordinator.create_concept(operator_id=self.operator, project_id=proposal["projectId"],
+            text="检查屋檐", expected_publication_revision=0, change_request=request)
+        inherited = self._wait_proposal(inherited["id"], {"READY", "FAILED"})
+        self.assertEqual(inherited["status"], "READY", inherited)
+        self.assertEqual(inherited["visualReferences"], [reference])
+        self.assertEqual(inherited["assets"][0]["id"], asset["id"])
+        self.plans.append(plan_result(first["candidate"]["document"]))
+        cleared = self.coordinator.create_concept(operator_id=self.operator, project_id=proposal["projectId"],
+            text="取消视觉参考", expected_publication_revision=0, change_request=request, asset_ids=[], visual_references=[])
+        cleared = self._wait_proposal(cleared["id"], {"READY", "FAILED"})
+        self.assertEqual(cleared["visualReferences"], [])
+        self.assertEqual(cleared["assets"], [])
+
+    def test_legacy_freeze_roundtrips_public_project_view_and_keeps_private_binding(self):
+        proposal = self._create()
+        visible = self.coordinator.project_view(proposal["projectId"])["proposal"]
+        self.assertNotIn("specInventory", visible)
+        self.assertNotIn("templateInventory", visible)
+        packet = self._freeze(visible)
+        self.assertEqual(packet["approvedProposal"], proposal)
+        self.assertEqual(packet["specInventory"], proposal["specInventory"])
+        self.assertEqual(packet["templateInventory"], proposal["templateInventory"])
+        self.assertEqual(self._freeze(visible)["id"], packet["id"])
+
+    def test_readiness_failure_prevents_local_generic_producer_dispatch(self):
+        from runners.editor_mcp import EditorMCPError
+        for uncertain in (False, True):
+            proposal = self._create()
+            self.producer_started.clear()
+            with patch("runners.editor_mcp.ensure_editor_mcp_ready", side_effect=EditorMCPError(
+                    "editor not ready", report={"editorStopped": not uncertain})):
+                job = self._dispatch(proposal)
+            self.assertFalse(self.producer_started.is_set())
+            self.assertEqual(job["status"], "UNCERTAIN" if uncertain else "FAILED")
+
+    def test_legacy_public_review_still_rejects_changed_or_incomplete_content(self):
+        proposal = self._create()
+        visible = self.coordinator.project_view(proposal["projectId"])["proposal"]
+        for mutation in ("summary", "document", "missing", "private"):
+            reviewed = copy.deepcopy(visible)
+            if mutation == "summary":
+                reviewed["summary"] = "Unreviewed change"
+            elif mutation == "document":
+                reviewed["document"]["objects"][1]["description"] = "Unreviewed mechanic"
+            elif mutation == "missing":
+                reviewed.pop("tasks")
+            else:
+                reviewed["specInventory"] = {}
+            with self.subTest(mutation=mutation), self.assertRaises(WorkflowError) as error:
+                self._freeze(reviewed)
+            self.assertEqual(error.exception.code, "REVIEW_MISMATCH")
+        self.assertEqual(self.coordinator.get_proposal(proposal["id"])["status"], "READY")
+
+    def test_legacy_public_review_still_checks_backend_spec_inventory(self):
+        proposal = self._create()
+        visible = self.coordinator.project_view(proposal["projectId"])["proposal"]
+        spec = self.state_root / "planning" / proposal["id"] / f"spec-{proposal['revision']}" / "SPEC.md"
+        spec.write_text(spec.read_text() + "\nUnreviewed specification change.\n")
+        with self.assertRaises(WorkflowError) as error:
+            self._freeze(visible)
+        self.assertEqual(error.exception.code, "REVIEW_SOURCE_DRIFT")
 
     def test_native_network_timeout_preserves_evidence_and_safe_retry_diagnosis(self):
         self.planner_status = "timeout"
@@ -429,9 +555,167 @@ class GenericWorkflowTests(unittest.TestCase):
         ready = self._wait_proposal(proposal["id"], {"READY", "FAILED"})
         self.assertEqual(ready["status"], "READY", ready)
         self.assertEqual(ready["changeRequest"]["fields"], request["fields"])
-        self.assertEqual(ready["changeRequest"]["feedback"], request["feedback"])
+        self.assertEqual(ready["changeRequest"]["feedback"], [{**request["feedback"][0], "feedbackId": "legacy-feedback-0"}])
         self.assertEqual(next(f["value"] for o in ready["document"]["objects"] if o["id"] == "player"
                               for f in o["fields"] if f["id"] == "speed"), 240)
+
+    def test_operations_only_iteration_freezes_nonempty_scope_and_specs(self):
+        from backend.game_spec import render_spec_documents
+
+        document = sample_document()
+        project_id, commit = self._seed_published_project(document)
+        updated = copy.deepcopy(document)
+        updated["objects"].append({"id": "draft-bonus-scene", "kind": "scene", "name": "Bonus scene",
+            "sourceBindings": ["scenes/bonus.tscn"], "fields": []})
+        updated["requirements"].append({"id": "bonus-scene-ready", "text": "The bonus scene can be opened.",
+            "objectIds": ["draft-bonus-scene"], "verification": "manual"})
+        planned = plan_result(updated)
+        planned["summary"] = "Add the reviewed bonus scene."
+        planned["tasks"][0]["description"] = "Create and connect the bonus scene."
+        planned["tasks"][0]["objectIds"].append("draft-bonus-scene")
+        planned["tasks"][0]["requirementIds"].append("bonus-scene-ready")
+        self.plans.append(planned)
+        request = {"baseRevision": 3, "sourceCommit": commit, "targetObjectIds": [], "fields": [],
+            "feedback": [], "operations": [{"operationId": "add-bonus-scene", "kind": "new-scene",
+                "sceneId": "draft-bonus-scene", "name": "Bonus scene", "template": "minimal", "scope": "a new playable room"}]}
+        proposal = self.coordinator.create_concept(operator_id=self.operator, text="", project_id=project_id,
+            workflow="objects-v1", expected_publication_revision=3, change_request=request)
+        ready = self._wait_proposal(proposal["id"], {"READY", "FAILED"})
+        self.assertEqual(ready["status"], "READY", ready)
+        self.assertEqual(ready["changeRequest"]["operations"], request["operations"])
+        added = next(change for change in ready["objectChanges"] if change["objectId"] == "draft-bonus-scene")
+        self.assertEqual(added["action"], "added")
+        self.assertEqual(added["after"]["name"], "Bonus scene")
+
+        spec_files = render_spec_documents(ready["document"], ready["tasks"], ready["changeRequest"])
+        for name in ("GDD.md", "PLAN.md", "DESIGN.md"):
+            self.assertIn("add-bonus-scene", spec_files[name])
+            self.assertIn("Bonus scene", spec_files[name])
+        spec_root = self.state_root / "planning" / ready["id"] / f"spec-{ready['revision']}"
+        self.assertEqual((spec_root / "PLAN.md").read_text(), spec_files["PLAN.md"])
+
+        packet = self._freeze(ready)
+        self.assertEqual(packet["changeRequest"]["operations"], request["operations"])
+        self.assertFalse(packet["dataOnlyUpdate"])
+
+    def test_planner_ready_cannot_move_fixed_or_unrequested_locked_instances(self):
+        before = workbench_document()
+        player = next(obj for obj in before["objects"] if obj["id"] == "player-instance")
+        player["workbench"]["lock"] = "fixed"
+        moved = copy.deepcopy(before)
+        next(obj for obj in moved["objects"] if obj["id"] == "player-instance")["workbench"]["position"] = [31, 40]
+        with self.assertRaises(WorkflowError) as fixed:
+            Coordinator._check_requested_fields(moved, {"fields": [], "operations": []}, before)
+        self.assertEqual(fixed.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        before = workbench_document()
+        player = next(obj for obj in before["objects"] if obj["id"] == "player-instance")
+        player["workbench"]["lock"] = "nudge"
+        request = {"fields": [], "operations": [{"operationId": "nudge-player", "kind": "move",
+            "objectId": "player-instance", "before": [30, 40], "requested": [31, 40], "lock": "nudge"}]}
+        moved = copy.deepcopy(before)
+        next(obj for obj in moved["objects"] if obj["id"] == "player-instance")["workbench"]["position"] = [31, 40]
+        Coordinator._check_requested_fields(moved, request, before)
+        unlocked = copy.deepcopy(moved)
+        next(obj for obj in unlocked["objects"] if obj["id"] == "player-instance")["workbench"]["lock"] = "free"
+        with self.assertRaises(WorkflowError) as nudge:
+            Coordinator._check_requested_fields(unlocked, request, before)
+        self.assertEqual(nudge.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        off_grid = copy.deepcopy(moved)
+        next(obj for obj in off_grid["objects"] if obj["id"] == "player-instance")["workbench"]["position"] = [31.5, 40]
+        with self.assertRaises(WorkflowError) as nudge_step:
+            Coordinator._check_requested_fields(off_grid, request, before)
+        self.assertEqual(nudge_step.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        before = workbench_document()
+        free = next(obj for obj in before["objects"] if obj["id"] == "player-instance")
+        unrequested_move = copy.deepcopy(before)
+        next(obj for obj in unrequested_move["objects"] if obj["id"] == "player-instance")["workbench"]["position"] = [31, 40]
+        with self.assertRaises(WorkflowError) as free_move:
+            Coordinator._check_requested_fields(unrequested_move, {"fields": [], "operations": []}, before)
+        self.assertEqual(free_move.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        unrequested_delete = copy.deepcopy(before)
+        unrequested_delete["objects"] = [obj for obj in unrequested_delete["objects"] if obj["id"] != "player-instance"]
+        with self.assertRaises(WorkflowError) as free_delete:
+            Coordinator._check_requested_fields(unrequested_delete, {"fields": [], "operations": []}, before)
+        self.assertEqual(free_delete.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        unrequested_unlock = copy.deepcopy(before)
+        next(obj for obj in unrequested_unlock["objects"] if obj["id"] == "player-instance")["workbench"]["lock"] = "nudge"
+        with self.assertRaises(WorkflowError) as free_unlock:
+            Coordinator._check_requested_fields(unrequested_unlock, {"fields": [], "operations": []}, before)
+        self.assertEqual(free_unlock.exception.code, "PLAN_CHANGE_MISMATCH")
+
+    def test_planner_honors_only_explicit_lock_changes(self):
+        before = workbench_document()
+        instance = next(obj for obj in before["objects"] if obj["id"] == "player-instance")
+        instance["workbench"]["lock"] = "fixed"
+        after = copy.deepcopy(before)
+        changed = next(obj for obj in after["objects"] if obj["id"] == "player-instance")
+        changed["workbench"].update(lock="nudge", position=[31, 40])
+        operations = [
+            {"operationId": "unlock", "kind": "set-lock", "objectId": "player-instance", "before": "fixed", "lock": "nudge"},
+            {"operationId": "nudge", "kind": "move", "objectId": "player-instance", "before": [30, 40], "requested": [31, 40], "lock": "nudge"},
+        ]
+        Coordinator._check_requested_fields(after, {"fields": [], "operations": operations}, before,
+                                            tasks=[{"objectIds": ["player-instance"]}])
+        with self.assertRaises(WorkflowError):
+            Coordinator._check_requested_fields(after, {"fields": [], "operations": operations[1:]}, before)
+        changed["workbench"]["lock"] = "free"
+        with self.assertRaises(WorkflowError):
+            Coordinator._check_requested_fields(after, {"fields": [], "operations": operations}, before)
+        changed["workbench"].update(lock="nudge", position=[31.5, 40])
+        operations[1]["requested"] = [31.5, 40]
+        with self.assertRaises(WorkflowError):
+            Coordinator._check_requested_fields(after, {"fields": [], "operations": operations}, before)
+
+    def test_planner_ready_must_materialize_declared_scene_and_positioned_instance(self):
+        before = workbench_document()
+        request = {"fields": [], "operations": [
+            {"operationId": "new-room-op", "kind": "new-scene", "sceneId": "draft-room",
+             "name": "Bonus room", "template": "blank", "bounds": [200, 160],
+             "connections": "Keep this room independent.", "scope": "standalone room"},
+            {"operationId": "new-player-op", "kind": "new-instance", "instanceId": "draft-player",
+             "name": "Bonus player", "definitionId": "player", "sceneId": "draft-room",
+             "requestedPosition": [50, 60], "size": [20, 20], "anchor": [0.5, 0.5], "lock": "free"},
+        ]}
+        candidate = copy.deepcopy(before)
+        candidate["objects"].extend([
+            {"id": "draft-room", "kind": "scene", "name": "Bonus room", "description": "Keep this room independent.",
+             "workbench": {"role": "scene", "bounds": [200, 160]}},
+            {"id": "draft-player", "kind": "entity", "name": "Bonus player", "description": "",
+             "workbench": {"role": "instance", "definitionId": "player", "sceneId": "draft-room",
+                 "position": [50, 60], "size": [20, 20], "anchor": [0.5, 0.5], "lock": "free"}},
+        ])
+        tasks = [{"id": "room-task", "description": "Build the bonus room and player.",
+            "objectIds": ["draft-room", "draft-player"], "requirementIds": []}]
+        Coordinator._check_requested_fields(candidate, request, before, tasks)
+
+        wrong_position = copy.deepcopy(candidate)
+        next(obj for obj in wrong_position["objects"] if obj["id"] == "draft-player")["workbench"]["position"] = [51, 60]
+        with self.assertRaises(WorkflowError) as mismatch:
+            Coordinator._check_requested_fields(wrong_position, request, before, tasks)
+        self.assertEqual(mismatch.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        missing_scene = copy.deepcopy(candidate)
+        missing_scene["objects"] = [obj for obj in missing_scene["objects"] if obj["id"] != "draft-room"]
+        with self.assertRaises(WorkflowError) as missing:
+            Coordinator._check_requested_fields(missing_scene, request, before, tasks)
+        self.assertEqual(missing.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        omitted_connection = copy.deepcopy(candidate)
+        next(obj for obj in omitted_connection["objects"] if obj["id"] == "draft-room")["description"] = ""
+        with self.assertRaises(WorkflowError) as connection:
+            Coordinator._check_requested_fields(omitted_connection, request, before, tasks)
+        self.assertEqual(connection.exception.code, "PLAN_CHANGE_MISMATCH")
+
+        omitted_task_target = [{"id": "room-task", "description": "Build the bonus room.",
+            "objectIds": ["draft-room"], "requirementIds": []}]
+        with self.assertRaises(WorkflowError) as task_coverage:
+            Coordinator._check_requested_fields(candidate, request, before, omitted_task_target)
+        self.assertEqual(task_coverage.exception.code, "PLAN_CHANGE_MISMATCH")
 
     def test_empty_text_value_and_value_only_feedback_are_valid(self):
         document = sample_document()
@@ -678,6 +962,131 @@ class GenericWorkflowTests(unittest.TestCase):
         self.assertEqual(accepted["job"]["status"], "PUBLISHED")
         self.assertEqual(accepted["snapshot"]["publicationRevision"], 4)
         self.assertEqual(accepted["snapshot"]["document"], validate_document(updated))
+
+    def _reject_candidate(self, job):
+        return self.coordinator.decide_job(operator_id=self.operator, job_id=job["id"], decision="reject",
+            candidate_commit=job["candidate"]["candidateCommit"],
+            expected_publication_revision=self.coordinator._get("project", job["projectId"])["publicationRevision"])
+
+    def test_first_rejection_repairs_exact_candidate_and_can_produce_again(self):
+        first = self._dispatch(self._create())
+        self.assertEqual(first["status"], "READY_FOR_REVIEW", first)
+        self._reject_candidate(first)
+        pid, commit = first["projectId"], first["candidate"]["candidateCommit"]
+        view = self.coordinator.project_view(pid)
+        self.assertEqual((view["phase"], view["step"]), ("iteration", "repair"))
+        self.assertIn("iteration.submit", view["allowedActions"])
+        self.assertFalse(view["iterationReady"])
+        self.assertIsNone(view["snapshot"])
+        self.assertEqual(view["project"]["publicationRevision"], 0)
+        self.assertEqual(view["repairContext"]["sourceCommit"], commit)
+        self.assertEqual(self.coordinator.workbench(pid)["repairContext"], view["repairContext"])
+        self.coordinator.close()
+        self.coordinator = self._new_coordinator()
+        self.operator = self.coordinator.operator_id
+        self.assertEqual(self.coordinator.project_view(pid)["repairContext"], view["repairContext"])
+        request = {"baseRevision": 0, "sourceCommit": commit, "targetObjectIds": ["player"],
+            "fields": [{"objectId": "player", "fieldId": "speed", "value": 240}],
+            "feedback": [{"objectId": "player", "category": "behavior", "message": "Improve movement"}]}
+        for bad in (None, {**request, "sourceCommit": "stale-candidate"}):
+            with self.assertRaises(WorkflowError):
+                self.coordinator.create_concept(operator_id=self.operator, text="repair", project_id=pid,
+                    expected_publication_revision=0, change_request=bad)
+        updated = copy.deepcopy(first["candidate"]["document"])
+        next(f for o in updated["objects"] if o["id"] == "player" for f in o["fields"] if f["id"] == "speed")["value"] = 240
+        self.plans.append(plan_result(updated))
+        proposal = self.coordinator.create_concept(operator_id=self.operator, text="", project_id=pid,
+            expected_publication_revision=0, change_request=request)
+        ready = self._wait_proposal(proposal["id"], {"READY", "FAILED"})
+        self.assertEqual(ready["status"], "READY", ready)
+        self.assertEqual(ready["baseCommit"], commit)
+        self.assertEqual(ready["currentDocument"], first["candidate"]["document"])
+        self.assertEqual(ready["changeRequest"]["feedback"], [{**request["feedback"][0], "feedbackId": "legacy-feedback-0"}])
+        self.assertEqual(ready["repairBase"]["candidateId"], first["candidate"]["id"])
+        self.producer_mode = "no_edit"
+        # Submit a fresh field-only revision through the public workflow.
+        self.plans.append(plan_result(updated))
+        p = self.coordinator.create_concept(operator_id=self.operator, text="", project_id=pid,
+            expected_publication_revision=0, change_request={**request, "feedback": []})
+        second = self._dispatch(self._wait_proposal(p["id"], {"READY", "FAILED"}))
+        self.assertEqual(second["status"], "READY_FOR_REVIEW", second)
+        self.assertEqual(second["originalBaseCommit"], commit)
+        self.assertEqual(self.coordinator._get("project", pid)["publicationRevision"], 0)
+        self.assertIsNone(self.coordinator._get("project", pid)["snapshotId"])
+
+    def test_rejection_preserves_published_snapshot_but_uses_rejected_candidate_for_repair(self):
+        first = self._dispatch(self._create())
+        candidate = first["candidate"]
+        accepted = self.coordinator.decide_job(operator_id=self.operator, job_id=first["id"], decision="accept",
+            candidate_commit=candidate["candidateCommit"], expected_publication_revision=0)
+        pid = first["projectId"]
+        document = copy.deepcopy(candidate["document"])
+        next(f for o in document["objects"] if o["id"] == "player" for f in o["fields"] if f["id"] == "speed")["value"] = 240
+        self.plans.append(plan_result(document))
+        request = {"baseRevision": 1, "sourceCommit": candidate["candidateCommit"], "targetObjectIds": ["player"],
+            "fields": [{"objectId": "player", "fieldId": "speed", "value": 240}], "feedback": []}
+        p = self.coordinator.create_concept(operator_id=self.operator, text="", project_id=pid,
+            expected_publication_revision=1, change_request=request)
+        self.producer_mode = "no_edit"
+        second = self._dispatch(self._wait_proposal(p["id"], {"READY", "FAILED"}))
+        self.assertEqual(second["status"], "READY_FOR_REVIEW", second)
+        self._reject_candidate(second)
+        view = self.coordinator.project_view(pid)
+        from backend.studio_protocol import public
+        self.assertEqual(view["snapshot"], public(accepted["snapshot"]))
+        self.assertEqual(view["project"]["publicationRevision"], 1)
+        self.assertEqual(view["repairContext"]["sourceCommit"], second["candidate"]["candidateCommit"])
+        self.assertNotEqual(view["repairContext"]["sourceCommit"], view["snapshot"]["sourceCommit"])
+        self.assertTrue(view["iterationReady"])
+
+    def test_v1_repair_command_requires_exact_source_and_retains_artifact_without_publication(self):
+        from backend.tests.test_studio_protocol import fixture_role_evidence
+        first = self._dispatch(self._create())
+        self._reject_candidate(first)
+        pid, commit = first["projectId"], first["candidate"]["candidateCommit"]
+        # A separate artifact store models the runner protocol, independent of its project copy.
+        source = self.state_root / "fixture-artifact"
+        subprocess.run(["git", "clone", "--no-hardlinks", str(self.state_root / "jobs" / first["id"] / "worktree"), str(source)], capture_output=True, check=True)
+        shutil.rmtree(self.state_root / "projects" / pid)
+        with self.coordinator.transaction():
+            project = self.coordinator._get("project", pid)
+            project.update(protocolVersion=1, executionBackend="runners")
+            self.coordinator._put("project", project)
+            job = self.coordinator._get("job", first["id"])
+            job["candidate"]["artifactRef"] = {"fixture": True}
+            self.coordinator._put("job", job)
+        caps = ["planning-readonly-v1", "production-private-v1"]
+        self.coordinator.register_runner({"runnerId": "repair-agent", "runnerKind": "agent", "environment": "test-fixture",
+            "nativeVersion": "fixture", "capabilities": caps,
+            "sandboxEvidence": fixture_role_evidence("repair-agent", "agent", caps)})
+        self.coordinator.update_runner_catalog({"runnerId": "repair-agent", "catalogRevision": 1, "observedAt": "2026-10-14T00:00:00Z",
+            "models": [{"modelKey": "fixture", "modelProvider": "fixture", "supportedReasoningEfforts": ["medium"], "inputModalities": ["text"], "isDefault": True}]})
+        message = {"schemaVersion": "studio.message.v1", "kind": "command", "type": "iteration.submit", "storeId": self.coordinator.store_id,
+            "projectId": pid, "commandId": "repair-stale", "expected": {"publicationRevision": 0, "preferencesRevision": 0, "sourceCommit": None},
+            "payload": {"text": "Fix movement", "assetRefs": [], "targetObjectIds": ["player"], "fields": [],
+                "feedback": [{"feedbackId": "movement", "objectId": "player", "category": "behavior", "message": "Too slow"}]}}
+        receipt = self.coordinator.submit_command(message, operator_id=self.operator, project_id=pid)
+        self.assertEqual(receipt["status"], "rejected")
+        self.assertEqual(receipt["error"]["code"], "STALE_SOURCE")
+        old_revision = copy.deepcopy(message)
+        old_revision.update(type="proposal.revise", commandId="repair-old-plan",
+            payload={"proposalId": self.coordinator._get("packet", first["packetId"])["proposalId"], "supplement": "repair"})
+        old_revision["expected"].update(sourceCommit=commit, proposalRevision=1)
+        old_receipt = self.coordinator.submit_command(old_revision, operator_id=self.operator, project_id=pid)
+        self.assertEqual(old_receipt["status"], "rejected")
+        self.assertEqual(old_receipt["error"]["code"], "STALE_REPAIR")
+        message["commandId"] = "repair-valid"
+        message["expected"]["sourceCommit"] = commit
+        with patch.object(self.coordinator, "_artifact_repository", return_value=source):
+            receipt = self.coordinator.submit_command(message, operator_id=self.operator, project_id=pid)
+        self.assertEqual(receipt["status"], "accepted", receipt)
+        proposal = receipt["result"]["proposal"]
+        self.assertEqual(proposal["baseCommit"], commit)
+        self.assertEqual(proposal["changeRequest"]["feedback"][0]["feedbackId"], "movement")
+        target = self.state_root / "projects" / pid
+        self.assertEqual(subprocess.run(["git", "rev-parse", "refs/heads/studio-repair/" + first["id"]], cwd=target, text=True, capture_output=True, check=True).stdout.strip(), commit)
+        self.assertFalse((target / "project.godot").exists())
+        self.assertIsNone(self.coordinator._get("project", pid)["snapshotId"])
 
     def test_cancel_stops_planning_without_creating_a_ready_plan(self):
         self.planner_started = threading.Event()

@@ -1,6 +1,6 @@
 {
   "type": "DOM event tests using jsdom, not rendered browser QA",
-  "testedAt": "2026-10-08T07:56:31.604Z",
+  "testedAt": "2026-10-13T03:27:10.043Z",
   "checks": [
     {
       "name": "Overview imports actual five rooms and contextual DNA",

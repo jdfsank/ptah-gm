@@ -7,8 +7,9 @@ description: |
   Triggers after game-planner produces a confirmed plan, or when the user
   provides a game name + genre directly. Even for simple requests like
   "make me a new Godot project", use this skill to ensure proper ECS structure.
-  Creates directory structure, project.godot, CLAUDE.md, gecs World setup,
-  addon stubs, and template source files based on the game plan or user input.
+  Creates directory structure, project.godot, CLAUDE.md, the bundled Godot MCP
+  editor addon, gecs World setup, addon stubs, and template source files based
+  on the game plan or user input.
 ---
 
 # Project Scaffold
@@ -147,7 +148,41 @@ After writing base template files, apply genre-specific modifications to `projec
 For input action serialization format, read `references/project_settings.md`
 — it has the exact Object() syntax and key code table.
 
-## Step 5 — Post-Scaffold Steps
+## Step 5 — Install the bundled Godot MCP editor addon
+
+After creating `project.godot` and writing the project files, install and enable
+the canonical editor addon in the new project. Resolve the repository root from
+this skill's canonical checked-in source file path,
+`sources/GodotMaker-non-pk/skills/core/project-scaffold/SKILL.md`: start at its
+containing directory and ascend to the ancestor containing both
+`tools/godot_mcp_install.py` and `addons/godot_mcp/`. Invoke the installer's
+absolute path with the new project's absolute path:
+
+```bash
+python3 "<repository-root>/tools/godot_project_ready.py" "<absolute-project-path>" --install \
+  --evidence-dir "<absolute-evidence-root>/mcp-<unique-batch-id>"
+```
+
+The standard path is create project → install/enable the bundled addon → start
+a trusted isolated ordinary editor → verify MCP initialization and exact project
+identity → confirm editor termination. Require `readiness.json` status `PASS`,
+`sourceUnchanged=true` and `editorStopped=true` before completing scaffold or
+dispatching production. Use a new evidence directory outside the project each
+time. A headless recovery import or an enabled flag alone is insufficient.
+The readiness command owns the temporary endpoint; do not attach a worker or
+managed model to it, change global MCP settings, or run parallel source writers.
+The report proves editor readiness, not gameplay or user acceptance.
+
+Do not resolve the installer from the shell's current working directory. The
+installer copies the canonical `addons/godot_mcp` bundle and enables
+`res://addons/godot_mcp/plugin.cfg`, preserving existing editor plugins. This
+project-local Godot editor addon is distinct from the optional
+`@coding-solo/godot-mcp` runtime server below; the runtime server does not
+replace the default addon. If the canonical source checkout cannot be located
+from the source skill path, report that limitation instead of silently
+skipping the default addon.
+
+## Step 6 — Post-Scaffold Steps
 
 After all files are written, tell the user what to do next:
 
@@ -171,7 +206,8 @@ After all files are written, tell the user what to do next:
    repo layout). See `references/addons.md` for the step-by-step
    installation contract.
 
-3. **Register godot-mcp** for runtime debugging:
+3. **Optional: register `@coding-solo/godot-mcp` as a runtime debugging server**
+   for clients that use it:
    ```bash
    claude mcp add godot -e GODOT_PATH="<godot_path>" -- npx @coding-solo/godot-mcp
    ```
@@ -188,6 +224,8 @@ After scaffold completes, output:
 ## What This Skill Does NOT Do
 
 - Does not implement game logic — only creates the starting structure
-- Does not install addons — provides instructions in references/addons.md
+- Does not install version-pinned GodotMaker dependencies (gecs, gdUnit4, and
+  godot_e2e); it installs the bundled Godot MCP editor addon through the
+  repository installer above.
 - Does not run game-planner — expects a plan or minimal user input already
 - Does not deploy skills — that is publish.sh's job

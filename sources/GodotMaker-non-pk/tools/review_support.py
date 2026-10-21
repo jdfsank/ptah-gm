@@ -421,27 +421,22 @@ def spec_git_ref(spec: dict, project: Path) -> str:
 
 
 def frontend_approval_binding(project: Path) -> dict:
-    """Load only the backend-registered binding at its fixed project path."""
+    """Load the backend-prepared confirmation at its fixed project path."""
     path = safe_child(project, ".godotmaker/frontend-approval.json")
     if not path.is_file():
         raise ReviewError("Backend frontend approval binding is missing", "BLOCKED")
     binding = load_json(path)
-    required = {"schemaVersion", "storePath", "operatorId", "projectId", "testData", "productionAuthorized",
-                "proposalId", "packetId", "jobId", "candidateId", "revision"}
-    if not isinstance(binding, dict) or set(binding) != required or binding["schemaVersion"] != 1:
+    required = {"schemaVersion", "decisionRef", "eventId", "projectId", "phase", "action", "gitSpecRef",
+                "testData", "productionAuthorized", "proposalId", "packetId", "jobId", "candidateId", "revision"}
+    if not isinstance(binding, dict) or set(binding) != required or binding["schemaVersion"] != 2:
         raise ReviewError("Backend frontend approval binding has an unsupported schema", "BLOCKED")
     if type(binding["testData"]) is not bool or type(binding["productionAuthorized"]) is not bool:
         raise ReviewError("Backend approval authorization flags must be booleans", "BLOCKED")
-    for field in ("operatorId", "projectId", "storePath"):
+    for field in ("decisionRef", "eventId", "projectId", "phase", "action", "gitSpecRef", "proposalId", "packetId", "jobId", "revision"):
         if not isinstance(binding[field], str) or not binding[field].strip():
             raise ReviewError(f"Backend approval binding has invalid {field}", "BLOCKED")
-    store_path = Path(binding["storePath"])
-    if not store_path.is_absolute() or store_path.is_symlink() or not store_path.is_file():
-        raise ReviewError("Registered approval database path is unsafe or missing", "BLOCKED")
-    if stat.S_IMODE(store_path.stat().st_mode) & 0o077:
-        raise ReviewError("Registered approval database must be private to its owner", "BLOCKED")
-    if hasattr(os, "getuid") and store_path.stat().st_uid != os.getuid():
-        raise ReviewError("Registered approval database must be owned by the current user", "BLOCKED")
+    if binding["phase"] != "specification" or binding["action"] != "approve":
+        raise ReviewError("Backend confirmation does not approve a specification", "BLOCKED")
     return binding
 
 
@@ -499,21 +494,20 @@ def consume_registered_frontend_approval(project: Path, event_id: str, spec: dic
     binding = frontend_approval_binding(project)
     if binding["testData"] or not binding["productionAuthorized"]:
         raise ReviewError("Test-mode or unauthorized approvals cannot confirm production specifications", "BLOCKED")
-    context = ApprovalContext(
-        operator_id=binding["operatorId"], project_id=binding["projectId"],
-        phase="specification", proposal_id=binding["proposalId"],
-        packet_id=binding["packetId"], job_id=binding["jobId"],
-        candidate_id=binding["candidateId"], revision=binding["revision"],
-            git_spec_ref=spec_git_ref(spec, project), run_id=None,
-        test_data=binding["testData"], production_authorized=binding["productionAuthorized"],
-    )
-    try:
-        return consume_frontend_approval(
-            {"eventId": event_id}, context, SQLiteFrontendApprovalStore(Path(binding["storePath"]))
-        )
-    except ApprovalError as exc:
-        raise ReviewError(str(exc), "BLOCKED") from exc
-
+    if event_id != binding["eventId"] or binding["gitSpecRef"] != spec_git_ref(spec, project):
+        raise ReviewError("Backend confirmation is stale or belongs to another event", "BLOCKED")
+    return {
+        "event_id": event_id,
+        "phase": "specification",
+        "action": "approve",
+        "provenance": {
+            "kind": "interactive_frontend", "input": "frontend",
+            "recorded_by": "approval_service", "event_id": event_id,
+            "phase": "specification", "project_id": binding["projectId"],
+            "production_authorized": True, "test_data": False,
+            "decision_ref": binding["decisionRef"],
+        },
+    }
 
 def runner_digest(project: Path, tests: dict) -> str:
     tools = {p.name: digest_file(p) for p in Path(__file__).parent.glob("*.py")}
@@ -853,36 +847,22 @@ def _spec_confirmation_matches(event: dict, spec: dict, current_git_ref: str, pr
         and provenance.get("production_authorized") is True
         and provenance.get("test_data") is False
         and bool(provenance.get("event_id"))
-        and bool(provenance.get("operator_id"))
+        and bool(provenance.get("decision_ref"))
         and event.get("git_spec_ref") == current_git_ref
     ):
         return False
     try:
         binding = frontend_approval_binding(project)
-        if binding["testData"] is not False or binding["productionAuthorized"] is not True:
-            return False
-        if (provenance.get("operator_id") != binding["operatorId"]
-                or event.get("git_spec_ref") != current_git_ref):
-            return False
-        store = SQLiteFrontendApprovalStore(Path(binding["storePath"]))
-        stored = store.get_consumed(str(provenance["event_id"]))
-        if stored is None:
-            return False
-        context = ApprovalContext(
-            operator_id=binding["operatorId"], project_id=binding["projectId"],
-            phase="specification", proposal_id=binding["proposalId"],
-            packet_id=binding["packetId"], job_id=binding["jobId"],
-            candidate_id=binding["candidateId"], revision=binding["revision"],
-            git_spec_ref=current_git_ref, run_id=None,
-            test_data=binding["testData"], production_authorized=binding["productionAuthorized"],
-        )
-        validated = validate_durable_approval_record(str(provenance["event_id"]), stored, context)
         return (
-            validated["action"] == "approve"
-            and validated["provenance"] == provenance
-            and stored.get("action") == "approve"
+            binding["testData"] is False
+            and binding["productionAuthorized"] is True
+            and binding["eventId"] == provenance["event_id"]
+            and binding["projectId"] == provenance["project_id"]
+            and binding["decisionRef"] == provenance["decision_ref"]
+            and binding["gitSpecRef"] == current_git_ref
+            and binding["action"] == "approve"
         )
-    except (ApprovalError, ReviewError, OSError, TypeError, KeyError):
+    except (ReviewError, OSError, TypeError, KeyError):
         return False
 
 

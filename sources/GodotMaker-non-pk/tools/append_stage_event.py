@@ -177,6 +177,8 @@ BINDING_FIELDS = {"run_id", "spec_digest", "source_digest", "test_digest",
 LOCAL_PROVENANCE = {"kind": "local_interactive", "input": "tty", "recorded_by": "gm_review"}
 FRONTEND_PROVENANCE_FIELDS = {"kind", "input", "recorded_by", "event_id", "operator_id",
                               "phase", "production_authorized", "test_data"}
+BACKEND_CONFIRMATION_PROVENANCE_FIELDS = {"kind", "input", "recorded_by", "event_id", "decision_ref",
+                                         "phase", "project_id", "production_authorized", "test_data"}
 GIT_BLOB_IDENTITY = re.compile(r"git:blob:(?:[0-9a-f]{40}|[0-9a-f]{64})")
 
 
@@ -197,14 +199,18 @@ def validate_fields(role: str, fields: dict[str, object]) -> None:
         elif key == "provenance":
             if value == LOCAL_PROVENANCE:
                 continue
+            legacy_frontend = isinstance(value, dict) and value.keys() == FRONTEND_PROVENANCE_FIELDS
+            prepared_confirmation = isinstance(value, dict) and value.keys() == BACKEND_CONFIRMATION_PROVENANCE_FIELDS
             if (role != "gdd" or not isinstance(value, dict)
-                    or value.keys() != FRONTEND_PROVENANCE_FIELDS
+                    or not (legacy_frontend or prepared_confirmation)
                     or value.get("kind") != "interactive_frontend"
                     or value.get("input") != "frontend"
                     or value.get("recorded_by") != "approval_service"
                     or value.get("phase") != "specification"
                     or not isinstance(value.get("event_id"), str) or not value["event_id"]
-                    or not isinstance(value.get("operator_id"), str) or not value["operator_id"]
+                    or (legacy_frontend and (not isinstance(value.get("operator_id"), str) or not value["operator_id"]))
+                    or (prepared_confirmation and (not isinstance(value.get("decision_ref"), str) or not value["decision_ref"]))
+                    or (prepared_confirmation and (not isinstance(value.get("project_id"), str) or not value["project_id"]))
                     or not isinstance(value.get("production_authorized"), bool)
                     or not isinstance(value.get("test_data"), bool)):
                 raise ValueError("provenance must come from a valid TTY or registered frontend approval")

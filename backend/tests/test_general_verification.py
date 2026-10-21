@@ -4,9 +4,11 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend.general_verification import (
     GeneralVerificationError,
@@ -175,6 +177,114 @@ class GeneralVerificationTests(unittest.TestCase):
         (self.project / "scripts/main.gd").write_text("extends Node2D\n# bound implementation\n", encoding="utf-8")
         self.assertEqual(audit_general_scope(self.project, self.base, self.document), ["scripts/main.gd"])
 
+    def test_scope_rejects_unprepared_gd_uid_sidecar(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        sidecar.write_bytes(b"uid://trustedfixture\n")
+        with self.assertRaisesRegex(GeneralVerificationError, "unprepared UID sidecars"):
+            audit_general_scope(self.project, self.base, self.document)
+
+    def test_scope_accepts_only_exact_prepared_gd_uid_sidecar(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        expected = b"uid://trustedfixture\n"
+        sidecar.write_bytes(expected)
+        self.assertEqual(
+            audit_general_scope(
+                self.project,
+                self.base,
+                self.document,
+                prepared_uid_sidecars={"scripts/main.gd.uid": expected},
+            ),
+            ["scripts/main.gd.uid"],
+        )
+        with self.assertRaisesRegex(GeneralVerificationError, "differs from trusted import output"):
+            audit_general_scope(
+                self.project,
+                self.base,
+                self.document,
+                prepared_uid_sidecars={"scripts/main.gd.uid": b"uid://otherfixture\n"},
+            )
+
+    def test_scope_rejects_ignored_untracked_uid_sidecar(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        sidecar.write_bytes(b"uid://ignoredproducer\n")
+        exclude = self.project / ".git/info/exclude"
+        with exclude.open("a", encoding="utf-8") as stream:
+            stream.write("\nscripts/main.gd.uid\n")
+
+        with self.assertRaisesRegex(GeneralVerificationError, "unprepared UID sidecars"):
+            audit_general_scope(self.project, self.base, self.document)
+
+    def test_scope_rejects_executable_prepared_uid_sidecar(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        content = b"uid://preparedfixture\n"
+        sidecar.write_bytes(content)
+        sidecar.chmod(0o755)
+
+        with self.assertRaisesRegex(GeneralVerificationError, "cannot be executable"):
+            audit_general_scope(
+                self.project,
+                self.base,
+                self.document,
+                prepared_uid_sidecars={"scripts/main.gd.uid": content},
+            )
+
+    def test_scope_rejects_existing_uid_rewrite_even_if_git_hides_it(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        original = b"uid://baselinefixture\n"
+        replacement = b"uid://rewrittenfixture\n"
+        sidecar.write_bytes(original)
+        subprocess.run(
+            ["git", "-C", str(self.project), "add", "-f", "scripts/main.gd.uid"], check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(self.project), "commit", "-qm", "add baseline UID"],
+            check=True,
+        )
+        self.base = subprocess.run(
+            ["git", "-C", str(self.project), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.project), "update-index", "--assume-unchanged", "scripts/main.gd.uid"],
+            check=True,
+        )
+        sidecar.write_bytes(replacement)
+
+        with self.assertRaisesRegex(GeneralVerificationError, "byte-for-byte and mode unchanged"):
+            audit_general_scope(
+                self.project,
+                self.base,
+                self.document,
+                prepared_uid_sidecars={"scripts/main.gd.uid": replacement},
+            )
+
+    def test_scope_rejects_existing_uid_mode_change_hidden_from_git(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        sidecar.write_bytes(b"uid://baselinefixture\n")
+        subprocess.run(
+            ["git", "-C", str(self.project), "add", "-f", "scripts/main.gd.uid"], check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(self.project), "commit", "-qm", "add baseline UID mode"],
+            check=True,
+        )
+        self.base = subprocess.run(
+            ["git", "-C", str(self.project), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.project), "update-index", "--assume-unchanged", "scripts/main.gd.uid"],
+            check=True,
+        )
+        sidecar.chmod(0o755)
+
+        with self.assertRaisesRegex(GeneralVerificationError, "byte-for-byte and mode unchanged"):
+            audit_general_scope(self.project, self.base, self.document)
+
     def test_deleted_source_requires_an_approved_object_binding(self):
         unbound = self.project / "scripts/unmapped.gd"
         unbound.write_text("extends Node\n", encoding="utf-8")
@@ -239,9 +349,9 @@ class GeneralVerificationTests(unittest.TestCase):
     def test_verification_report_never_claims_gameplay_acceptance(self):
         fake_godot = Path(self.temp.name) / "godot-mock"
         fake_godot.write_text(
-            "#!/usr/bin/env python3\n"
+            f"#!{sys.executable}\n"
             "import pathlib, sys\n"
-            "if '--version' in sys.argv:\n print('mock-godot 4.x')\n sys.exit(0)\n"
+            "if '--version' in sys.argv:\n print('4.6.3.stable.mock')\n sys.exit(0)\n"
             "if '--editor' in sys.argv:\n"
             " assert not pathlib.Path('.godotmaker').exists()\n sys.exit(0)\n"
             "if '--script' in sys.argv:\n"
@@ -252,21 +362,121 @@ class GeneralVerificationTests(unittest.TestCase):
         )
         fake_godot.chmod(0o755)
         records = self._add_pinned_service_records()
-        result = verify_general_project(
-            self.project,
-            self.document,
-            base_commit=self.base,
-            godot_path=fake_godot,
-            timeout=2,
-            service_records=records,
-        )
+        with mock.patch(
+            "runners.godot_runtime.sandboxed_godot_argv",
+            side_effect=lambda executable, arguments, **_kwargs: [str(executable), *arguments],
+        ) as sandboxed_command:
+            result = verify_general_project(
+                self.project,
+                self.document,
+                base_commit=self.base,
+                godot_path=fake_godot,
+                timeout=2,
+                service_records=records,
+                expected_uid_engine_version="4.6.3.stable.mock",
+            )
         self.assertEqual(result["technicalStatus"], "PASS")
+        self.assertEqual(sandboxed_command.call_count, 3)
+        self.assertTrue(all(not call.kwargs.get("uid_write_paths") for call in sandboxed_command.call_args_list))
         self.assertEqual(result["status"], "PASS")
         self.assertTrue(all(item["status"] == "NOT_TESTED" for item in result["userAcceptance"]))
         self.assertTrue(all(item["needsReview"] for item in result["userAcceptance"]))
-        self.assertEqual(result["sandbox"]["status"], "NOT_APPLIED")
+        self.assertEqual(result["sandbox"]["status"], "APPLIED")
+        self.assertIn(
+            {"id": "uid.preparation.engine_version", "status": "PASS",
+             "evidence": {"expected": "4.6.3.stable.mock", "actual": "4.6.3.stable.mock"}},
+            result["requirements"],
+        )
+        self.assertEqual(
+            result["sandbox"]["boundary"],
+            "Godot child process trees (version, import, runtime smoke)",
+        )
         self.assertIn("fresh_import", [command["name"] for command in result["commands"]])
         self.assertIn("backend_runtime_smoke", [command["name"] for command in result["commands"]])
+
+    def test_verifier_uses_prepared_uid_bytes_and_fails_on_engine_version_drift(self):
+        sidecar = self.project / "scripts/main.gd.uid"
+        sidecar.write_bytes(b"uid://trustedverifyfixture\n")
+        fake_godot = Path(self.temp.name) / "godot-version-mock"
+        fake_godot.write_text(
+            f"#!{sys.executable}\n"
+            "import sys\n"
+            "if '--version' in sys.argv: print('4.6.3.stable.mock'); sys.exit(0)\n"
+            "if '--editor' in sys.argv: sys.exit(0)\n"
+            "if '--script' in sys.argv: print('STUDIO_BACKEND_RUNTIME_SMOKE_OBSERVED'); sys.exit(0)\n"
+            "sys.exit(4)\n",
+            encoding="utf-8",
+        )
+        fake_godot.chmod(0o755)
+        prepared = {"scripts/main.gd.uid": b"uid://trustedverifyfixture\n"}
+
+        with mock.patch(
+            "runners.godot_runtime.sandboxed_godot_argv",
+            side_effect=lambda executable, arguments, **_kwargs: [str(executable), *arguments],
+        ) as sandboxed_command:
+            matching = verify_general_project(
+                self.project,
+                self.document,
+                base_commit=self.base,
+                godot_path=fake_godot,
+                timeout=2,
+                prepared_uid_sidecars=prepared,
+                expected_uid_engine_version="4.6.3.stable.mock",
+            )
+        self.assertEqual(matching["technicalStatus"], "PASS", matching)
+        self.assertEqual(sandboxed_command.call_count, 3)
+
+        with mock.patch(
+            "runners.godot_runtime.sandboxed_godot_argv",
+            side_effect=lambda executable, arguments, **_kwargs: [str(executable), *arguments],
+        ) as sandboxed_command:
+            mismatched = verify_general_project(
+                self.project,
+                self.document,
+                base_commit=self.base,
+                godot_path=fake_godot,
+                timeout=2,
+                prepared_uid_sidecars=prepared,
+                expected_uid_engine_version="4.6.2.stable.mock",
+            )
+        self.assertEqual(mismatched["technicalStatus"], "FAIL")
+        self.assertEqual([command["name"] for command in mismatched["commands"]], ["version"])
+        self.assertEqual(sandboxed_command.call_count, 1)
+        version_requirement = next(
+            requirement for requirement in mismatched["requirements"]
+            if requirement["id"] == "uid.preparation.engine_version"
+        )
+        self.assertEqual(version_requirement["status"], "FAIL")
+
+    def test_verifier_rejects_source_mutation_in_temporary_copy(self):
+        fake_godot = Path(self.temp.name) / "godot-mutating-mock"
+        fake_godot.write_text(
+            f"#!{sys.executable}\n"
+            "import pathlib, sys\n"
+            "if '--version' in sys.argv: print('4.6.3.stable.mock'); sys.exit(0)\n"
+            "if '--editor' in sys.argv: sys.exit(0)\n"
+            "if '--script' in sys.argv:\n"
+            " pathlib.Path('scripts/main.gd').write_text('modified by verifier')\n"
+            " print('STUDIO_BACKEND_RUNTIME_SMOKE_OBSERVED'); sys.exit(0)\n"
+            "sys.exit(4)\n",
+            encoding="utf-8",
+        )
+        fake_godot.chmod(0o755)
+        with mock.patch(
+            "runners.godot_runtime.sandboxed_godot_argv",
+            side_effect=lambda executable, arguments, **_kwargs: [str(executable), *arguments],
+        ):
+            result = verify_general_project(
+                self.project, self.document, base_commit=self.base,
+                godot_path=fake_godot, timeout=2,
+            )
+        self.assertEqual(result["technicalStatus"], "FAIL")
+        check = next(
+            item for item in result["requirements"]
+            if item["id"] == "verification_copy.source_immutable"
+        )
+        self.assertEqual(check["status"], "FAIL")
+        self.assertIn("scripts/main.gd", check["evidence"]["changedPaths"])
 
     def test_unsupported_operation_does_not_launch_engine(self):
         result = verify_general_project(

@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 from collections.abc import Mapping
@@ -37,6 +38,7 @@ ENGINE_ERRORS = re.compile(
     r"(?im)^\s*(?:WARNING|ERROR|SCRIPT ERROR|Parse Error|Compile Error):|Failed to load (?:script|resource)"
 )
 MAIN_SCENE = re.compile(r'(?m)^run/main_scene\s*=\s*"res://([^"\r\n]+)"\s*$')
+GODOT_UID = re.compile(rb"uid://[A-Za-z0-9_-]{1,128}\n")
 
 
 class GeneralVerificationError(ValueError):
@@ -54,6 +56,30 @@ def _run_git(project: Path, *args: str) -> str:
     if completed.returncode:
         raise GeneralVerificationError(
             f"Git scope query failed: {completed.stderr.strip() or completed.returncode}"
+        )
+    return completed.stdout
+
+
+def _run_git_bytes(
+    project: Path, *args: str, input_bytes: bytes | None = None
+) -> bytes:
+    """Run a bounded Git query without decoding source blob bytes."""
+    # Git's batch output can fill its pipe while macOS blocks a stdin write.
+    # A file lets Git drain the entire request without competing pipe writes.
+    with tempfile.TemporaryFile() as request:
+        request.write(input_bytes or b"")
+        request.seek(0)
+        completed = subprocess.run(
+            ["git", "-C", str(project), *args],
+            capture_output=True,
+            stdin=request,
+            timeout=30,
+            check=False,
+        )
+    if completed.returncode:
+        message = completed.stderr.decode("utf-8", errors="replace").strip()
+        raise GeneralVerificationError(
+            f"Git UID baseline query failed: {message or completed.returncode}"
         )
     return completed.stdout
 
@@ -202,6 +228,209 @@ def _validate_service_records(
     return keys
 
 
+def _is_supported_uid_sidecar_path(relative: str) -> bool:
+    """Accept UID metadata only for producer GDScript or the server runtime."""
+    if not isinstance(relative, str) or not relative.endswith(".gd.uid"):
+        return False
+    source = relative[:-4]
+    if source == "studio/runtime.gd":
+        return True
+    return _safe_policy_path(source) and PurePosixPath(source).suffix.lower() == ".gd"
+
+
+def _validate_prepared_uid_sidecars(
+    project: Path, prepared_uid_sidecars: Mapping[str, bytes] | None
+) -> dict[str, bytes]:
+    """Match explicitly prepared UID bytes to regular in-root GDScript files.
+
+    The mapping is evidence from the trusted pre-seal Godot import helper. A
+    raw changed ``.gd.uid`` without this exact mapping remains out of policy.
+    """
+    if prepared_uid_sidecars is None:
+        return {}
+    if not isinstance(prepared_uid_sidecars, Mapping):
+        raise GeneralVerificationError("prepared UID sidecars must map relative paths to exact bytes")
+    normalized: dict[str, bytes] = {}
+    uid_values: set[bytes] = set()
+    for relative, expected in prepared_uid_sidecars.items():
+        if not _is_supported_uid_sidecar_path(relative):
+            raise GeneralVerificationError(f"unsupported prepared UID sidecar path: {relative!r}")
+        if not isinstance(expected, bytes) or GODOT_UID.fullmatch(expected) is None:
+            raise GeneralVerificationError(f"prepared UID sidecar has invalid Godot UID content: {relative}")
+        if expected in uid_values:
+            raise GeneralVerificationError(f"prepared UID sidecars contain a duplicate UID: {relative}")
+        uid_values.add(expected)
+
+        source_relative = relative[:-4]
+        source_path = _relative_path(project, source_relative) if source_relative != "studio/runtime.gd" else project / source_relative
+        sidecar_path = project.joinpath(*PurePosixPath(relative).parts)
+        for candidate in (source_path, sidecar_path):
+            current = project
+            for part in candidate.relative_to(project).parts:
+                current = current / part
+                if current.is_symlink():
+                    raise GeneralVerificationError(f"prepared UID path cannot contain symlinks: {relative}")
+        if not source_path.is_file():
+            raise GeneralVerificationError(f"prepared UID sidecar has no regular GDScript source: {relative}")
+        if not sidecar_path.is_file():
+            raise GeneralVerificationError(f"prepared UID sidecar is missing or not a regular file: {relative}")
+        try:
+            actual = sidecar_path.read_bytes()
+        except OSError as exc:
+            raise GeneralVerificationError(f"cannot read prepared UID sidecar {relative}: {exc}") from exc
+        if actual != expected:
+            raise GeneralVerificationError(f"prepared UID sidecar differs from trusted import output: {relative}")
+        normalized[relative] = expected
+    return normalized
+
+
+def _git_uid_sidecar_baseline(
+    project: Path, base_commit: str
+) -> dict[str, tuple[bytes, bool]]:
+    """Read regular source UID sidecar blobs from the exact base Git tree."""
+    tree = _run_git_bytes(project, "ls-tree", "-r", "-z", "--full-tree", base_commit)
+    entries: list[tuple[str, bytes, bool]] = []
+    for record in tree.split(b"\0"):
+        if not record:
+            continue
+        metadata, separator, path_bytes = record.partition(b"\t")
+        if not separator or not path_bytes.endswith(b".gd.uid") or path_bytes.startswith(b".godot/"):
+            continue
+        fields = metadata.split()
+        if len(fields) != 3:
+            raise GeneralVerificationError("Git UID baseline contains a malformed tree entry")
+        mode, object_type, object_id = fields
+        if object_type != b"blob" or mode not in {b"100644", b"100755"}:
+            raise GeneralVerificationError(
+                "Git UID baseline contains a non-regular UID sidecar: "
+                + os.fsdecode(path_bytes)
+            )
+        entries.append((os.fsdecode(path_bytes), object_id, mode == b"100755"))
+
+    if not entries:
+        return {}
+    if len(entries) > MAX_PROJECT_FILES:
+        raise GeneralVerificationError("Git UID baseline exceeds the project file-count limit")
+    request = b"".join(object_id + b"\n" for _, object_id, _ in entries)
+    output = _run_git_bytes(project, "cat-file", "--batch", input_bytes=request)
+    cursor = 0
+    baseline: dict[str, tuple[bytes, bool]] = {}
+    total = 0
+    for relative, expected_id, executable in entries:
+        header_end = output.find(b"\n", cursor)
+        if header_end < 0:
+            raise GeneralVerificationError("Git UID baseline blob output is truncated")
+        header = output[cursor:header_end].split()
+        if len(header) != 3 or header[0] != expected_id or header[1] != b"blob":
+            raise GeneralVerificationError(f"Git UID baseline blob metadata is invalid: {relative}")
+        try:
+            size = int(header[2])
+        except ValueError as exc:
+            raise GeneralVerificationError(f"Git UID baseline blob size is invalid: {relative}") from exc
+        if size < 0 or size > MAX_FILE_BYTES:
+            raise GeneralVerificationError(f"Git UID baseline blob exceeds the file limit: {relative}")
+        total += size
+        if total > MAX_TOTAL_BYTES:
+            raise GeneralVerificationError("Git UID baseline sidecars exceed the project byte limit")
+        content_start = header_end + 1
+        content_end = content_start + size
+        if content_end >= len(output) or output[content_end:content_end + 1] != b"\n":
+            raise GeneralVerificationError(f"Git UID baseline blob is truncated: {relative}")
+        baseline[relative] = (output[content_start:content_end], executable)
+        cursor = content_end + 1
+    if cursor != len(output):
+        raise GeneralVerificationError("Git UID baseline blob output has unexpected trailing data")
+    return baseline
+
+
+def _source_uid_sidecar_inventory(project: Path) -> dict[str, tuple[bytes, bool]]:
+    """Capture every source-tree .gd.uid, including Git-ignored files."""
+    sidecars: dict[str, tuple[bytes, bool]] = {}
+    for directory, dirs, files in os.walk(project, followlinks=False):
+        current = Path(directory)
+        if current == project:
+            dirs[:] = [name for name in dirs if name not in {".git", ".godot"}]
+        for name in list(dirs):
+            child = current / name
+            if child.is_symlink():
+                raise GeneralVerificationError(
+                    f"UID sidecar tree contains a directory symlink: {child.relative_to(project)}"
+                )
+        for filename in files:
+            if not filename.endswith(".gd.uid"):
+                continue
+            path = current / filename
+            relative = path.relative_to(project).as_posix()
+            try:
+                mode = path.lstat().st_mode
+            except OSError as exc:
+                raise GeneralVerificationError(f"cannot inspect UID sidecar {relative}: {exc}") from exc
+            if not stat.S_ISREG(mode):
+                raise GeneralVerificationError(f"UID sidecar must be a regular file: {relative}")
+            try:
+                sidecars[relative] = (path.read_bytes(), bool(mode & 0o111))
+            except OSError as exc:
+                raise GeneralVerificationError(f"cannot read UID sidecar {relative}: {exc}") from exc
+    return sidecars
+
+
+def _validate_uid_sidecars_against_base(
+    project: Path,
+    base_commit: str,
+    prepared_uid_sidecars: Mapping[str, bytes],
+) -> None:
+    """Require old UID blobs to stay exact and new ones to be explicitly prepared."""
+    baseline = _git_uid_sidecar_baseline(project, base_commit)
+    current = _source_uid_sidecar_inventory(project)
+    removed = sorted(set(baseline) - set(current))
+    if removed:
+        raise GeneralVerificationError(
+            "Git baseline UID sidecars are missing or deleted: " + ", ".join(removed[:40])
+        )
+    modified = sorted(
+        path for path in set(baseline) & set(current)
+        if baseline[path] != current[path]
+    )
+    if modified:
+        raise GeneralVerificationError(
+            "existing Git UID sidecars must remain byte-for-byte and mode unchanged: "
+            + ", ".join(modified[:40])
+        )
+    prepared_existing = sorted(set(prepared_uid_sidecars) & set(baseline))
+    if prepared_existing:
+        raise GeneralVerificationError(
+            "UID preparation may add sidecars only; existing Git UID sidecars cannot be replaced: "
+            + ", ".join(prepared_existing[:40])
+        )
+    unprepared_new = sorted((set(current) - set(baseline)) - set(prepared_uid_sidecars))
+    if unprepared_new:
+        raise GeneralVerificationError(
+            "unprepared UID sidecars, including ignored files: " + ", ".join(unprepared_new[:40])
+        )
+    executable_new = sorted(
+        path for path in set(current) - set(baseline)
+        if current[path][1]
+    )
+    if executable_new:
+        raise GeneralVerificationError(
+            "prepared UID sidecars cannot be executable: " + ", ".join(executable_new[:40])
+        )
+    uid_paths: dict[bytes, str] = {}
+    for path, (content, _executable) in current.items():
+        if not _is_supported_uid_sidecar_path(path):
+            continue
+        if GODOT_UID.fullmatch(content) is None:
+            raise GeneralVerificationError(f"Godot UID sidecar is malformed: {path}")
+        if content in uid_paths:
+            raise GeneralVerificationError(
+                f"Godot UID sidecars contain a duplicate identifier: {uid_paths[content]}, {path}"
+            )
+        uid_paths[content] = path
+        source = project.joinpath(*PurePosixPath(path[:-4]).parts)
+        if source.is_symlink() or not source.is_file():
+            raise GeneralVerificationError(f"Godot UID sidecar has no regular GDScript source: {path}")
+
+
 def audit_general_scope(
     project: str | os.PathLike[str],
     base_commit: str,
@@ -209,6 +438,7 @@ def audit_general_scope(
     *,
     allow_engine_cache: bool = False,
     service_records: Mapping[str, str] | None = None,
+    prepared_uid_sidecars: Mapping[str, bytes] | None = None,
 ) -> list[str]:
     """Validate Git write scope and document bindings; return changed paths.
 
@@ -230,7 +460,22 @@ def audit_general_scope(
         raise GeneralVerificationError("project.godot is missing")
 
     changed = _git_changed_paths(root, base_commit)
-    unauthorized = [path for path in changed if not _safe_policy_path(path)]
+    uid_sidecars = _validate_prepared_uid_sidecars(root, prepared_uid_sidecars)
+    _validate_uid_sidecars_against_base(root, base_commit, uid_sidecars)
+    changed_uid_sidecars = {path for path in changed if path.endswith(".gd.uid")}
+    if changed_uid_sidecars != set(uid_sidecars):
+        missing = sorted(changed_uid_sidecars - set(uid_sidecars))
+        stale = sorted(set(uid_sidecars) - changed_uid_sidecars)
+        details = []
+        if missing:
+            details.append("unprepared UID sidecars: " + ", ".join(missing[:40]))
+        if stale:
+            details.append("prepared UID sidecars are not new source changes: " + ", ".join(stale[:40]))
+        raise GeneralVerificationError("; ".join(details) or "UID sidecar preparation does not match Git changes")
+    unauthorized = [
+        path for path in changed
+        if not _safe_policy_path(path) and path not in uid_sidecars
+    ]
     if unauthorized:
         raise GeneralVerificationError(
             "producer changed files outside the general project write policy: "
@@ -291,7 +536,7 @@ def audit_general_scope(
         raise GeneralVerificationError("project main scene must be an existing supported .tscn file")
     bound_paths = {path for obj in normalized["objects"] for path in obj["sourceBindings"]}
     unbound_changes = [path for path in changed if path != "project.godot"
-                       and path not in bound_paths]
+                       and path not in bound_paths and path not in uid_sidecars]
     if unbound_changes:
         raise GeneralVerificationError("changed source files have no approved object binding: "
                                        + ", ".join(unbound_changes[:40]))
@@ -343,7 +588,14 @@ def _godot_version(godot: str, timeout: float) -> dict[str, object]:
     return _command(godot, [godot, "--version"], None, timeout)
 
 
-def _command(godot: str, argv: list[str], cwd: Path | None, timeout: float) -> dict[str, object]:
+def _command(
+    godot: str,
+    argv: list[str],
+    cwd: Path | None,
+    timeout: float,
+    *,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, object]:
     try:
         completed = subprocess.run(
             argv,
@@ -352,6 +604,7 @@ def _command(godot: str, argv: list[str], cwd: Path | None, timeout: float) -> d
             text=True,
             timeout=timeout,
             check=False,
+            env=None if env is None else dict(env),
         )
         stdout = completed.stdout
         stderr = completed.stderr
@@ -382,6 +635,47 @@ def _decode(value: str | bytes | None) -> str:
     if value is None:
         return ""
     return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+
+def _verification_source_inventory(project: Path) -> dict[str, bytes]:
+    """Capture exact per-file contents outside Godot's disposable cache.
+
+    This is an in-memory file inventory, not a digest-based integrity check.
+    The trusted verifier harness is included after it is created, so a Godot
+    invocation cannot silently rewrite it or add any other source file.
+    """
+    inventory: dict[str, bytes] = {}
+    for directory, dirs, files in os.walk(project, followlinks=False):
+        current = Path(directory)
+        if current == project:
+            dirs[:] = [d for d in dirs if d != ".godot"]
+        for dirname in list(dirs):
+            child = current / dirname
+            if child.is_symlink():
+                raise GeneralVerificationError(
+                    f"verification copy contains a directory symlink: {child.relative_to(project)}"
+                )
+        for filename in files:
+            path = current / filename
+            relative = path.relative_to(project).as_posix()
+            if path.is_symlink():
+                raise GeneralVerificationError(
+                    f"verification copy contains a file symlink: {relative}"
+                )
+            try:
+                inventory[relative] = path.read_bytes()
+            except OSError as exc:
+                raise GeneralVerificationError(
+                    f"cannot read verification-copy file {relative}: {exc}"
+                ) from exc
+    return inventory
+
+
+def _inventory_changes(before: Mapping[str, bytes], after: Mapping[str, bytes]) -> list[str]:
+    return sorted(
+        path for path in set(before) | set(after)
+        if before.get(path) != after.get(path)
+    )
 
 
 def _smoke_harness() -> str:
@@ -428,6 +722,8 @@ def verify_general_project(
     godot_path: str | os.PathLike[str] | None = None,
     timeout: float = 45.0,
     service_records: Mapping[str, str] | None = None,
+    prepared_uid_sidecars: Mapping[str, bytes] | None = None,
+    expected_uid_engine_version: str | None = None,
 ) -> dict[str, object]:
     """Run bounded, backend-owned import and main-scene runtime smoke checks.
 
@@ -445,7 +741,7 @@ def verify_general_project(
         "commands": [],
         "catalog": None,
         "engine": None,
-        "sandbox": {"status": "NOT_APPLIED", "boundary": "cooperative_local_execution"},
+        "sandbox": {"status": "NOT_APPLIED", "boundary": "no Godot command launched"},
         "userAcceptance": [],
     }
     requirements: list[dict[str, object]] = report["requirements"]  # type: ignore[assignment]
@@ -457,10 +753,25 @@ def verify_general_project(
         diagnostics.append({"stage": "contract", "message": "general verifier supports IMPLEMENTATION only"})
         requirements.append({"id": "operation.supported", "status": "FAIL", "evidence": operation})
         return report
+    if expected_uid_engine_version is not None and (
+        not isinstance(expected_uid_engine_version, str)
+        or not expected_uid_engine_version
+        or expected_uid_engine_version != expected_uid_engine_version.strip()
+        or "\n" in expected_uid_engine_version
+        or "\r" in expected_uid_engine_version
+    ):
+        message = "expected UID preparation engine version is invalid"
+        diagnostics.append({"stage": "uid_preparation", "message": message})
+        requirements.append({"id": "uid.preparation.engine_version", "status": "FAIL", "evidence": message})
+        return report
     try:
         normalized = validate_document(dict(document))
         paths = audit_general_scope(
-            root, base_commit, normalized, service_records=service_records
+            root,
+            base_commit,
+            normalized,
+            service_records=service_records,
+            prepared_uid_sidecars=prepared_uid_sidecars,
         )
         requirements.extend(
             [
@@ -483,18 +794,8 @@ def verify_general_project(
         requirements.append({"id": "godot.available", "status": "FAIL", "evidence": message})
         diagnostics.append({"stage": "godot", "message": message})
         return report
-    version = _godot_version(godot, min(timeout, 10.0))
-    commands.append({"name": "version", **version})
-    if version["returnCode"] != 0 or version["timedOut"]:
-        requirements.append({"id": "godot.version", "status": "FAIL", "evidence": "version query failed"})
-        diagnostics.append({"stage": "godot", "message": "could not determine Godot engine version"})
-        return report
-    version_text = str(version["stdout"]).strip()
-    report["engine"] = {"path": godot, "version": version_text}
-    requirements.append({"id": "godot.available", "status": "PASS", "evidence": version_text})
-
     with tempfile.TemporaryDirectory(prefix="studio-general-verify-") as temp_name:
-        temp_root = Path(temp_name)
+        temp_root = Path(temp_name).resolve()
         copy_root = temp_root / "project"
         try:
             shutil.copytree(
@@ -508,16 +809,81 @@ def verify_general_project(
             harness_dir.mkdir()
             harness_path = harness_dir / "runtime_smoke.gd"
             harness_path.write_text(_smoke_harness(), encoding="utf-8")
-        except OSError as exc:
+            source_inventory = _verification_source_inventory(copy_root)
+            from runners.image_imports import missing_image_imports, read_generated_imports
+            image_import_relatives = missing_image_imports(copy_root, source_inventory)
+        except (OSError, ValueError) as exc:
             diagnostics.append({"stage": "prepare", "message": f"could not create clean verifier copy: {exc}"})
             requirements.append({"id": "copy.clean", "status": "FAIL", "evidence": str(exc)})
             return report
 
-        import_result = _command(
+        try:
+            from runners.godot_runtime import GodotRuntime, sandboxed_godot_argv
+
+            runtime = GodotRuntime.create(str((temp_root / "godot-runtime").resolve()))
+            version_argv = sandboxed_godot_argv(
+                godot, ["--version"], project_root=copy_root, runtime=runtime
+            )
+            version = _command(
+                godot, version_argv, copy_root, min(timeout, 10.0), env=runtime.environment()
+            )
+            report["sandbox"] = {
+                "status": "APPLIED",
+                "policy": "deny-default; source read-only except exact missing image .import paths during recovery import; private .godot/runtime writes; no network",
+                "disposableImageImportPaths": list(image_import_relatives),
+                "boundary": "Godot child process trees (version, import, runtime smoke)",
+            }
+        except (OSError, ValueError, RuntimeError) as exc:
+            diagnostics.append({"stage": "godot", "message": f"could not prepare a restricted Godot runtime: {exc}"})
+            requirements.append({"id": "godot.version", "status": "FAIL", "evidence": str(exc)})
+            return report
+        commands.append({"name": "version", **version})
+        if version["returnCode"] != 0 or version["timedOut"] or version["engineIssues"]:
+            requirements.append({"id": "godot.version", "status": "FAIL", "evidence": "version query failed"})
+            diagnostics.append({"stage": "godot", "message": "could not determine Godot engine version"})
+            return report
+        version_text = str(version["stdout"]).strip()
+        report["engine"] = {"path": godot, "version": version_text}
+        requirements.append({"id": "godot.available", "status": "PASS", "evidence": version_text})
+        if expected_uid_engine_version is not None:
+            engine_version_matches = version_text == expected_uid_engine_version
+            requirements.append({
+                "id": "uid.preparation.engine_version",
+                "status": "PASS" if engine_version_matches else "FAIL",
+                "evidence": {
+                    "expected": expected_uid_engine_version,
+                    "actual": version_text,
+                },
+            })
+            if not engine_version_matches:
+                diagnostics.append({
+                    "stage": "uid_preparation",
+                    "message": "Godot engine version differs from trusted UID preparation evidence",
+                })
+                return report
+
+        try:
+            editor_settings_path, ca_bundle_path = runtime.configure_editor_tls(version_text, godot)
+        except (OSError, ValueError, RuntimeError) as exc:
+            message = f"could not prepare private Godot editor TLS settings: {exc}"
+            diagnostics.append({"stage": "godot.certificates", "message": message})
+            requirements.append({"id": "godot.editor_certificates", "status": "FAIL", "evidence": message})
+            return report
+        sandbox_evidence = report["sandbox"]
+        if isinstance(sandbox_evidence, dict):
+            sandbox_evidence["editorCertificateBundle"] = str(ca_bundle_path)
+            sandbox_evidence["editorSettings"] = str(editor_settings_path)
+
+        import_argv = sandboxed_godot_argv(
             godot,
-            [godot, "--headless", "--path", str(copy_root), "--editor", "--import", "--quit"],
-            copy_root,
-            timeout,
+            ["--headless", "--path", str(copy_root), "--editor", "--recovery-mode", "--import", "--quit",
+             "--log-file", str(runtime.tmp / "import.log")],
+            project_root=copy_root,
+            runtime=runtime,
+            image_import_write_paths=tuple(copy_root / path for path in image_import_relatives),
+        )
+        import_result = _command(
+            godot, import_argv, copy_root, timeout, env=runtime.environment()
         )
         commands.append({"name": "fresh_import", **import_result})
         import_ok = (
@@ -525,6 +891,13 @@ def verify_general_project(
             and not import_result["timedOut"]
             and not import_result["engineIssues"]
         )
+        generated_imports = {}
+        if import_ok:
+            try:
+                generated_imports = read_generated_imports(copy_root, image_import_relatives)
+            except (ValueError, OSError) as exc:
+                import_ok = False
+                diagnostics.append({"stage": "image_import", "message": str(exc)})
         requirements.append(
             {"id": "godot.fresh_import", "status": "PASS" if import_ok else "FAIL", "evidence": "clean temporary project copy"}
         )
@@ -532,11 +905,15 @@ def verify_general_project(
             diagnostics.append({"stage": "fresh_import", "message": "fresh headless import failed or emitted engine errors"})
 
         if import_ok:
-            smoke_result = _command(
+            smoke_argv = sandboxed_godot_argv(
                 godot,
-                [godot, "--headless", "--path", str(copy_root), "--script", "res://.studio_verifier/runtime_smoke.gd"],
-                copy_root,
-                timeout,
+                ["--headless", "--path", str(copy_root), "--script", "res://.studio_verifier/runtime_smoke.gd",
+                 "--log-file", str(runtime.tmp / "smoke.log")],
+                project_root=copy_root,
+                runtime=runtime,
+            )
+            smoke_result = _command(
+                godot, smoke_argv, copy_root, timeout, env=runtime.environment()
             )
             commands.append({"name": "backend_runtime_smoke", **smoke_result})
             smoke_ok = (
@@ -554,6 +931,32 @@ def verify_general_project(
             smoke_ok = False
             requirements.append({"id": "godot.main_scene_smoke", "status": "BLOCKED", "evidence": "fresh import did not pass"})
 
+        try:
+            after_inventory = _verification_source_inventory(copy_root)
+            for path, data in generated_imports.items():
+                if after_inventory.get(path) != data:
+                    raise GeneralVerificationError("disposable image import metadata changed during runtime: " + path)
+                del after_inventory[path]
+            changed_copy_paths = _inventory_changes(source_inventory, after_inventory)
+        except GeneralVerificationError as exc:
+            changed_copy_paths = [str(exc)]
+        copy_immutable = not changed_copy_paths
+        requirements.append({
+            "id": "verification_copy.source_immutable",
+            "status": "PASS" if copy_immutable else "FAIL",
+            "evidence": {
+                "inventory": "per-file exact contents; .godot cache and validated disposable image metadata excluded",
+                "disposableImageImports": list(generated_imports),
+                "changedPaths": changed_copy_paths[:40],
+            },
+        })
+        if not copy_immutable:
+            diagnostics.append({
+                "stage": "verification_copy",
+                "message": "Godot changed or added files outside the disposable .godot cache: "
+                + ", ".join(changed_copy_paths[:40]),
+            })
+
     requirements.append(
         {"id": "user.acceptance", "status": "NOT_TESTED", "evidence": "general gameplay, visual quality, controls, and user-experience requirements require human review unless a trusted adapter provides explicit assertions"}
     )
@@ -567,7 +970,12 @@ def verify_general_project(
         }
         for requirement in normalized["requirements"]
     ]
-    if import_ok and smoke_ok:
+    copy_immutable = all(
+        requirement.get("id") != "verification_copy.source_immutable"
+        or requirement.get("status") == "PASS"
+        for requirement in requirements
+    )
+    if import_ok and smoke_ok and copy_immutable:
         report["status"] = "PASS"
         report["technicalStatus"] = "PASS"
         checks.extend(["fresh Godot import", "backend-owned main-scene runtime smoke"])

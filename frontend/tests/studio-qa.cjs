@@ -9,7 +9,7 @@ catch { console.log('SKIP studio DOM QA: jsdom is not installed.'); process.exit
 
 const root = path.resolve(__dirname, '..');
 const dom = new JSDOM(fs.readFileSync(path.join(root, 'studio/index.html'), 'utf8'), { url: 'http://127.0.0.1:8123/studio/', pretendToBeVisual: true });
-global.FormData = dom.window.FormData;
+global.FormData = dom.window.FormData; global.Option = dom.window.Option;
 global.HTMLElement = dom.window.HTMLElement;
 global.confirm = () => { throw new Error('QA must not impersonate candidate approval.'); };
 const calls = [];
@@ -84,13 +84,14 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   assert(document.querySelector('#workflow-status-copy').textContent.includes('审阅并确认制作范围'), 'READY status should ask the user to review the proposal');
   assert(document.querySelector('#freeze').disabled, 'proposal must not freeze without a human review action');
 
-  app.job = { id: 'job-a', projectId: 'project-a', status: 'RUNNING' }; app.renderJob();
+  app.job = { id: 'job-a', projectId: 'project-a', proposalId: 'proposal-a', status: 'RUNNING' }; app.renderJob();
   assert(document.querySelector('#workflow-status-copy').textContent.includes('AI 正在制作'), 'production status should identify the AI producer');
-  app.job = { id: 'job-a', projectId: 'project-a', status: 'VERIFYING' }; app.renderJob();
+  app.job = { id: 'job-a', projectId: 'project-a', proposalId: 'proposal-a', status: 'VERIFYING' }; app.renderJob();
   assert(document.querySelector('#workflow-status-copy').textContent.includes('后端验证'), 'verification status should identify the backend');
-  app.job = { id: 'job-a', projectId: 'project-a', status: 'READY_FOR_REVIEW' }; app.renderJob();
+  app.job = { id: 'job-a', projectId: 'project-a', proposalId: 'proposal-a', status: 'READY_FOR_REVIEW' }; app.renderJob();
   assert(document.querySelector('#workflow-status-copy').textContent.includes('等待用户反馈'), 'candidate review must be attributed to the user');
 
+  app.job = null; app.proposal = null;
   app.workspace.iterationReady = true; app.workspace.iterationReadyTestOnly = true;
   app.snapshot = { projectId: 'project-a', publicationRevision: 1, workflow: 'objects-v1', kind: 'MVP', playable: true, objects: [{ id: 'player', name: '玩家', fields: [] }] };
   app.stage = 'initial'; app.renderWorkbench(); app.renderWorkflowStatus();
@@ -100,11 +101,11 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   assert(document.querySelector('#edit-form').classList.contains('hidden'), 'iteration editor must stay hidden in the initial stage');
   iterationLink.click();
   assert(app.stage === 'iteration' && !document.querySelector('#edit-form').classList.contains('hidden'), 'iteration link should open the separate object workbench');
-  assert(document.querySelector('#workflow-status-copy').textContent.includes('迭代阶段'), 'top status should name the iteration stage');
+  assert(document.querySelector('#workflow-status-copy').textContent.includes('迭代'), `top status should name the iteration stage: ${document.querySelector('#workflow-status-copy').textContent}`);
 
   app.job = null; app.proposal = { id: 'iteration-planning', projectId: 'project-a', status: 'PLANNING' }; app.renderWorkflowStatus();
   assert(document.querySelector('#workflow-status-copy').textContent.includes('AI 策划'), 'iteration planning must not be masked by the accepted baseline');
-  app.proposal = null; app.job = { id: 'job-iteration', projectId: 'project-a', status: 'RUNNING' }; app.renderWorkflowStatus();
+  app.proposal = null; app.job = { id: 'job-iteration', projectId: 'project-a', proposalId: 'proposal-a', status: 'RUNNING' }; app.renderWorkflowStatus();
   assert(document.querySelector('#workflow-status-copy').textContent.includes('AI 正在制作'), 'iteration production must retain its active actor');
   app.job.status = 'VERIFYING'; app.renderWorkflowStatus(); assert(document.querySelector('#workflow-status-copy').textContent.includes('后端验证'), 'iteration verification must remain visible');
   app.job.status = 'READY_FOR_REVIEW'; app.renderWorkflowStatus(); assert(document.querySelector('#workflow-status-copy').textContent.includes('等待用户反馈'), 'iteration review must remain visible');

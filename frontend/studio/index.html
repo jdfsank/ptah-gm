@@ -6,12 +6,15 @@
   <meta name="theme-color" content="#f5f7fb">
   <title>造物工作台</title>
   <link rel="stylesheet" href="./studio.css">
-  <script type="module" src="./studio.js"></script>
+  <link rel="stylesheet" href="./workbench.css">
+  <link rel="stylesheet" href="./workbench-semantics.css">
+  <link rel="stylesheet" href="./visual-feedback.css">
+  <script type="module" src="./boot.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="./" aria-label="造物工作台首页"><span class="brand-mark">造</span><span>造物工作台</span></a>
-    <div class="top-actions"><span id="connection" class="connection pending" role="status">正在连接本机服务…</span><a class="legacy-link" href="/legacy/">旧版工作台</a></div>
+  <div class="top-actions"><span id="connection" class="connection pending" role="status">正在连接本机服务…</span><button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换主题">切换主题</button><a class="legacy-link" href="/legacy/">旧版工作台</a></div>
   </header>
   <main id="app" class="shell" aria-live="polite">
     <section id="home-hero" class="hero">
@@ -34,15 +37,19 @@
       <section id="project-view" class="hidden">
       <div class="workspace-heading"><div><p class="eyebrow">当前项目</p><h2 id="workspace-name">正在读取项目…</h2></div><div class="heading-actions"><button id="rename-project" class="button quiet" type="button">重命名</button><button id="archive-project" class="button quiet" type="button">归档</button><button id="back-projects" class="button quiet" type="button">所有项目</button><button id="refresh" class="button quiet" type="button">刷新状态</button></div></div>
       <div class="workflow-status" role="status"><span class="status-dot"></span><span id="workflow-status-copy">正在读取项目阶段…</span></div>
+      <section id="stage-status" class="panel compact stage-status hidden" aria-label="工作阶段"><ol id="stage-list" class="stage-list"></ol></section>
+      <details id="session-settings" class="panel compact"><summary>策划与制作设置</summary><div id="session-settings-content"><p class="muted">读取服务支持的角色、模型与档位…</p></div></details>
+      <details id="execution-monitor" class="panel compact hidden"><summary>执行监视</summary><div id="execution-monitor-content"></div></details>
       <div class="grid">
         <div class="main-column">
           <section class="panel" aria-labelledby="concept-title">
             <div class="panel-heading"><div><p class="eyebrow">第一步 · 说出想法</p><h2 id="concept-title">你想做怎样的游戏？</h2></div><span class="step-number">01</span></div>
             <form id="concept-form">
-              <p class="muted">项目：<b id="concept-project-label"></b></p>
+              <p class="muted concept-project-context">项目：<b id="concept-project-label"></b></p>
               <label class="field-label" for="concept">用户原始想法</label>
               <textarea id="concept" name="text" rows="4" maxlength="5000" placeholder="描述你想做的 2D 游戏、核心体验和最想先验证的部分。" required></textarea>
               <div class="upload-row"><label class="button secondary upload-button" for="images">添加图片</label><input id="images" type="file" accept="image/png,image/jpeg,image/webp" multiple><select id="asset-purpose" aria-label="图片用途"><option value="reference">概念参考</option><option value="style">风格参考</option><option value="layout">布局参考</option><option value="asset">素材输入</option></select><span id="asset-help" class="muted">PNG、JPEG、WebP，单张不超过 5 MB</span></div>
+              <details class="visual-planning-panel"><summary>开启视觉策划</summary><div id="concept-generation" class="concept-generation-controls"></div><div id="concept-generation-results" class="concept-generation-results"></div></details>
               <div id="image-list" class="image-list" aria-live="polite"></div>
               <div class="form-footer"><span class="muted">图片仅作为本轮参考，是否用于游戏由你决定。</span><button class="button primary" type="submit">梳理我的想法 <span aria-hidden="true">→</span></button></div>
             </form>
@@ -50,10 +57,11 @@
           <section id="proposal-panel" class="panel hidden" aria-labelledby="proposal-title">
             <div class="panel-heading"><div><p class="eyebrow">一起明确本轮范围</p><h2 id="proposal-title">初步方案</h2></div><span id="proposal-status" class="status-pill">待确认</span></div>
             <div id="proposal-content"></div>
+            <section id="proposal-visual-planning" class="visual-planning-panel hidden" aria-label="视觉策划检查面板"></section>
             <div id="planning-status" class="notice hidden" role="status"></div>
             <form id="answers-form" class="hidden"><h3>AI 策划的问题 · 请补充你的决定</h3><div id="questions"></div><button class="button primary" type="submit">提交回答</button></form>
             <div id="freeze-area" class="hidden">
-              <div class="review-card"><h3>制作前请核对</h3><p>确认后将冻结本轮方案並发送给制作 session。你可以先返回修改想法。</p><label class="check-row"><input id="reviewed" type="checkbox"><span id="review-label">我已阅读并确认上面的方案和制作范围</span></label></div>
+              <div class="review-card"><h3>制作前请核对</h3><p>确认后将按本轮方案交给 AI 制作。你可以先返回修改想法。</p><label class="check-row"><input id="reviewed" type="checkbox"><span id="review-label">我已阅读并确认上面的方案和制作范围</span></label></div>
               <button id="freeze" class="button primary" type="button" disabled>确认方案并继续</button>
               <p id="frozen-note" class="notice hidden">此表单已冻结。继续操作会使用相同表单编号，不会重新提交确认。</p>
               <button id="resume-packet" class="button primary hidden" type="button">恢复并继续此制作表单</button>
@@ -68,18 +76,44 @@
           </section>
           <section id="workbench-panel" class="panel hidden" aria-labelledby="workbench-title">
             <div class="panel-heading"><div><p class="eyebrow">继续迭代</p><h2 id="workbench-title">当前工作台</h2></div><span id="snapshot-version" class="status-pill">读取中</span></div>
+            <div id="workbench-flow-summary" class="workbench-flow-summary hidden" role="status"></div>
             <div id="snapshot-summary"></div><div id="candidate-preview" class="hidden"></div>
-            <section id="object-catalog" class="object-catalog hidden" aria-labelledby="object-catalog-title"><h3 id="object-catalog-title">项目对象</h3><p class="muted">选择对象查看说明、关系与文件绑定；本轮自然语言和反馈会关联到所选对象。</p><div id="object-list" class="object-list"></div><div id="object-detail" class="object-detail"></div></section>
-            <div id="draft-state" class="draft-state" role="status"></div>
-            <form id="edit-form"><h3>提出下一步调整</h3><label class="field-label" for="edit-text">自然语言说明</label><textarea id="edit-text" rows="3" maxlength="3000" placeholder="说明对所选对象希望做什么调整。"></textarea>
-              <div id="selected-object-label" class="muted">未选择对象；可先从项目对象中选择。</div><div id="dynamic-fields" class="parameter-grid"></div>
-              <div id="feedback-editor" class="feedback-editor"><label class="field-label" for="feedback-message">对象反馈</label><textarea id="feedback-message" rows="2" maxlength="2000" placeholder="记录问题、视觉或行为反馈；反馈会单独发送，不会自动批准修改。"></textarea><div class="feedback-controls"><select id="feedback-category" aria-label="反馈类别"><option value="general">一般</option><option value="bug">问题</option><option value="visual">视觉</option><option value="behavior">行为</option></select><button id="add-feedback" class="button secondary" type="button">添加到所选对象</button></div><ul id="feedback-list" class="feedback-list"></ul></div>
-              <div class="form-footer"><span id="capability-note" class="muted">仅显示此项目声明支持的调整。</span><button class="button primary" type="submit">整理本轮调整 <span aria-hidden="true">→</span></button></div>
-            </form>
+            <section id="object-catalog" class="object-catalog hidden" aria-labelledby="object-catalog-title">
+              <header class="workbench-toolbar"><div><p class="eyebrow">对象工作台</p><h3 id="object-catalog-title">项目对象</h3></div><div class="workbench-toolbar-actions"><button id="workbench-nav-toggle" class="button quiet" type="button" aria-expanded="true">折叠导航</button><button class="button secondary" type="button" data-workbench-action="new-scene">提议新场景</button><button class="button secondary" type="button" data-workbench-action="new-instance">提议新实例</button><button class="button secondary" type="button" data-workbench-action="undo" disabled>撤销</button><button class="button secondary" type="button" data-workbench-action="redo" disabled>重做</button><button class="button secondary" type="button" data-workbench-action="save">创建 / 更新恢复点</button><button class="button secondary" type="button" data-workbench-action="restore">恢复到恢复点</button><button class="button secondary" type="button" data-workbench-action="reset-draft">重置当前草稿</button><button class="button secondary" type="button" data-workbench-action="export">导出草稿</button></div></header>
+              <p class="workbench-reset-scope-note muted">“重置当前草稿”会清空整个当前项目与发布版本的工作草稿；显式保存的恢复点会保留。</p>
+              <p id="workbench-checkpoint-status" class="workbench-checkpoint-status muted" role="status" aria-live="polite">恢复点按项目与发布版本分别保存；自动保存不会覆盖恢复点。</p>
+              <div class="workbench-tabs" role="tablist" aria-label="对象观察面"><button type="button" role="tab" data-workbench-view="design" aria-selected="true">Design · 设计</button><button type="button" role="tab" data-workbench-view="narrative" aria-selected="false">Narrative · 叙事</button><button type="button" role="tab" data-workbench-view="art" aria-selected="false">Art · 表现</button><span id="workbench-target-status" class="muted">当前意见绑定到稳定对象 ID</span></div>
+              <div id="workbench-mobile-panes" class="workbench-mobile-panes" aria-label="窄屏工作区"><button type="button" data-mobile-pane="nav">导航</button><button type="button" data-mobile-pane="stage">预览</button><button type="button" data-mobile-pane="inspect">详情与意见</button></div>
+              <div id="workbench-body" class="workbench-body">
+                <nav id="workbench-nav" class="workbench-nav" aria-label="对象导航">
+                  <div class="workbench-search"><label for="workbench-search">搜索名称或精确 ID</label><input id="workbench-search" type="search" autocomplete="off" placeholder="名称、ID；回车精确定位"><label for="workbench-category">分类</label><select id="workbench-category" aria-label="按对象分类筛选"><option value="all">全部分类</option></select><p id="workbench-search-status" class="muted" role="status"></p></div>
+                  <div id="object-list" class="object-list"></div>
+                  <details class="workbench-help"><summary>来源与覆盖说明</summary><p>来源字段来自当前公开对象快照及可选的 object.workbench 元数据。没有提供的信息会标为未映射；画布仅把现有数据作为语义示意。</p><p>结构操作会进入统一申报，不能直接改写工程文件。</p></details>
+                </nav>
+                <main id="workbench-stage" class="workbench-stage" aria-label="对象预览">
+                  <nav id="workbench-breadcrumb" class="workbench-breadcrumb" aria-label="当前位置"></nav>
+                  <div id="workbench-scene-list" class="workbench-scene-list"></div>
+                  <section id="workbench-canvas" class="workbench-canvas" aria-label="场景或对象语义预览"></section>
+                  <div id="workbench-preview" class="workbench-preview" aria-live="polite"></div>
+                  <section id="workbench-results" class="workbench-results hidden" aria-labelledby="workbench-results-title"><h3 id="workbench-results-title">申报处理结果</h3><div id="workbench-results-list"></div></section>
+                  <section id="workbench-draft-operations" class="workbench-draft-operations hidden" aria-labelledby="workbench-draft-operations-title"><h3 id="workbench-draft-operations-title">待申报结构提案</h3><div id="workbench-draft-operations-list"></div></section>
+                  <section id="workbench-report-shortcut" class="workbench-report-shortcut"><p class="muted">结构、意见和受支持属性会统一预览后交给当前 Agent 流程。</p><button id="workbench-submit" class="button primary" type="button">预览统一申报 <span aria-hidden="true">→</span></button></section>
+                </main>
+                <aside id="workbench-inspector" class="workbench-inspector" aria-label="当前目标详情与编辑">
+                  <div id="object-detail" class="object-detail"></div>
+                  <div id="draft-state" class="draft-state" role="status"></div>
+                  <form id="edit-form"><h3>本目标意见</h3><label class="field-label" for="edit-text">希望怎样修改</label><textarea id="edit-text" rows="4" maxlength="4000" placeholder="写下对当前对象、实例或项目希望做什么修改。输入会按此目标持续保存。"></textarea>
+                    <div id="selected-object-label" class="muted">未选择对象；可从左侧导航选择目标。</div><div id="dynamic-fields" class="parameter-grid"></div>
+                    <details id="feedback-editor" class="feedback-editor"><summary>添加另一条分类意见</summary><label class="field-label" for="feedback-message">补充意见原文</label><textarea id="feedback-message" rows="2" maxlength="2000" placeholder="同一目标的其他意见；加入后可在统一申报中编辑和移除。"></textarea><div class="feedback-controls"><select id="feedback-category" aria-label="反馈类别"><option value="general">一般</option><option value="bug">问题</option><option value="visual">视觉</option><option value="behavior">行为</option></select><button id="add-feedback" class="button secondary" type="button">加入修改清单</button></div><ul id="feedback-list" class="feedback-list"></ul></details>
+                    <div class="form-footer"><span id="capability-note" class="muted">仅显示此项目声明支持的调整。</span><button class="button primary" type="submit">预览统一申报 <span aria-hidden="true">→</span></button></div>
+                  </form>
+                </aside>
+              </div>
+            </section>
           </section>
         </div>
         <aside class="side-column">
-          <section class="panel compact"><p class="eyebrow">当前项目</p><p id="sidebar-project-name" class="muted">尚未选择项目</p></section>
+          <section class="panel compact sidebar-project-context"><p class="eyebrow">当前项目</p><p id="sidebar-project-name" class="muted">尚未选择项目</p></section>
           <section class="panel compact"><p class="eyebrow">最近制作</p><div id="job-list" class="job-list"><p class="muted">还没有制作记录</p></div></section>
           <section class="panel compact note-panel"><p class="eyebrow">版本与保存</p><p>草稿保存在此浏览器，并按项目和版本区分。制作结果会先作为候选显示；只有服务返回确认后，当前版本才会更新。</p><p id="persistence-note" class="muted">正在检查本机草稿存储…</p></section>
         </aside>
@@ -88,6 +122,15 @@
     </section>
     <footer class="page-footer">本机工作台 · 制作和运行由本机服务管理 <span id="api-version"></span></footer>
   </main>
+  <dialog id="workbench-report-dialog" class="workbench-report-dialog" aria-labelledby="workbench-report-title"><div class="panel-heading"><div><p class="eyebrow">同一份迭代申报</p><h2 id="workbench-report-title">检查本轮内容</h2></div><button class="button quiet" type="button" data-workbench-action="close-report">关闭</button></div><div id="workbench-report-content"></div><p id="workbench-report-status" class="muted" role="status"></p><div id="workbench-submission-status" class="workbench-submission-status hidden" role="status" aria-live="polite"></div><div class="dialog-actions"><button class="button secondary" type="button" data-workbench-action="close-report">取消预览</button><button id="workbench-report-confirm" class="button primary" type="button">交给当前 Agent 流程</button></div></dialog>
+  <dialog id="workbench-proposal-dialog" class="workbench-report-dialog" aria-labelledby="workbench-proposal-title"><form id="workbench-proposal-form"><div class="panel-heading"><div><p class="eyebrow">结构操作提案</p><h2 id="workbench-proposal-title">提出工作区调整</h2></div><button class="button quiet" type="button" data-workbench-action="close-proposal">关闭</button></div><div id="workbench-proposal-fields"></div><p class="muted">此处只记录申报意图，不直接修改游戏工程。</p><div class="dialog-actions"><button class="button secondary" type="button" data-workbench-action="close-proposal">取消</button><button class="button primary" type="submit">加入统一申报</button></div></form></dialog>
+  <dialog id="raw-draft-recovery-dialog" class="workbench-report-dialog raw-draft-recovery-dialog" aria-labelledby="raw-draft-recovery-title">
+    <div class="panel-heading"><div><p class="eyebrow">本地存档恢复</p><h2 id="raw-draft-recovery-title">查看/复制原始存档</h2></div><button class="button quiet" type="button" data-action="close-raw-draft-recovery">关闭</button></div>
+    <p class="muted">以下是完整的恢复 JSON。内容只读，不会自动恢复、覆盖或提交；可选择文字后手动复制。</p>
+    <textarea id="raw-draft-recovery-content" class="raw-draft-recovery-content" readonly spellcheck="false" aria-label="完整恢复 JSON"></textarea>
+    <p id="raw-draft-recovery-status" class="muted" role="status"></p>
+    <div class="dialog-actions"><button class="button secondary" type="button" data-action="copy-raw-draft-recovery">复制文本</button><button class="button primary" type="button" data-action="close-raw-draft-recovery">关闭</button></div>
+  </dialog>
   <dialog id="rebase-dialog" aria-labelledby="rebase-title"><form method="dialog"><div class="panel-heading"><div><p class="eyebrow">草稿基线有变化</p><h2 id="rebase-title">检查草稿重关联</h2></div></div><div id="rebase-content"></div><p class="muted">确认前，旧草稿和当前已发布版本都保持不变。</p><div class="dialog-actions"><button class="button secondary" value="keep">保留旧草稿</button><button id="confirm-rebase" class="button primary" value="rebase">预览后更新草稿基线</button></div></form></dialog>
 </body>
 </html>

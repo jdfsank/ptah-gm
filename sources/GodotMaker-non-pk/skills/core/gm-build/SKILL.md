@@ -102,6 +102,28 @@ last verify+review pass produced no new ACCEPTED tasks). Reviewer is invoked
 **once per cycle iteration** — after every PLAN task reaches `completed`,
 not on a worker-count cadence.
 
+### Standard Godot project readiness gate
+
+Before dispatching the first producer in every new or resumed batch (including
+repairs and parameter iterations), the trusted orchestrator must run:
+
+```bash
+python3 "<repository-root>/tools/godot_project_ready.py" "<absolute-project-path>" \
+  --evidence-dir "<absolute-evidence-root>/mcp-<unique-batch-id>"
+```
+
+Resolve the repository from this canonical source skill path by ascending to
+`tools/godot_project_ready.py` and `addons/godot_mcp/`, never from the shell cwd.
+Require fresh `readiness.json` status `PASS`, exact project identity,
+`sourceUnchanged=true` and `editorStopped=true`. Missing/disabled/conflicting
+addons, timeout, cancellation or uncertain editor termination prevent dispatch.
+Do not silently install into an already approved production input; installation
+belongs to trusted scaffold preparation. Do not reuse a prior batch report.
+The helper starts an ordinary editor on a disposable source copy, exposes only
+a private loopback endpoint to its trusted caller, and stops it before producers
+write. Managed workers retain their existing execution and capability boundaries.
+This gate does not replace verification, gameplay trials or user acceptance.
+
 ### Step 0 — Process Verify Feedback
 
 Run this step before Step 1 only if pending verify feedback exists. Otherwise → skip to Step 1.
